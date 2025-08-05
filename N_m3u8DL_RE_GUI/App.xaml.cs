@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using N_m3u8DL_RE_GUI.ViewModels;
 
 namespace N_m3u8DL_RE_GUI
 {
@@ -17,12 +18,24 @@ namespace N_m3u8DL_RE_GUI
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Initialize ViewModelLocator
+            ViewModelLocator.Initialize();
+            
+            // Set language
             string loc = "en-US";
             string currLoc = Thread.CurrentThread.CurrentUICulture.Name;
             if (currLoc == "zh-TW" || currLoc == "zh-HK" || currLoc == "zh-MO") loc = "zh-TW";
             else if (currLoc == "zh-CN" || currLoc == "zh-SG") loc = "zh-CN";
-            //设置语言
             Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo(loc);
+            
+            base.OnStartup(e);
+        }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            // Cleanup ViewModelLocator
+            ViewModelLocator.Cleanup();
+            base.OnExit(e);
         }
     }
 }
