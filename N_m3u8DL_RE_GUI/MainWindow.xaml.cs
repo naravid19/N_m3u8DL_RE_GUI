@@ -34,6 +34,7 @@ using Forms = System.Windows.Forms;
 using Media = System.Windows.Media;
 using MediaColor = System.Windows.Media.Color;
 using Anim = System.Windows.Media.Animation;
+using N_m3u8DL_RE_GUI.Core;
 
 namespace N_m3u8DL_RE_GUI
 {
@@ -135,76 +136,56 @@ namespace N_m3u8DL_RE_GUI
 
         string BuildArgsRE(string inputOverride = null)
         {
-            var sb = new StringBuilder();
-
-            // input
-            var input = string.IsNullOrWhiteSpace(inputOverride) ? TextBox_URL.Text : inputOverride;
-            sb.Append(Q(input)).Append(' ');
-
-            // save dir / save name / base-url
-            if (!string.IsNullOrWhiteSpace(TextBox_WorkDir.Text))
-                sb.Append("--save-dir ").Append(Q(TextBox_WorkDir.Text.Trim('\\'))).Append(' ');
-            if (!string.IsNullOrWhiteSpace(TextBox_Title.Text))
-                sb.Append("--save-name ").Append(Q(TextBox_Title.Text)).Append(' ');
-            if (!string.IsNullOrWhiteSpace(TextBox_Baseurl.Text))
-                sb.Append("--base-url ").Append(Q(TextBox_Baseurl.Text)).Append(' ');
-
-            // threads / retry / timeout / speed
-            if (int.TryParse(TextBox_Max.Text, out var tc) && tc > 0)
-                sb.Append("--thread-count ").Append(tc).Append(' ');
-            if (int.TryParse(TextBox_Retry.Text, out var rc) && rc > 0)
-                sb.Append("--download-retry-count ").Append(rc).Append(' ');
-            if (int.TryParse(TextBox_Timeout.Text, out var toSec) && toSec > 0)
-                sb.Append("--http-request-timeout ").Append(toSec).Append(' ');
-            if (!string.IsNullOrWhiteSpace(TextBox_MaxSpeed.Text) && TextBox_MaxSpeed.Text.Trim() != "0")
-                sb.Append("-R ").Append(TextBox_MaxSpeed.Text.Trim()).Append(' ');   // เช่น 15M / 800K
-
-            // flags
-            if (CheckBox_Del.IsChecked == true) sb.Append("--del-after-done ").Append(' ');
-            if (CheckBox_BinaryMerge.IsChecked == true) sb.Append("--binary-merge ").Append(' ');
-            if (CheckBox_ParserOnly.IsChecked == true) sb.Append("--skip-download ").Append(' ');
-            if (CheckBox_DisableDate.IsChecked == true) sb.Append("--no-date-info ").Append(' ');
-            if (CheckBox_DisableMerge.IsChecked == true) sb.Append("--skip-merge ").Append(' ');
-            if (CheckBox_DisableProxy.IsChecked == true) sb.Append("--use-system-proxy false ").Append(' ');
-            if (CheckBox_Concurrent?.IsChecked == true) sb.Append("--concurrent-download ");
-            if (CheckBox_SubOnly?.IsChecked == true) sb.Append("--sub-only ");
-            var subFmt = (Combo_SubFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString();
-            if (!string.IsNullOrWhiteSpace(subFmt)) sb.Append("--sub-format ").Append(subFmt).Append(' ');
-            if (CheckBox_AutoSubFix?.IsChecked == true) sb.Append("--auto-subtitle-fix ");
-
-            // “จบงานแล้วผสมเป็น mp4”
-            if (CheckBox_FastStart.IsChecked == true) sb.Append("-M format=mp4 ").Append(' ');
-
-            // headers: ใส่ทีละบรรทัด → หลาย -H
-            if (!string.IsNullOrWhiteSpace(TextBox_Headers.Text))
+            var options = new DownloadOptions
             {
-                var lines = TextBox_Headers.Text
-                    .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var line in lines)
-                {
-                    var h = line.Trim();
-                    if (h.Length > 0) sb.Append("-H ").Append(Q(h)).Append(' ');
-                }
-            }
+                // Basic Settings
+                Input = string.IsNullOrWhiteSpace(inputOverride) ? TextBox_URL.Text : inputOverride,
+                SaveDir = TextBox_WorkDir.Text?.Trim('\\'),
+                SaveName = TextBox_Title.Text,
+                Headers = TextBox_Headers.Text,
+                BaseUrl = TextBox_Baseurl.Text,
+                MuxJson = TextBox_MuxJson.Text,
+                
+                // Encryption
+                Key = TextBox_Key.Text?.Trim(),
+                IV = TextBox_IV.Text?.Trim(),
+                
+                // Network
+                Proxy = TextBox_Proxy.Text?.Trim(),
+                
+                // Time Range
+                RangeStart = TextBox_RangeStart.Text,
+                RangeEnd = TextBox_RangeEnd.Text,
+                
+                // Thread Settings
+                MaxThreads = int.TryParse(TextBox_Max.Text, out var maxThreads) ? maxThreads : 32,
+                MinThreads = int.TryParse(TextBox_Min.Text, out var minThreads) ? minThreads : 16,
+                RetryCount = int.TryParse(TextBox_Retry.Text, out var retryCount) ? retryCount : 15,
+                
+                // Timeout & Speed
+                Timeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 10,
+                StopSpeed = int.TryParse(TextBox_StopSpeed.Text, out var stopSpeed) ? stopSpeed : 0,
+                MaxSpeed = int.TryParse(TextBox_MaxSpeed.Text, out var maxSpeed) ? maxSpeed : 0,
+                
+                // Boolean Options
+                DeleteAfterDone = CheckBox_Del.IsChecked == true,
+                DisableDate = CheckBox_DisableDate.IsChecked == true,
+                DisableProxy = CheckBox_DisableProxy.IsChecked == true,
+                ParseOnly = CheckBox_ParserOnly.IsChecked == true,
+                FastStart = CheckBox_FastStart.IsChecked == true,
+                DisableMerge = CheckBox_DisableMerge.IsChecked == true,
+                BinaryMerge = CheckBox_BinaryMerge.IsChecked == true,
+                AudioOnly = CheckBox_AudioOnly.IsChecked == true,
+                DisableCheck = CheckBox_DisableCheck.IsChecked == true,
+                ConcurrentDownload = CheckBox_Concurrent?.IsChecked == true,
+                SubOnly = CheckBox_SubOnly?.IsChecked == true,
+                AutoSubFix = CheckBox_AutoSubFix?.IsChecked == true,
+                
+                // Subtitle Format
+                SubFormat = (Combo_SubFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "SRT"
+            };
 
-            // HLS key/iv (AES-128) – ถ้ามี
-            if (!string.IsNullOrWhiteSpace(TextBox_Key.Text))
-                sb.Append("--custom-hls-key ").Append(Q(TextBox_Key.Text.Trim())).Append(' ');
-            if (!string.IsNullOrWhiteSpace(TextBox_IV.Text))
-                sb.Append("--custom-hls-iv ").Append(Q(TextBox_IV.Text.Trim())).Append(' ');
-
-            // proxy
-            if (!string.IsNullOrWhiteSpace(TextBox_Proxy.Text))
-                sb.Append("--custom-proxy ").Append(Q(TextBox_Proxy.Text.Trim())).Append(' ');
-
-            // partial range
-            if (TextBox_RangeStart.Text != "00:00:00" || TextBox_RangeEnd.Text != "00:00:00")
-                sb.Append("--custom-range ").Append(Q($"{TextBox_RangeStart.Text}-{TextBox_RangeEnd.Text}")).Append(' ');
-
-            // auto select best tracks
-            sb.Append("--auto-select ");
-
-            return sb.ToString().Trim();
+            return ArgsBuilder.Build(options);
         }
 
         private void TextChanged(object sender, TextChangedEventArgs e)
