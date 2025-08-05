@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+
+    <AssemblyName>N_m3u8DL_RE_GUI</AssemblyName>
+    <RootNamespace>N_m3u8DL_RE_GUI</RootNamespace>
+    <ApplicationIcon>logo_3Iv_icon.ico</ApplicationIcon>
+
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="App.config" Condition="Exists('App.config')" />
+    <Resource Include="logo_3Iv_icon.ico" />
+  </ItemGroup>
+</Project>
