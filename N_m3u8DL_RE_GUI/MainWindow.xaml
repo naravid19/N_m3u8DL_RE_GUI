@@ -22,29 +22,30 @@
             <ColumnDefinition Width="87*"/>
         </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> <!-- 0 exePath  -->
-                <RowDefinition Height="Auto"/> <!-- 1 workDir  -->
-                <RowDefinition Height="Auto"/> <!-- 2 m3u8     -->
-                <RowDefinition Height="Auto"/> <!-- 3 title    -->
-                <RowDefinition Height="Auto"/> <!-- 4 headers  -->
-                <RowDefinition Height="Auto"/> <!-- 5 baseURL  -->
-                <RowDefinition Height="Auto"/> <!-- 6 muxJSON  -->
-                <RowDefinition Height="Auto"/> <!-- 7 key      -->
-                <RowDefinition Height="Auto"/> <!-- 8 iv       -->
-                <RowDefinition Height="Auto"/> <!-- 9 proxy    -->
-                <RowDefinition Height="10"/>  <!-- 10 spacer  -->
+                <RowDefinition Height="Auto"/> <!-- 0: Executable Path -->
+                <RowDefinition Height="Auto"/> <!-- 1: Working Directory -->
+                <RowDefinition Height="Auto"/> <!-- 2: M3U8 URL -->
+                <RowDefinition Height="Auto"/> <!-- 3: Save Title -->
+                <RowDefinition Height="Auto"/> <!-- 4: HTTP Headers -->
+                <RowDefinition Height="Auto"/> <!-- 5: Base URL -->
+                <RowDefinition Height="Auto"/> <!-- 6: Mux JSON -->
+                <RowDefinition Height="Auto"/> <!-- 7: Decryption Key -->
+                <RowDefinition Height="Auto"/> <!-- 8: Initialization Vector -->
+                <RowDefinition Height="Auto"/> <!-- 9: Proxy Settings -->
+                <RowDefinition Height="10"/>  <!-- 10: Spacer -->
                 
-                <!--  Block Options  -->
-                <RowDefinition Height="Auto"/> <!-- 11 range   -->
-                <RowDefinition Height="Auto"/> <!-- 12 Del/Date/Proxy -->
-                <RowDefinition Height="Auto"/> <!-- 13 Parse/Fast/NoMerge -->
-                <RowDefinition Height="Auto"/> <!-- 14 Binary/Audio/NoCheck -->
-                <RowDefinition Height="Auto"/> <!-- 15 Concurrent/SubOnly/SubFmt -->
-                <RowDefinition Height="Auto"/> <!-- 16 AutoSubFix -->
-                <RowDefinition Height="Auto"/> <!-- 17 MaxThread -->
-                <RowDefinition Height="Auto"/>   <!-- 18 Timeout -->
-                <RowDefinition Height="Auto"/>   <!-- 19 Params -->
+                <!-- Download Options Section -->
+                <RowDefinition Height="Auto"/> <!-- 11: Time Range -->
+                <RowDefinition Height="Auto"/> <!-- 12: Delete/Date/Proxy Options -->
+                <RowDefinition Height="Auto"/> <!-- 13: Parse/Fast/Merge Options -->
+                <RowDefinition Height="Auto"/> <!-- 14: Binary/Audio/Check Options -->
+                <RowDefinition Height="Auto"/> <!-- 15: Concurrent/Subtitle Options -->
+                <RowDefinition Height="Auto"/> <!-- 16: Auto Subtitle Fix -->
+                <RowDefinition Height="Auto"/> <!-- 17: Thread Settings -->
+                <RowDefinition Height="Auto"/> <!-- 18: Timeout & Speed -->
+                <RowDefinition Height="Auto"/> <!-- 19: Generated Parameters -->
             </Grid.RowDefinitions>
+        <!-- Executable Path Row -->
         <Grid Grid.Row="0" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="70"></ColumnDefinition>
@@ -65,6 +66,7 @@
                 </TextBox.ContextMenu>
             </TextBox>
         </Grid>
+        <!-- Working Directory Row -->
         <Grid Grid.Row="1" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="70"></ColumnDefinition>
@@ -75,6 +77,7 @@
             <TextBox ToolTip="{x:Static props:Resources.workDir_Tip}" TextChanged="TextChanged" Grid.Column="1" x:Name="TextBox_WorkDir" Padding="3" Background="#FF333337" Foreground="#FFF1F1F1" BorderBrush="#FF3F3F46"/>
             <Button ToolTip="{x:Static props:Resources.changeDir_Tip}"  Grid.Column="2" Click="Button_SelectDir_Click" x:Name="Button_SelectDir" Content="{x:Static props:Resources.changeDir}" Margin="10,0,0,0" BorderBrush="#FF626263" Background="{x:Null}" Foreground="#FFF1F1F1"/>
         </Grid>
+        <!-- M3U8 URL Row -->
         <Grid Grid.Row="2" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="70"></ColumnDefinition>
@@ -143,6 +146,7 @@
             <TextBox ToolTip="{x:Static props:Resources.setProxy_Tip}" TextChanged="TextChanged" Grid.Column="1" x:Name="TextBox_Proxy" Padding="3" VerticalContentAlignment="Center" PreviewDragEnter="TextBox_Key_PreviewDragEnter" PreviewDragOver="TextBox_Key_PreviewDragOver" PreviewDrop="TextBox_Key_PreviewDrop" Background="#FF333337" BorderBrush="#FF3F3F46" Foreground="#FFF1F1F1"/>
 
         </Grid>
+        <!-- Time Range Row -->
         <Grid Grid.Row="11" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="70"></ColumnDefinition>
@@ -161,6 +165,7 @@
             </Grid>
         </Grid>
 
+        <!-- Download Options Grid -->
         <Grid Grid.Row="12" Grid.RowSpan="4" Grid.ColumnSpan="3" Margin="4,0" VerticalAlignment="Center">
         <Grid.RowDefinitions>
             <RowDefinition/>
@@ -176,7 +181,7 @@
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
 
-        <!-- row 0 -->
+        <!-- Row 0: Delete/Date/Proxy Options -->
         <CheckBox x:Name="CheckBox_Del" Grid.Row="0" Grid.Column="0"
                     Content="{x:Static props:Resources.deleteAfterDone}"
                     ToolTip="{x:Static props:Resources.deleteAfterDone_Tip}"
@@ -196,7 +201,7 @@
                     HorizontalAlignment="Left" Cursor="Hand"
                     Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
 
-        <!-- row 1 -->
+        <!-- Row 1: Parse/Fast/Merge Options -->
         <CheckBox x:Name="CheckBox_ParserOnly" Grid.Row="1" Grid.Column="0"
                     Content="{x:Static props:Resources.parseOnly}"
                     ToolTip="{x:Static props:Resources.parseOnly_Tip}"
@@ -216,7 +221,7 @@
                     HorizontalAlignment="Left" Cursor="Hand"
                     Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
 
-        <!-- row 2 -->
+        <!-- Row 2: Binary/Audio/Check Options -->
         <CheckBox x:Name="CheckBox_BinaryMerge" Grid.Row="2" Grid.Column="0"
                     Content="{x:Static props:Resources.binaryMerge}"
                     ToolTip="{x:Static props:Resources.binaryMerge_Tip}"
@@ -236,7 +241,7 @@
                     HorizontalAlignment="Left" Cursor="Hand"
                     Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
 
-        <!-- row 3 -->
+        <!-- Row 3: Concurrent Download -->
         <CheckBox x:Name="CheckBox_Concurrent" Grid.Row="3" Grid.Column="0"
                     Content="ConcurrentDownload"
                     ToolTip="Download audio/video/subtitle concurrently"
@@ -244,7 +249,7 @@
                     HorizontalAlignment="Left" Cursor="Hand"
                     Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
 
-        <!-- row 4 -->
+        <!-- Row 4: Subtitle Options -->
         <CheckBox x:Name="CheckBox_SubOnly" Grid.Row="4" Grid.Column="0"
                     Content="SubOnly" ToolTip="Only download subtitle"
                     Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
@@ -267,6 +272,7 @@
         </ComboBox>
         </Grid>
 
+        <!-- Thread Settings Row -->
         <Grid Grid.Row="17" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition></ColumnDefinition>
@@ -298,6 +304,7 @@
                 <TextBox ToolTip="{x:Static props:Resources.retryCount_Tip}" x:Name="TextBox_Retry" TextChanged="TextChanged" Grid.Column="1" Text="15" Margin="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
         </Grid>
+         <!-- Timeout & Speed Settings Row -->
          <Grid Grid.Row="18" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition></ColumnDefinition>
@@ -329,6 +336,7 @@
                 <TextBox ToolTip="{x:Static props:Resources.maxSpeed_Tip}" x:Name="TextBox_MaxSpeed" TextChanged="TextChanged" Grid.Column="1" Text="0" Margin="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
         </Grid>
+        <!-- Generated Parameters & Execute Row -->
         <Grid Grid.Row="19" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="70"></ColumnDefinition>
