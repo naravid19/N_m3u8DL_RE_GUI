@@ -18,4 +18,13 @@
     <None Include="App.config" Condition="Exists('App.config')" />
     <Resource Include="logo_3Iv_icon.ico" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\N_m3u8DL_RE_GUI.Core\N_m3u8DL_RE_GUI.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
+  </ItemGroup>
 </Project>
