@@ -13,7 +13,8 @@
         ResizeMode="CanResize"
         Closing="Window_Closing" 
         Loaded="Window_Loaded"
-        Background="#FF252526">
+        Background="#FF252526"
+        DataContext="{Binding Source={StaticResource Locator}, Path=MainViewModel}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="10">
         <Grid.ColumnDefinitions>
