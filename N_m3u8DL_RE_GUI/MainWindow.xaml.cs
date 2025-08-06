@@ -159,12 +159,12 @@ namespace N_m3u8DL_RE_GUI
                 
                 // Thread Settings
                 MaxThreads = int.TryParse(TextBox_Max.Text, out var maxThreads) ? maxThreads : 32,
-                MinThreads = int.TryParse(TextBox_Min.Text, out var minThreads) ? minThreads : 16,
+                // MinThreads removed - not supported by N_m3u8DL-RE
                 RetryCount = int.TryParse(TextBox_Retry.Text, out var retryCount) ? retryCount : 15,
                 
                 // Timeout & Speed
                 Timeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 10,
-                StopSpeed = int.TryParse(TextBox_StopSpeed.Text, out var stopSpeed) ? stopSpeed : 0,
+                // StopSpeed removed - not supported by N_m3u8DL-RE
                 MaxSpeed = int.TryParse(TextBox_MaxSpeed.Text, out var maxSpeed) ? maxSpeed : 0,
                 
                 // Boolean Options
@@ -172,7 +172,7 @@ namespace N_m3u8DL_RE_GUI
                 DisableDate = CheckBox_DisableDate.IsChecked == true,
                 DisableProxy = CheckBox_DisableProxy.IsChecked == true,
                 ParseOnly = CheckBox_ParserOnly.IsChecked == true,
-                FastStart = CheckBox_FastStart.IsChecked == true,
+                // FastStart removed - not supported by N_m3u8DL-RE
                 DisableMerge = CheckBox_DisableMerge.IsChecked == true,
                 BinaryMerge = CheckBox_BinaryMerge.IsChecked == true,
                 AudioOnly = CheckBox_AudioOnly.IsChecked == true,
