@@ -43,21 +43,18 @@ public class DownloadOptions
         (RangeStart != "00:00:00" || RangeEnd != "00:00:00");
     
     // Thread Settings
-    public int MaxThreads { get; set; } = 32;
-    public int MinThreads { get; set; } = 16;
-    public int RetryCount { get; set; } = 15;
+    public int MaxThreads { get; set; } = 12; // Used as thread-count (default from N_m3u8DL-RE)
+    public int RetryCount { get; set; } = 3; // Used as download-retry-count (default from N_m3u8DL-RE)
     
     // Timeout & Speed
-    public int Timeout { get; set; } = 10;
-    public int StopSpeed { get; set; } = 0;
-    public int MaxSpeed { get; set; } = 0;
+    public int Timeout { get; set; } = 100; // Used as http-request-timeout (default from N_m3u8DL-RE)
+    public int MaxSpeed { get; set; } = 0; // Speed limit in Mbps (0 = no limit)
     
     // Boolean Options
     public bool DeleteAfterDone { get; set; }
     public bool DisableDate { get; set; }
     public bool DisableProxy { get; set; }
     public bool ParseOnly { get; set; }
-    public bool FastStart { get; set; }
     public bool DisableMerge { get; set; }
     public bool BinaryMerge { get; set; }
     public bool AudioOnly { get; set; }
