@@ -25,22 +25,19 @@ public static class CliFlags
     public const string LiveRecDur = "--live-rec-dur";
     
     // Thread Settings
-    public const string MaxThreads = "--max-threads";
-    public const string MinThreads = "--min-threads";
-    public const string RetryCount = "--retry-count";
+    public const string ThreadCount = "--thread-count";
+    public const string DownloadRetryCount = "--download-retry-count";
     
     // Timeout & Speed
-    public const string Timeout = "--timeout";
-    public const string StopSpeed = "--stop-speed";
+    public const string HttpRequestTimeout = "--http-request-timeout";
     public const string MaxSpeed = "--max-speed";
     
     // Boolean Options
     public const string DelAfterDone = "--del-after-done";
-    public const string DisableDate = "--disable-date";
+    public const string NoDateInfo = "--no-date-info";
     public const string NoProxy = "--no-proxy";
     public const string ParseOnly = "--parse-only";
-    public const string FastStart = "--fast-start";
-    public const string DisableMerge = "--disable-merge";
+    public const string SkipMerge = "--skip-merge";
     public const string BinaryMerge = "--binary-merge";
     public const string AudioOnly = "--audio-only";
     public const string DisableCheck = "--disable-check";
@@ -88,22 +85,24 @@ public static class ArgsBuilder
         }
         
         // Thread Settings
-        sb.Append($" {CliFlags.MaxThreads} {options.MaxThreads}");
-        sb.Append($" {CliFlags.MinThreads} {options.MinThreads}");
-        sb.Append($" {CliFlags.RetryCount} {options.RetryCount}");
+        sb.Append($" {CliFlags.ThreadCount} {options.MaxThreads}");
+        sb.Append($" {CliFlags.DownloadRetryCount} {options.RetryCount}");
         
         // Timeout & Speed Settings
-        sb.Append($" {CliFlags.Timeout} {options.Timeout}");
-        sb.Append($" {CliFlags.StopSpeed} {options.StopSpeed}");
-        sb.Append($" {CliFlags.MaxSpeed} {options.MaxSpeed}");
+        sb.Append($" {CliFlags.HttpRequestTimeout} {options.Timeout}");
+        
+        // Max Speed - only add if not zero
+        if (options.MaxSpeed > 0)
+        {
+            sb.Append($" {CliFlags.MaxSpeed} {options.MaxSpeed}M");
+        }
         
         // Boolean Options
         sb.AppendIfTrue(CliFlags.DelAfterDone, options.DeleteAfterDone);
-        sb.AppendIfTrue(CliFlags.DisableDate, options.DisableDate);
+        sb.AppendIfTrue(CliFlags.NoDateInfo, options.DisableDate);
         sb.AppendIfTrue(CliFlags.NoProxy, options.DisableProxy);
         sb.AppendIfTrue(CliFlags.ParseOnly, options.ParseOnly);
-        sb.AppendIfTrue(CliFlags.FastStart, options.FastStart);
-        sb.AppendIfTrue(CliFlags.DisableMerge, options.DisableMerge);
+        sb.AppendIfTrue(CliFlags.SkipMerge, options.DisableMerge);
         sb.AppendIfTrue(CliFlags.BinaryMerge, options.BinaryMerge);
         sb.AppendIfTrue(CliFlags.AudioOnly, options.AudioOnly);
         sb.AppendIfTrue(CliFlags.DisableCheck, options.DisableCheck);
