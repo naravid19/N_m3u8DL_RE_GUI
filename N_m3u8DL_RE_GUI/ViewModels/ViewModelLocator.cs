@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using N_m3u8DL_RE_GUI.Services;
 using System;
 
 namespace N_m3u8DL_RE_GUI.ViewModels;
@@ -17,12 +18,13 @@ public class ViewModelLocator
     {
         var services = new ServiceCollection();
         
+        // Register Services
+        services.AddSingleton<IDownloadService, DownloadService>();
+        services.AddSingleton<IUtilityService, UtilityService>();
+        services.AddSingleton<IDragDropService, DragDropService>();
+        
         // Register ViewModels
         services.AddTransient<MainViewModel>();
-        
-        // Register Services (future use)
-        // services.AddTransient<IDownloadService, DownloadService>();
-        // services.AddTransient<ILogService, LogService>();
         
         _serviceProvider = services.BuildServiceProvider();
     }
