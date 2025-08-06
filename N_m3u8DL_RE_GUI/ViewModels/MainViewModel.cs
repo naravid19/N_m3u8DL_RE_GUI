@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using N_m3u8DL_RE_GUI.Core;
+using N_m3u8DL_RE_GUI.Services;
 using System.ComponentModel;
 using System.Windows;
 using MessageBox = System.Windows.MessageBox;
@@ -12,6 +13,17 @@ namespace N_m3u8DL_RE_GUI.ViewModels;
 /// </summary>
 public partial class MainViewModel : ObservableObject
 {
+    private readonly IDownloadService _downloadService;
+    private readonly IUtilityService _utilityService;
+    private readonly IDragDropService _dragDropService;
+
+    public MainViewModel(IDownloadService downloadService, IUtilityService utilityService, IDragDropService dragDropService)
+    {
+        _downloadService = downloadService;
+        _utilityService = utilityService;
+        _dragDropService = dragDropService;
+    }
+
     [ObservableProperty]
     private DownloadOptions _downloadOptions = new();
 
@@ -26,6 +38,12 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private double _progress = 0;
+
+    [ObservableProperty]
+    private string _executablePath = "N_m3u8DL-RE.exe";
+
+    [ObservableProperty]
+    private string _workingDirectory = string.Empty;
 
     /// <summary>
     /// Refresh command line parameters based on current options.
@@ -55,12 +73,20 @@ public partial class MainViewModel : ObservableObject
             IsDownloading = true;
             Progress = 0;
             LogOutput = "เริ่มการดาวน์โหลด...\n";
-            
-            // TODO: Implement actual download logic here
-            // For now, just simulate the process
-            await SimulateDownloadAsync();
-            
-            LogOutput += "ดาวน์โหลดเสร็จสิ้น!\n";
+
+            var progress = new Progress<int>(value => Progress = value);
+            var logCallback = new Action<string>(message => LogOutput += $"{message}\n");
+
+            var success = await _downloadService.StartDownloadAsync(
+                DownloadOptions, 
+                progress, 
+                logCallback);
+
+            if (!success)
+            {
+                MessageBox.Show("ดาวน์โหลดล้มเหลว", "ข้อผิดพลาด", 
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         catch (Exception ex)
         {
@@ -80,8 +106,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void StopDownload()
     {
+        _downloadService.StopDownload();
         IsDownloading = false;
-        LogOutput += "หยุดการดาวน์โหลด\n";
+                        LogOutput += "Download stopped.\n";
     }
 
     /// <summary>
@@ -104,17 +131,83 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Simulate download process for demonstration.
+    /// Get title from URL.
     /// </summary>
-    private async Task SimulateDownloadAsync()
+    [RelayCommand]
+    private async Task GetTitleFromUrlAsync()
     {
-        for (int i = 0; i <= 100; i += 10)
+        if (string.IsNullOrWhiteSpace(DownloadOptions.Input))
+            return;
+
+        try
         {
-            if (!IsDownloading) break;
-            
-            Progress = i;
-            LogOutput += $"ดาวน์โหลด... {i}%\n";
-            await Task.Delay(500);
+            var title = await _utilityService.GetTitleFromUrlAsync(DownloadOptions.Input);
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                DownloadOptions.SaveName = title;
+                RefreshParameters();
+            }
+        }
+        catch (Exception ex)
+        {
+            LogOutput += $"Failed to get title from URL: {ex.Message}\n";
+        }
+    }
+
+    /// <summary>
+    /// Select working directory.
+    /// </summary>
+    [RelayCommand]
+    private void SelectWorkingDirectory()
+    {
+        var selectedPath = _utilityService.SelectFolder("Select download folder", WorkingDirectory);
+        if (!string.IsNullOrWhiteSpace(selectedPath))
+        {
+            WorkingDirectory = selectedPath;
+            DownloadOptions.SaveDir = selectedPath;
+            RefreshParameters();
+        }
+    }
+
+    /// <summary>
+    /// Handle URL drop event.
+    /// </summary>
+    [RelayCommand]
+    private void HandleUrlDrop(object data)
+    {
+        var droppedText = _dragDropService.HandleFileDrop(data);
+        if (!string.IsNullOrWhiteSpace(droppedText))
+        {
+            DownloadOptions.Input = droppedText;
+            RefreshParameters();
+        }
+    }
+
+    /// <summary>
+    /// Handle key file drop event.
+    /// </summary>
+    [RelayCommand]
+    private void HandleKeyDrop(object data)
+    {
+        var droppedFile = _dragDropService.HandleFileDrop(data);
+        if (!string.IsNullOrWhiteSpace(droppedFile) && _utilityService.FileExists(droppedFile))
+        {
+            DownloadOptions.Key = droppedFile;
+            RefreshParameters();
+        }
+    }
+
+    /// <summary>
+    /// Handle mux JSON drop event.
+    /// </summary>
+    [RelayCommand]
+    private void HandleMuxJsonDrop(object data)
+    {
+        var droppedFile = _dragDropService.HandleFileDrop(data);
+        if (!string.IsNullOrWhiteSpace(droppedFile) && _utilityService.FileExists(droppedFile))
+        {
+            DownloadOptions.MuxJson = droppedFile;
+            RefreshParameters();
         }
     }
 
