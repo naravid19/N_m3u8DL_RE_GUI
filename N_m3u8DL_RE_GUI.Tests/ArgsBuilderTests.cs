@@ -26,8 +26,7 @@ public class ArgsBuilderTests
         Assert.Contains("\"https://example.com/video.m3u8\"", result);
         Assert.Contains("--save-dir \"C:\\Downloads\"", result);
         Assert.Contains("--save-name \"MyVideo\"", result);
-        Assert.Contains("--max-threads 32", result);
-        Assert.Contains("--min-threads 16", result);
+        Assert.Contains("--thread-count 12", result);
     }
 
     [Fact]
@@ -39,7 +38,7 @@ public class ArgsBuilderTests
             Input = "https://example.com/video.m3u8",
             DeleteAfterDone = true,
             AudioOnly = true,
-            FastStart = true
+            DisableMerge = true
         };
 
         // Act
@@ -48,7 +47,7 @@ public class ArgsBuilderTests
         // Assert
         Assert.Contains("--del-after-done", result);
         Assert.Contains("--audio-only", result);
-        Assert.Contains("--fast-start", result);
+        Assert.Contains("--skip-merge", result);
     }
 
     [Fact]
@@ -119,12 +118,10 @@ public class ArgsBuilderTests
 
         // Assert
         // When input is empty, it should still include default thread settings
-        Assert.Contains("--max-threads 32", result);
-        Assert.Contains("--min-threads 16", result);
-        Assert.Contains("--retry-count 15", result);
-        Assert.Contains("--timeout 10", result);
-        Assert.Contains("--stop-speed 0", result);
-        Assert.Contains("--max-speed 0", result);
+        Assert.Contains("--thread-count 12", result);
+        Assert.Contains("--download-retry-count 3", result);
+        Assert.Contains("--http-request-timeout 100", result);
+        // Max speed should not be included when 0
     }
 
     [Fact]
@@ -137,7 +134,7 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--max-threads 32", result);
+        Assert.Contains("--thread-count 12", result);
         Assert.DoesNotContain("\"\"", result); // Should not have empty quotes
     }
 
@@ -226,7 +223,6 @@ public class ArgsBuilderTests
             DisableDate = true,
             DisableProxy = true,
             ParseOnly = true,
-            FastStart = true,
             DisableMerge = true,
             BinaryMerge = true,
             AudioOnly = true,
@@ -241,11 +237,10 @@ public class ArgsBuilderTests
 
         // Assert
         Assert.Contains("--del-after-done", result);
-        Assert.Contains("--disable-date", result);
+        Assert.Contains("--no-date-info", result);
         Assert.Contains("--no-proxy", result);
         Assert.Contains("--parse-only", result);
-        Assert.Contains("--fast-start", result);
-        Assert.Contains("--disable-merge", result);
+        Assert.Contains("--skip-merge", result);
         Assert.Contains("--binary-merge", result);
         Assert.Contains("--audio-only", result);
         Assert.Contains("--disable-check", result);
