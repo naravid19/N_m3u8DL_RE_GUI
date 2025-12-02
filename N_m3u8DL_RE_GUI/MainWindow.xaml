@@ -167,110 +167,98 @@
         </Grid>
 
         <!-- Download Options Grid -->
-        <Grid Grid.Row="12" Grid.RowSpan="4" Grid.ColumnSpan="3" Margin="4,0" VerticalAlignment="Center">
-        <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
-            <ColumnDefinition/>
-            <ColumnDefinition/>
-        </Grid.ColumnDefinitions>
+        <Grid Grid.Row="12" Grid.RowSpan="5" Grid.ColumnSpan="3" Margin="4,0" VerticalAlignment="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
 
-        <!-- Row 0: Delete/Date/Proxy Options -->
-        <CheckBox x:Name="CheckBox_Del" Grid.Row="0" Grid.Column="0"
-                    Content="{x:Static props:Resources.deleteAfterDone}"
-                    ToolTip="{x:Static props:Resources.deleteAfterDone_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <CheckBox x:Name="CheckBox_DisableDate" Grid.Row="0" Grid.Column="1"
-                    Content="{x:Static props:Resources.disableDate}"
-                    ToolTip="{x:Static props:Resources.disableDate_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <CheckBox x:Name="CheckBox_DisableProxy" Grid.Row="0" Grid.Column="2"
-                    Content="{x:Static props:Resources.disableProxy}"
-                    ToolTip="{x:Static props:Resources.disableProxy_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
+            <!-- Row 0: Delete/Date/Proxy Options -->
+            <CheckBox x:Name="CheckBox_Del" Grid.Row="0" Grid.Column="0"
+                      Content="{x:Static props:Resources.deleteAfterDone}"
+                      ToolTip="{x:Static props:Resources.deleteAfterDone_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <CheckBox x:Name="CheckBox_DisableDate" Grid.Row="0" Grid.Column="1"
+                      Content="{x:Static props:Resources.disableDate}"
+                      ToolTip="{x:Static props:Resources.disableDate_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <CheckBox x:Name="CheckBox_DisableProxy" Grid.Row="0" Grid.Column="2"
+                      Content="{x:Static props:Resources.disableProxy}"
+                      ToolTip="{x:Static props:Resources.disableProxy_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
 
-        <!-- Row 1: Parse/Fast/Merge Options -->
-        <CheckBox x:Name="CheckBox_ParserOnly" Grid.Row="1" Grid.Column="0"
-                    Content="{x:Static props:Resources.parseOnly}"
-                    ToolTip="{x:Static props:Resources.parseOnly_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <CheckBox x:Name="CheckBox_FastStart" Grid.Row="1" Grid.Column="1"
-                    Content="{x:Static props:Resources.fastStart}"
-                    ToolTip="{x:Static props:Resources.fastStart_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <CheckBox x:Name="CheckBox_DisableMerge" Grid.Row="1" Grid.Column="2"
-                    Content="{x:Static props:Resources.disableMerge}"
-                    ToolTip="{x:Static props:Resources.disableMerge_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
+            <!-- Row 1: Parse/Concurrent/Merge Options -->
+            <CheckBox x:Name="CheckBox_ParserOnly" Grid.Row="1" Grid.Column="0"
+                      Content="{x:Static props:Resources.parseOnly}"
+                      ToolTip="{x:Static props:Resources.parseOnly_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <CheckBox x:Name="CheckBox_Concurrent" Grid.Row="1" Grid.Column="1"
+                      Content="ConcurrentDownload"
+                      ToolTip="Download audio/video/subtitle concurrently"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <CheckBox x:Name="CheckBox_DisableMerge" Grid.Row="1" Grid.Column="2"
+                      Content="{x:Static props:Resources.disableMerge}"
+                      ToolTip="{x:Static props:Resources.disableMerge_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
 
-        <!-- Row 2: Binary/Audio/Check Options -->
-        <CheckBox x:Name="CheckBox_BinaryMerge" Grid.Row="2" Grid.Column="0"
-                    Content="{x:Static props:Resources.binaryMerge}"
-                    ToolTip="{x:Static props:Resources.binaryMerge_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <CheckBox x:Name="CheckBox_AudioOnly" Grid.Row="2" Grid.Column="1"
-                    Content="{x:Static props:Resources.audioOnly}"
-                    ToolTip="{x:Static props:Resources.audioOnly_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <CheckBox x:Name="CheckBox_DisableCheck" Grid.Row="2" Grid.Column="2"
-                    Content="{x:Static props:Resources.disableCheck}"
-                    ToolTip="{x:Static props:Resources.disableCheck_Tip}"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
+            <!-- Row 2: Binary/Audio/Check Options -->
+            <CheckBox x:Name="CheckBox_BinaryMerge" Grid.Row="2" Grid.Column="0"
+                      Content="{x:Static props:Resources.binaryMerge}"
+                      ToolTip="{x:Static props:Resources.binaryMerge_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <CheckBox x:Name="CheckBox_AudioOnly" Grid.Row="2" Grid.Column="1"
+                      Content="{x:Static props:Resources.audioOnly}"
+                      ToolTip="{x:Static props:Resources.audioOnly_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <CheckBox x:Name="CheckBox_DisableCheck" Grid.Row="2" Grid.Column="2"
+                      Content="{x:Static props:Resources.disableCheck}"
+                      ToolTip="{x:Static props:Resources.disableCheck_Tip}"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,0,2"/>
 
-        <!-- Row 3: Concurrent Download -->
-        <CheckBox x:Name="CheckBox_Concurrent" Grid.Row="3" Grid.Column="0"
-                    Content="ConcurrentDownload"
-                    ToolTip="Download audio/video/subtitle concurrently"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-
-        <!-- Row 4: Subtitle Options -->
-        <CheckBox x:Name="CheckBox_SubOnly" Grid.Row="4" Grid.Column="0"
-                    Content="SubOnly" ToolTip="Only download subtitle"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <CheckBox x:Name="CheckBox_AutoSubFix"
-                    Grid.Row="5" Grid.Column="0"
-                    Content="AutoSubFix"
-                    ToolTip="Try to automatically fix subtitle timing"
-                    Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
-                    HorizontalAlignment="Left" Cursor="Hand"
-                    Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
-        <TextBlock Grid.Row="4" Grid.Column="1" Text="SubFormat:"
-                    VerticalAlignment="Center" Margin="0,2,8,2"
-                    Foreground="#FFF1F1F1"/>
-        <ComboBox x:Name="Combo_SubFormat" Grid.Row="4" Grid.Column="2"
-                    Width="120" VerticalAlignment="Center" Margin="0,2,0,2">
-            <ComboBoxItem Content="SRT" IsSelected="True"/>
-            <ComboBoxItem Content="VTT"/>
-        </ComboBox>
+            <!-- Row 3: SubOnly/AutoSubFix/SubFormat -->
+            <CheckBox x:Name="CheckBox_SubOnly" Grid.Row="3" Grid.Column="0"
+                      Content="SubOnly" ToolTip="Only download subtitle"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <CheckBox x:Name="CheckBox_AutoSubFix" Grid.Row="3" Grid.Column="1"
+                      Content="AutoSubFix"
+                      ToolTip="Try to automatically fix subtitle timing"
+                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"
+                      HorizontalAlignment="Left" Cursor="Hand"
+                      Foreground="#FFF1F1F1" Margin="0,2,12,2"/>
+            <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <TextBlock Text="SubFormat:" Foreground="#FFF1F1F1" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <ComboBox x:Name="Combo_SubFormat" Width="60" VerticalAlignment="Center" SelectionChanged="Combo_SubFormat_SelectionChanged">
+                    <ComboBoxItem Content="SRT" IsSelected="True"/>
+                    <ComboBoxItem Content="VTT"/>
+                </ComboBox>
+            </StackPanel>
         </Grid>
 
         <!-- Thread Settings Row -->
@@ -286,27 +274,28 @@
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{x:Static props:Resources.maxThread}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
-                <TextBox ToolTip="{x:Static props:Resources.maxThread_Tip}" x:Name="TextBox_Max" TextChanged="TextChanged" Grid.Column="1" Text="32" Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
+                <TextBox ToolTip="{x:Static props:Resources.maxThread_Tip}" x:Name="TextBox_Max" TextChanged="TextChanged" Grid.Column="1" Text="12" Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
             <Grid Grid.Column="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"></ColumnDefinition>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.minThread}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
-                <TextBox ToolTip="{x:Static props:Resources.minThread_Tip}" x:Name="TextBox_Min" TextChanged="TextChanged" Grid.Column="1" Text="16" Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
+                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.retryCount}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
+                <TextBox ToolTip="{x:Static props:Resources.retryCount_Tip}" x:Name="TextBox_Retry" TextChanged="TextChanged" Grid.Column="1" Text="3" Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
             <Grid Grid.Column="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="70"></ColumnDefinition>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.retryCount}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
-                <TextBox ToolTip="{x:Static props:Resources.retryCount_Tip}" x:Name="TextBox_Retry" TextChanged="TextChanged" Grid.Column="1" Text="15" Margin="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
+                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.timeout}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
+                <TextBox ToolTip="{x:Static props:Resources.timeout_Tip}" x:Name="TextBox_Timeout" TextChanged="TextChanged" Grid.Column="1" Text="100" Margin="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
         </Grid>
-         <!-- Timeout & Speed Settings Row -->
-         <Grid Grid.Row="18" Margin="4" Grid.ColumnSpan="3">
+
+        <!-- Speed Settings Row -->
+        <Grid Grid.Row="18" Margin="4" Grid.ColumnSpan="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition></ColumnDefinition>
                 <ColumnDefinition></ColumnDefinition>
@@ -317,24 +306,12 @@
                     <ColumnDefinition Width="70"></ColumnDefinition>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.timeout}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
-                <TextBox ToolTip="{x:Static props:Resources.timeout_Tip}" x:Name="TextBox_Timeout" TextChanged="TextChanged" Grid.Column="1" Text="10" Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
+                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.maxSpeed}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
+                <TextBox ToolTip="{x:Static props:Resources.maxSpeed_Tip}" x:Name="TextBox_MaxSpeed" TextChanged="TextChanged" Grid.Column="1" Text="0" Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
             <Grid Grid.Column="1">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"></ColumnDefinition>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.stopSpeed}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
-                <TextBox ToolTip="{x:Static props:Resources.stopSpeed_Tip}" x:Name="TextBox_StopSpeed" TextChanged="TextChanged" Grid.Column="1" Text="0" Margin="0,0,10,0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
             <Grid Grid.Column="2">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="70"></ColumnDefinition>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{x:Static props:Resources.maxSpeed}" VerticalAlignment="Center" Foreground="#FFF1F1F1"/>
-                <TextBox ToolTip="{x:Static props:Resources.maxSpeed_Tip}" x:Name="TextBox_MaxSpeed" TextChanged="TextChanged" Grid.Column="1" Text="0" Margin="0" HorizontalContentAlignment="Center" VerticalAlignment="Center" Foreground="#FFF1F1F1" Background="#FF333337" BorderBrush="#FF3F3F46"/>
             </Grid>
         </Grid>
         <!-- Generated Parameters & Execute Row -->

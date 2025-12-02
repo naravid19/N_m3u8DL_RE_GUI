@@ -96,7 +96,7 @@ public static class ArgsBuilder
         }
         
         sb.AppendIfNotEmpty(CliFlags.BaseUrl, options.BaseUrl);
-        // sb.AppendIfNotEmpty(CliFlags.MuxJson, options.MuxJson); // Disabling MuxJson for now as mapping is unclear
+        sb.AppendIfNotEmpty(CliFlags.MuxJson, options.MuxJson);
         
         // Encryption Settings
         sb.AppendIfNotEmpty(CliFlags.Key, options.Key);
@@ -172,7 +172,11 @@ public static class ArgsBuilder
         }
         
         sb.AppendIfTrue(CliFlags.ConcurrentDownload, options.ConcurrentDownload);
-        sb.AppendIfTrue(CliFlags.SubOnly, options.SubOnly);
+        // Sub Only -> Select Subtitle, Drop Video/Audio
+        if (options.SubOnly)
+        {
+            sb.Append(" --select-subtitle \".*\" --drop-video \".*\" --drop-audio \".*\"");
+        }
         sb.AppendIfTrue(CliFlags.AutoSubFix, options.AutoSubFix);
         
         // Subtitle Format

@@ -46,7 +46,8 @@ public class ArgsBuilderTests
 
         // Assert
         Assert.Contains("--del-after-done", result);
-        Assert.Contains("--audio-only", result);
+        Assert.Contains("--select-audio \".*\"", result);
+        Assert.Contains("--drop-video \".*\"", result);
         Assert.Contains("--skip-merge", result);
     }
 
@@ -65,7 +66,7 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--live-rec-dur 00:05:00-00:10:00", result);
+        Assert.Contains("--custom-range \"00:05:00-00:10:00\"", result);
     }
 
     [Fact]
@@ -83,7 +84,7 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.DoesNotContain("--live-rec-dur", result);
+        Assert.DoesNotContain("--custom-range", result);
     }
 
     [Fact]
@@ -102,9 +103,11 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--sub-only", result);
+        Assert.Contains("--select-subtitle \".*\"", result);
+        Assert.Contains("--drop-video \".*\"", result);
+        Assert.Contains("--drop-audio \".*\"", result);
         Assert.Contains("--sub-format VTT", result);
-        Assert.Contains("--auto-sub-fix", result);
+        Assert.Contains("--auto-subtitle-fix", result);
     }
 
     [Fact]
@@ -153,7 +156,7 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--sub-only", result);
+        Assert.Contains("--select-subtitle \".*\"", result);
         Assert.Contains("--sub-format VTT", result);
     }
 
@@ -172,44 +175,8 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.DoesNotContain("--sub-only", result);
+        Assert.DoesNotContain("--select-subtitle", result);
         Assert.DoesNotContain("--sub-format", result);
-    }
-
-    [Fact]
-    public void Build_WithDefaultTimeRange_ShouldNotIncludeTimeRange()
-    {
-        // Arrange
-        var options = new DownloadOptions
-        {
-            Input = "https://example.com/video.m3u8",
-            RangeStart = "00:00:00",
-            RangeEnd = "00:00:00"
-        };
-
-        // Act
-        var result = ArgsBuilder.Build(options);
-
-        // Assert
-        Assert.DoesNotContain("--live-rec-dur", result);
-    }
-
-    [Fact]
-    public void Build_WithValidTimeRange_ShouldIncludeTimeRange()
-    {
-        // Arrange
-        var options = new DownloadOptions
-        {
-            Input = "https://example.com/video.m3u8",
-            RangeStart = "00:05:00",
-            RangeEnd = "00:10:00"
-        };
-
-        // Act
-        var result = ArgsBuilder.Build(options);
-
-        // Assert
-        Assert.Contains("--live-rec-dur 00:05:00-00:10:00", result);
     }
 
     [Fact]
@@ -238,14 +205,14 @@ public class ArgsBuilderTests
         // Assert
         Assert.Contains("--del-after-done", result);
         Assert.Contains("--no-date-info", result);
-        Assert.Contains("--no-proxy", result);
-        Assert.Contains("--parse-only", result);
+        Assert.Contains("--use-system-proxy false", result);
+        Assert.Contains("--skip-download", result);
         Assert.Contains("--skip-merge", result);
         Assert.Contains("--binary-merge", result);
-        Assert.Contains("--audio-only", result);
-        Assert.Contains("--disable-check", result);
+        Assert.Contains("--select-audio \".*\"", result);
+        Assert.Contains("--check-segments-count false", result);
         Assert.Contains("--concurrent-download", result);
-        Assert.Contains("--sub-only", result);
-        Assert.Contains("--auto-sub-fix", result);
+        Assert.Contains("--select-subtitle \".*\"", result);
+        Assert.Contains("--auto-subtitle-fix", result);
     }
-} 
+}

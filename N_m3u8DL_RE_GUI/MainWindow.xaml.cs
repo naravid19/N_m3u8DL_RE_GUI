@@ -696,15 +696,12 @@ namespace N_m3u8DL_RE_GUI
                 + ";代理=" + proxy
                 + ";请求头=" + headers
                 + ";删除临时文件=" + (CheckBox_Del.IsChecked == true ? "1" : "0")
-                + ";MP4混流边下边看=" + (CheckBox_FastStart.IsChecked == true ? "1" : "0")
                 + ";二进制合并=" + (CheckBox_BinaryMerge.IsChecked == true ? "1" : "0")
                 + ";仅解析模式=" + (CheckBox_ParserOnly.IsChecked == true ? "1" : "0")
                 + ";不写入日期=" + (CheckBox_DisableDate.IsChecked == true ? "1" : "0")
                 + ";最大线程=" + TextBox_Max.Text
-                + ";最小线程=" + TextBox_Min.Text
                 + ";重试次数=" + TextBox_Retry.Text
                 + ";超时秒数=" + TextBox_Timeout.Text
-                + ";停止速度=" + TextBox_StopSpeed.Text
                 + ";最大速度=" + TextBox_MaxSpeed.Text
                 + ";不合并=" + (CheckBox_DisableMerge.IsChecked == true ? "1" : "0")
                 + ";不使用系统代理=" + (CheckBox_DisableProxy.IsChecked == true ? "1" : "0")
@@ -739,8 +736,6 @@ namespace N_m3u8DL_RE_GUI
                 catch (Exception) {; }
                 if (FindCookie("删除临时文件", config) == "1")
                     CheckBox_Del.IsChecked = true;
-                if (FindCookie("MP4混流边下边看", config) == "1")
-                    CheckBox_FastStart.IsChecked = true;
                 if (FindCookie("二进制合并", config) == "1")
                     CheckBox_BinaryMerge.IsChecked = true;
                 if (FindCookie("仅解析模式", config) == "1")
@@ -748,18 +743,11 @@ namespace N_m3u8DL_RE_GUI
                 if (FindCookie("不写入日期", config) == "1")
                     CheckBox_DisableDate.IsChecked = true;
                 TextBox_Max.Text = FindCookie("最大线程", config);
-                TextBox_Min.Text = FindCookie("最小线程", config);
                 TextBox_Retry.Text = FindCookie("重试次数", config);
                 try
                 {
                     if (!string.IsNullOrEmpty(FindCookie("超时秒数", config)))
                         TextBox_Timeout.Text = FindCookie("超时秒数", config);
-                }
-                catch (Exception) {; }
-                try
-                {
-                    if (!string.IsNullOrEmpty(FindCookie("停止速度", config)))
-                        TextBox_StopSpeed.Text = FindCookie("停止速度", config);
                 }
                 catch (Exception) {; }
                 try
