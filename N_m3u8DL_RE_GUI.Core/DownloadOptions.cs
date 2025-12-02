@@ -65,4 +65,4 @@ public class DownloadOptions
     
     // Subtitle Format
     public string SubFormat { get; set; } = "SRT";
-} 
+}

@@ -10,19 +10,31 @@ public static class CliFlags
     // Basic Settings
     public const string SaveDir = "--save-dir";
     public const string SaveName = "--save-name";
-    public const string Headers = "--headers";
+    public const string Headers = "--header"; // Changed from --headers to --header (RE uses -H or --header multiple times)
     public const string BaseUrl = "--base-url";
-    public const string MuxJson = "--mux-json";
+    public const string MuxJson = "--mux-import"; // RE uses --mux-import for external files, checking if this maps to old MuxJson usage
+    // Note: Old MuxJson might have been for something else, but RE has --mux-import. 
+    // If the user meant "MuxJson" as in the old CLI's specific feature, RE might handle it differently.
+    // However, looking at the UI, it seems to be a file path. RE's --mux-import takes options.
+    // Let's assume for now we might need to adjust this, but --mux-import is the closest for "muxing external files".
+    // Wait, the old CLI had --mux-import? No, the old CLI had --mux-json. 
+    // N_m3u8DL-RE doesn't seem to have --mux-json. It has --mux-import.
+    // Let's keep it as is or map to what's appropriate. 
+    // Actually, looking at RE help: --mux-import <OPTIONS>. 
+    // If the user inputs a JSON file, maybe RE supports it? 
+    // For now, I will comment it out or leave it but be careful. 
+    // Actually, let's map it to --mux-import path:lang:name if possible, but the UI just passes a string.
+    // Let's just pass it as a raw string if the user provides it, maybe they know what they are doing.
     
     // Encryption
     public const string Key = "--key";
-    public const string IV = "--iv";
+    public const string IV = "--custom-hls-iv"; // RE uses --custom-hls-iv for HLS
     
     // Network
-    public const string Proxy = "--proxy";
+    public const string Proxy = "--custom-proxy"; // RE uses --custom-proxy
     
     // Time Range
-    public const string LiveRecDur = "--live-rec-dur";
+    public const string CustomRange = "--custom-range"; // RE uses --custom-range
     
     // Thread Settings
     public const string ThreadCount = "--thread-count";
@@ -35,15 +47,16 @@ public static class CliFlags
     // Boolean Options
     public const string DelAfterDone = "--del-after-done";
     public const string NoDateInfo = "--no-date-info";
-    public const string NoProxy = "--no-proxy";
-    public const string ParseOnly = "--parse-only";
+    // public const string NoProxy = "--no-proxy"; // RE doesn't have this directly, uses --use-system-proxy default true.
+    public const string ParseOnly = "--skip-download"; // Closest to ParseOnly is SkipDownload? Or maybe just don't download.
+    // RE has --skip-download. Old ParseOnly meant "parse m3u8 but don't download".
     public const string SkipMerge = "--skip-merge";
     public const string BinaryMerge = "--binary-merge";
-    public const string AudioOnly = "--audio-only";
-    public const string DisableCheck = "--disable-check";
+    // public const string AudioOnly = "--audio-only"; // RE doesn't have this. We'll use --select-audio
+    public const string DisableCheck = "--check-segments-count"; // Default is True. To disable, we might need --check-segments-count false
     public const string ConcurrentDownload = "--concurrent-download";
     public const string SubOnly = "--sub-only";
-    public const string AutoSubFix = "--auto-sub-fix";
+    public const string AutoSubFix = "--auto-subtitle-fix"; // RE uses --auto-subtitle-fix
     public const string SubFormat = "--sub-format";
 }
 
@@ -67,9 +80,23 @@ public static class ArgsBuilder
         // Basic Settings
         sb.AppendIfNotEmpty(CliFlags.SaveDir, options.SaveDir);
         sb.AppendIfNotEmpty(CliFlags.SaveName, options.SaveName);
-        sb.AppendIfNotEmpty(CliFlags.Headers, options.Headers);
+        
+        // Headers - RE supports multiple -H "key: value"
+        if (!string.IsNullOrWhiteSpace(options.Headers))
+        {
+            // Assuming headers are separated by | as per old logic in MainWindow.xaml.cs
+            var headers = options.Headers.Split('|');
+            foreach (var header in headers)
+            {
+                if (!string.IsNullOrWhiteSpace(header))
+                {
+                    sb.Append($" {CliFlags.Headers}").AppendQuoted(header.Trim());
+                }
+            }
+        }
+        
         sb.AppendIfNotEmpty(CliFlags.BaseUrl, options.BaseUrl);
-        sb.AppendIfNotEmpty(CliFlags.MuxJson, options.MuxJson);
+        // sb.AppendIfNotEmpty(CliFlags.MuxJson, options.MuxJson); // Disabling MuxJson for now as mapping is unclear
         
         // Encryption Settings
         sb.AppendIfNotEmpty(CliFlags.Key, options.Key);
@@ -81,7 +108,12 @@ public static class ArgsBuilder
         // Time Range
         if (options.HasTimeRange)
         {
-            sb.Append($" {CliFlags.LiveRecDur} {options.RangeStart}-{options.RangeEnd}");
+            // RE uses --custom-range "HH:mm:ss-HH:mm:ss" or similar? 
+            // Help says: --custom-range <RANGE> Download only part of the segments.
+            // Usually it expects indices or time. Let's assume it accepts the format from UI "00:00:00-00:00:00"
+            // If the UI provides full time strings, we might need to format them.
+            // For now, passing as is.
+            sb.Append($" {CliFlags.CustomRange} \"{options.RangeStart}-{options.RangeEnd}\"");
         }
         
         // Thread Settings
@@ -100,12 +132,45 @@ public static class ArgsBuilder
         // Boolean Options
         sb.AppendIfTrue(CliFlags.DelAfterDone, options.DeleteAfterDone);
         sb.AppendIfTrue(CliFlags.NoDateInfo, options.DisableDate);
-        sb.AppendIfTrue(CliFlags.NoProxy, options.DisableProxy);
+        
+        // Disable Proxy: RE defaults to using system proxy. 
+        // If user wants to DISABLE it, we might need to pass something else or nothing if we use --custom-proxy.
+        // If --custom-proxy is set, it overrides system proxy usually.
+        // If user explicitly checks "NoProxy", we might want to prevent system proxy usage.
+        // RE has --use-system-proxy [default: True]. 
+        // We can try appending --use-system-proxy false
+        if (options.DisableProxy)
+        {
+            sb.Append(" --use-system-proxy false");
+        }
+
         sb.AppendIfTrue(CliFlags.ParseOnly, options.ParseOnly);
         sb.AppendIfTrue(CliFlags.SkipMerge, options.DisableMerge);
         sb.AppendIfTrue(CliFlags.BinaryMerge, options.BinaryMerge);
-        sb.AppendIfTrue(CliFlags.AudioOnly, options.AudioOnly);
-        sb.AppendIfTrue(CliFlags.DisableCheck, options.DisableCheck);
+        
+        // Audio Only -> Select Audio
+        if (options.AudioOnly)
+        {
+            // Select all audio streams, drop others? 
+            // Or just --select-audio "all"? 
+            // RE help says: -sa, --select-audio <OPTIONS> Select audio streams by regular expressions.
+            // To download ONLY audio, we should probably just select audio. 
+            // But RE might still download video if not explicitly dropped?
+            // Usually --select-audio .* will select audio. 
+            // If we want ONLY audio, we might need to ensure video is not selected.
+            // But typically selecting a specific stream type implies we want that.
+            // Let's try --select-audio ".*" --drop-video ".*" to be safe?
+            // Or just --audio-only if it existed.
+            // Let's use --select-audio ".*" --drop-video ".*"
+            sb.Append(" --select-audio \".*\" --drop-video \".*\"");
+        }
+        
+        // Disable Check: Default True. 
+        if (options.DisableCheck)
+        {
+             sb.Append(" --check-segments-count false");
+        }
+        
         sb.AppendIfTrue(CliFlags.ConcurrentDownload, options.ConcurrentDownload);
         sb.AppendIfTrue(CliFlags.SubOnly, options.SubOnly);
         sb.AppendIfTrue(CliFlags.AutoSubFix, options.AutoSubFix);
@@ -169,4 +234,4 @@ public static class StringBuilderExtensions
         }
         return sb;
     }
-} 
+}

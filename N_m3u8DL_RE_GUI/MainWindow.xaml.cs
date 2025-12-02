@@ -158,13 +158,11 @@ namespace N_m3u8DL_RE_GUI
                 RangeEnd = TextBox_RangeEnd.Text,
                 
                 // Thread Settings
-                MaxThreads = int.TryParse(TextBox_Max.Text, out var maxThreads) ? maxThreads : 32,
-                // MinThreads removed - not supported by N_m3u8DL-RE
-                RetryCount = int.TryParse(TextBox_Retry.Text, out var retryCount) ? retryCount : 15,
+                MaxThreads = int.TryParse(TextBox_Max.Text, out var maxThreads) ? maxThreads : 12,
+                RetryCount = int.TryParse(TextBox_Retry.Text, out var retryCount) ? retryCount : 3,
                 
                 // Timeout & Speed
-                Timeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 10,
-                // StopSpeed removed - not supported by N_m3u8DL-RE
+                Timeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 100,
                 MaxSpeed = int.TryParse(TextBox_MaxSpeed.Text, out var maxSpeed) ? maxSpeed : 0,
                 
                 // Boolean Options
@@ -172,7 +170,6 @@ namespace N_m3u8DL_RE_GUI
                 DisableDate = CheckBox_DisableDate.IsChecked == true,
                 DisableProxy = CheckBox_DisableProxy.IsChecked == true,
                 ParseOnly = CheckBox_ParserOnly.IsChecked == true,
-                // FastStart removed - not supported by N_m3u8DL-RE
                 DisableMerge = CheckBox_DisableMerge.IsChecked == true,
                 BinaryMerge = CheckBox_BinaryMerge.IsChecked == true,
                 AudioOnly = CheckBox_AudioOnly.IsChecked == true,
@@ -711,7 +708,12 @@ namespace N_m3u8DL_RE_GUI
                 + ";最大速度=" + TextBox_MaxSpeed.Text
                 + ";不合并=" + (CheckBox_DisableMerge.IsChecked == true ? "1" : "0")
                 + ";不使用系统代理=" + (CheckBox_DisableProxy.IsChecked == true ? "1" : "0")
-                + ";仅合并音频=" + (CheckBox_AudioOnly.IsChecked == true ? "1" : "0");
+                + ";仅合并音频=" + (CheckBox_AudioOnly.IsChecked == true ? "1" : "0")
+                + ";不检查分片=" + (CheckBox_DisableCheck.IsChecked == true ? "1" : "0")
+                + ";并发下载=" + (CheckBox_Concurrent.IsChecked == true ? "1" : "0")
+                + ";仅下载字幕=" + (CheckBox_SubOnly.IsChecked == true ? "1" : "0")
+                + ";自动修复字幕=" + (CheckBox_AutoSubFix.IsChecked == true ? "1" : "0")
+                + ";字幕格式=" + (Combo_SubFormat.SelectedItem as ComboBoxItem)?.Content?.ToString();
             File.WriteAllText("config.txt", config);
         }
 
@@ -774,10 +776,36 @@ namespace N_m3u8DL_RE_GUI
                         CheckBox_DisableProxy.IsChecked = true;
                 }
                 catch (Exception) {; }
+
                 try
                 {
                     if (FindCookie("仅合并音频", config) == "1")
                         CheckBox_AudioOnly.IsChecked = true;
+                }
+                catch (Exception) {; }
+                try
+                {
+                    if (FindCookie("不检查分片", config) == "1")
+                        CheckBox_DisableCheck.IsChecked = true;
+                    if (FindCookie("并发下载", config) == "1")
+                        CheckBox_Concurrent.IsChecked = true;
+                    if (FindCookie("仅下载字幕", config) == "1")
+                        CheckBox_SubOnly.IsChecked = true;
+                    if (FindCookie("自动修复字幕", config) == "1")
+                        CheckBox_AutoSubFix.IsChecked = true;
+                    
+                    var subFormat = FindCookie("字幕格式", config);
+                    if (!string.IsNullOrEmpty(subFormat))
+                    {
+                        foreach (ComboBoxItem item in Combo_SubFormat.Items)
+                        {
+                            if (item.Content.ToString() == subFormat)
+                            {
+                                Combo_SubFormat.SelectedItem = item;
+                                break;
+                            }
+                        }
+                    }
                 }
                 catch (Exception) {; }
             }
