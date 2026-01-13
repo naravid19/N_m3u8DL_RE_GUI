@@ -3,64 +3,6 @@ using System.Text;
 namespace N_m3u8DL_RE_GUI.Core;
 
 /// <summary>
-/// Command-line argument constants for N_m3u8DL-RE.
-/// </summary>
-public static class CliFlags
-{
-    // Basic Settings
-    public const string SaveDir = "--save-dir";
-    public const string SaveName = "--save-name";
-    public const string Headers = "--header"; // Changed from --headers to --header (RE uses -H or --header multiple times)
-    public const string BaseUrl = "--base-url";
-    public const string MuxJson = "--mux-import"; // RE uses --mux-import for external files, checking if this maps to old MuxJson usage
-    // Note: Old MuxJson might have been for something else, but RE has --mux-import. 
-    // If the user meant "MuxJson" as in the old CLI's specific feature, RE might handle it differently.
-    // However, looking at the UI, it seems to be a file path. RE's --mux-import takes options.
-    // Let's assume for now we might need to adjust this, but --mux-import is the closest for "muxing external files".
-    // Wait, the old CLI had --mux-import? No, the old CLI had --mux-json. 
-    // N_m3u8DL-RE doesn't seem to have --mux-json. It has --mux-import.
-    // Let's keep it as is or map to what's appropriate. 
-    // Actually, looking at RE help: --mux-import <OPTIONS>. 
-    // If the user inputs a JSON file, maybe RE supports it? 
-    // For now, I will comment it out or leave it but be careful. 
-    // Actually, let's map it to --mux-import path:lang:name if possible, but the UI just passes a string.
-    // Let's just pass it as a raw string if the user provides it, maybe they know what they are doing.
-    
-    // Encryption
-    public const string Key = "--key";
-    public const string IV = "--custom-hls-iv"; // RE uses --custom-hls-iv for HLS
-    
-    // Network
-    public const string Proxy = "--custom-proxy"; // RE uses --custom-proxy
-    
-    // Time Range
-    public const string CustomRange = "--custom-range"; // RE uses --custom-range
-    
-    // Thread Settings
-    public const string ThreadCount = "--thread-count";
-    public const string DownloadRetryCount = "--download-retry-count";
-    
-    // Timeout & Speed
-    public const string HttpRequestTimeout = "--http-request-timeout";
-    public const string MaxSpeed = "--max-speed";
-    
-    // Boolean Options
-    public const string DelAfterDone = "--del-after-done";
-    public const string NoDateInfo = "--no-date-info";
-    // public const string NoProxy = "--no-proxy"; // RE doesn't have this directly, uses --use-system-proxy default true.
-    public const string ParseOnly = "--skip-download"; // Closest to ParseOnly is SkipDownload? Or maybe just don't download.
-    // RE has --skip-download. Old ParseOnly meant "parse m3u8 but don't download".
-    public const string SkipMerge = "--skip-merge";
-    public const string BinaryMerge = "--binary-merge";
-    // public const string AudioOnly = "--audio-only"; // RE doesn't have this. We'll use --select-audio
-    public const string DisableCheck = "--check-segments-count"; // Default is True. To disable, we might need --check-segments-count false
-    public const string ConcurrentDownload = "--concurrent-download";
-    public const string SubOnly = "--sub-only";
-    public const string AutoSubFix = "--auto-subtitle-fix"; // RE uses --auto-subtitle-fix
-    public const string SubFormat = "--sub-format";
-}
-
-/// <summary>
 /// Build command-line arguments for N_m3u8DL-RE.
 /// </summary>
 public static class ArgsBuilder
@@ -74,116 +16,209 @@ public static class ArgsBuilder
     {
         var sb = new StringBuilder();
         
+        // ============================================
         // Input URL (required)
+        // ============================================
         sb.AppendQuoted(options.Input);
         
+        // ============================================
         // Basic Settings
-        sb.AppendIfNotEmpty(CliFlags.SaveDir, options.SaveDir);
-        sb.AppendIfNotEmpty(CliFlags.SaveName, options.SaveName);
+        // ============================================
+        sb.AppendIfNotEmpty("--tmp-dir", options.TmpDir);
+        sb.AppendIfNotEmpty("--save-dir", options.SaveDir);
+        sb.AppendIfNotEmpty("--save-name", options.SaveName);
+        sb.AppendIfNotEmpty("--save-pattern", options.SavePattern);
+        sb.AppendIfNotEmpty("--base-url", options.BaseUrl);
         
         // Headers - RE supports multiple -H "key: value"
         if (!string.IsNullOrWhiteSpace(options.Headers))
         {
-            // Assuming headers are separated by | as per old logic in MainWindow.xaml.cs
             var headers = options.Headers.Split('|');
             foreach (var header in headers)
             {
                 if (!string.IsNullOrWhiteSpace(header))
                 {
-                    sb.Append($" {CliFlags.Headers}").AppendQuoted(header.Trim());
+                    sb.Append(" -H").AppendQuoted(header.Trim());
                 }
             }
         }
         
-        sb.AppendIfNotEmpty(CliFlags.BaseUrl, options.BaseUrl);
-        sb.AppendIfNotEmpty(CliFlags.MuxJson, options.MuxJson);
+        // ============================================
+        // Thread & Performance Settings
+        // ============================================
+        if (options.ThreadCount > 0)
+            sb.Append($" --thread-count {options.ThreadCount}");
         
-        // Encryption Settings
-        sb.AppendIfNotEmpty(CliFlags.Key, options.Key);
-        sb.AppendIfNotEmpty(CliFlags.IV, options.IV);
+        if (options.DownloadRetryCount > 0)
+            sb.Append($" --download-retry-count {options.DownloadRetryCount}");
         
+        if (options.HttpRequestTimeout > 0)
+            sb.Append($" --http-request-timeout {options.HttpRequestTimeout}");
+        
+        // Max Speed - format like "15M" or "100K"
+        if (!string.IsNullOrWhiteSpace(options.MaxSpeed) && options.MaxSpeed != "0")
+            sb.Append($" --max-speed {options.MaxSpeed}");
+        
+        // ============================================
         // Network Settings
-        sb.AppendIfNotEmpty(CliFlags.Proxy, options.Proxy);
+        // ============================================
+        sb.AppendIfNotEmpty("--custom-proxy", options.Proxy);
         
-        // Time Range
+        if (!options.UseSystemProxy)
+            sb.Append(" --use-system-proxy false");
+        
+        // ============================================
+        // Time Range Settings
+        // ============================================
         if (options.HasTimeRange)
         {
-            // RE uses --custom-range "HH:mm:ss-HH:mm:ss" or similar? 
-            // Help says: --custom-range <RANGE> Download only part of the segments.
-            // Usually it expects indices or time. Let's assume it accepts the format from UI "00:00:00-00:00:00"
-            // If the UI provides full time strings, we might need to format them.
-            // For now, passing as is.
-            sb.Append($" {CliFlags.CustomRange} \"{options.RangeStart}-{options.RangeEnd}\"");
+            sb.Append($" --custom-range \"{options.RangeStart}-{options.RangeEnd}\"");
         }
         
-        // Thread Settings
-        sb.Append($" {CliFlags.ThreadCount} {options.MaxThreads}");
-        sb.Append($" {CliFlags.DownloadRetryCount} {options.RetryCount}");
-        
-        // Timeout & Speed Settings
-        sb.Append($" {CliFlags.HttpRequestTimeout} {options.Timeout}");
-        
-        // Max Speed - only add if not zero
-        if (options.MaxSpeed > 0)
+        // ============================================
+        // Encryption Settings
+        // ============================================
+        if (!string.IsNullOrWhiteSpace(options.Key))
         {
-            sb.Append($" {CliFlags.MaxSpeed} {options.MaxSpeed}M");
+            // Support multiple keys separated by |
+            var keys = options.Key.Split('|');
+            foreach (var key in keys)
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    sb.Append(" --key").AppendQuoted(key.Trim());
+                }
+            }
         }
         
-        // Boolean Options
-        sb.AppendIfTrue(CliFlags.DelAfterDone, options.DeleteAfterDone);
-        sb.AppendIfTrue(CliFlags.NoDateInfo, options.DisableDate);
+        sb.AppendIfNotEmpty("--key-text-file", options.KeyTextFile);
+        sb.AppendIfNotEmpty("--custom-hls-method", options.CustomHLSMethod);
+        sb.AppendIfNotEmpty("--custom-hls-key", options.CustomHLSKey);
+        sb.AppendIfNotEmpty("--custom-hls-iv", options.CustomHLSIv);
         
-        // Disable Proxy: RE defaults to using system proxy. 
-        // If user wants to DISABLE it, we might need to pass something else or nothing if we use --custom-proxy.
-        // If --custom-proxy is set, it overrides system proxy usually.
-        // If user explicitly checks "NoProxy", we might want to prevent system proxy usage.
-        // RE has --use-system-proxy [default: True]. 
-        // We can try appending --use-system-proxy false
-        if (options.DisableProxy)
-        {
-            sb.Append(" --use-system-proxy false");
-        }
-
-        sb.AppendIfTrue(CliFlags.ParseOnly, options.ParseOnly);
-        sb.AppendIfTrue(CliFlags.SkipMerge, options.DisableMerge);
-        sb.AppendIfTrue(CliFlags.BinaryMerge, options.BinaryMerge);
+        if (options.DecryptionEngine != "MP4DECRYPT")
+            sb.Append($" --decryption-engine {options.DecryptionEngine}");
         
-        // Audio Only -> Select Audio
+        sb.AppendIfNotEmpty("--decryption-binary-path", options.DecryptionBinaryPath);
+        sb.AppendIfTrue("--mp4-real-time-decryption", options.MP4RealTimeDecryption);
+        
+        // ============================================
+        // Output & Merge Settings
+        // ============================================
+        sb.AppendIfTrue("--skip-merge", options.SkipMerge);
+        sb.AppendIfTrue("--skip-download", options.SkipDownload);
+        sb.AppendIfTrue("--binary-merge", options.BinaryMerge);
+        sb.AppendIfTrue("--use-ffmpeg-concat-demuxer", options.UseFFmpegConcatDemuxer);
+        sb.AppendIfTrue("--del-after-done", options.DelAfterDone);
+        sb.AppendIfTrue("--no-date-info", options.NoDateInfo);
+        
+        if (!options.WriteMetaJson)
+            sb.Append(" --write-meta-json false");
+        
+        if (!options.CheckSegmentsCount)
+            sb.Append(" --check-segments-count false");
+        
+        sb.AppendIfNotEmpty("--ffmpeg-binary-path", options.FFmpegBinaryPath);
+        
+        // ============================================
+        // Stream Selection Settings
+        // ============================================
+        sb.AppendIfTrue("--auto-select", options.AutoSelect);
+        sb.AppendIfTrue("--concurrent-download", options.ConcurrentDownload);
+        
+        // Advanced stream selection
+        sb.AppendIfNotEmpty("--select-video", options.SelectVideo);
+        sb.AppendIfNotEmpty("--select-audio", options.SelectAudio);
+        sb.AppendIfNotEmpty("--select-subtitle", options.SelectSubtitle);
+        sb.AppendIfNotEmpty("--drop-video", options.DropVideo);
+        sb.AppendIfNotEmpty("--drop-audio", options.DropAudio);
+        sb.AppendIfNotEmpty("--drop-subtitle", options.DropSubtitle);
+        
+        // Legacy AudioOnly support - convert to select-audio + drop-video
         if (options.AudioOnly)
         {
-            // Select all audio streams, drop others? 
-            // Or just --select-audio "all"? 
-            // RE help says: -sa, --select-audio <OPTIONS> Select audio streams by regular expressions.
-            // To download ONLY audio, we should probably just select audio. 
-            // But RE might still download video if not explicitly dropped?
-            // Usually --select-audio .* will select audio. 
-            // If we want ONLY audio, we might need to ensure video is not selected.
-            // But typically selecting a specific stream type implies we want that.
-            // Let's try --select-audio ".*" --drop-video ".*" to be safe?
-            // Or just --audio-only if it existed.
-            // Let's use --select-audio ".*" --drop-video ".*"
-            sb.Append(" --select-audio \".*\" --drop-video \".*\"");
+            if (string.IsNullOrWhiteSpace(options.SelectAudio))
+                sb.Append(" --select-audio \".*\"");
+            if (string.IsNullOrWhiteSpace(options.DropVideo))
+                sb.Append(" --drop-video \".*\"");
         }
         
-        // Disable Check: Default True. 
-        if (options.DisableCheck)
-        {
-             sb.Append(" --check-segments-count false");
-        }
-        
-        sb.AppendIfTrue(CliFlags.ConcurrentDownload, options.ConcurrentDownload);
-        // Sub Only -> Select Subtitle, Drop Video/Audio
+        // ============================================
+        // Subtitle Settings
+        // ============================================
         if (options.SubOnly)
         {
-            sb.Append(" --select-subtitle \".*\" --drop-video \".*\" --drop-audio \".*\"");
+            sb.Append(" --sub-only");
+            if (!string.IsNullOrWhiteSpace(options.SubFormat))
+                sb.Append($" --sub-format {options.SubFormat.ToUpper()}");
         }
-        sb.AppendIfTrue(CliFlags.AutoSubFix, options.AutoSubFix);
         
-        // Subtitle Format
-        if (options.SubOnly && !string.IsNullOrWhiteSpace(options.SubFormat))
+        sb.AppendIfTrue("--auto-subtitle-fix", options.AutoSubtitleFix);
+        
+        // ============================================
+        // Mux Settings
+        // ============================================
+        if (options.MuxAfterDone && !string.IsNullOrWhiteSpace(options.MuxFormat))
         {
-            sb.Append($" {CliFlags.SubFormat} {options.SubFormat.ToUpper()}");
+            var muxOptions = new StringBuilder();
+            muxOptions.Append($"format={options.MuxFormat.ToLower()}");
+            
+            if (!string.IsNullOrWhiteSpace(options.Muxer))
+                muxOptions.Append($":muxer={options.Muxer.ToLower()}");
+            
+            if (!string.IsNullOrWhiteSpace(options.MuxBinPath))
+                muxOptions.Append($":bin_path=\"{options.MuxBinPath}\"");
+            
+            if (options.MuxKeepFiles)
+                muxOptions.Append(":keep=true");
+            
+            if (options.MuxSkipSubtitle)
+                muxOptions.Append(":skip_sub=true");
+            
+            sb.Append($" --mux-after-done {muxOptions}");
         }
+        
+        // Mux Import - external files
+        if (!string.IsNullOrWhiteSpace(options.MuxImport))
+        {
+            sb.Append(" --mux-import").AppendQuoted(options.MuxImport);
+        }
+        
+        // ============================================
+        // Live Streaming Settings
+        // ============================================
+        sb.AppendIfTrue("--live-perform-as-vod", options.LivePerformAsVod);
+        sb.AppendIfTrue("--live-real-time-merge", options.LiveRealTimeMerge);
+        
+        if (!options.LiveKeepSegments)
+            sb.Append(" --live-keep-segments false");
+        
+        sb.AppendIfTrue("--live-pipe-mux", options.LivePipeMux);
+        sb.AppendIfTrue("--live-fix-vtt-by-audio", options.LiveFixVttByAudio);
+        sb.AppendIfNotEmpty("--live-record-limit", options.LiveRecordLimit);
+        
+        if (options.LiveWaitTime.HasValue)
+            sb.Append($" --live-wait-time {options.LiveWaitTime.Value}");
+        
+        if (options.LiveTakeCount != 16) // Only add if not default
+            sb.Append($" --live-take-count {options.LiveTakeCount}");
+        
+        // ============================================
+        // Advanced Settings
+        // ============================================
+        if (options.LogLevel != "INFO")
+            sb.Append($" --log-level {options.LogLevel}");
+        
+        sb.AppendIfNotEmpty("--ui-language", options.UILanguage);
+        sb.AppendIfNotEmpty("--urlprocessor-args", options.UrlProcessorArgs);
+        sb.AppendIfNotEmpty("--ad-keyword", options.AdKeyword);
+        sb.AppendIfNotEmpty("--task-start-at", options.TaskStartAt);
+        sb.AppendIfTrue("--append-url-params", options.AppendUrlParams);
+        sb.AppendIfTrue("--no-log", options.NoLog);
+        sb.AppendIfTrue("--allow-hls-multi-ext-map", options.AllowHlsMultiExtMap);
+        sb.AppendIfTrue("--force-ansi-console", options.ForceAnsiConsole);
+        sb.AppendIfTrue("--no-ansi-color", options.NoAnsiColor);
+        sb.AppendIfTrue("--disable-update-check", options.DisableUpdateCheck);
         
         return sb.ToString().Trim();
     }
@@ -197,9 +232,6 @@ public static class StringBuilderExtensions
     /// <summary>
     /// Append a quoted string to StringBuilder.
     /// </summary>
-    /// <param name="sb">StringBuilder instance</param>
-    /// <param name="value">String value to append</param>
-    /// <returns>StringBuilder instance for chaining</returns>
     public static StringBuilder AppendQuoted(this StringBuilder sb, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -208,12 +240,8 @@ public static class StringBuilderExtensions
     }
 
     /// <summary>
-    /// Append a flag and value if the value is not empty.
+    /// Append a flag and quoted value if the value is not empty.
     /// </summary>
-    /// <param name="sb">StringBuilder instance</param>
-    /// <param name="flag">Flag to append</param>
-    /// <param name="value">Value to append</param>
-    /// <returns>StringBuilder instance for chaining</returns>
     public static StringBuilder AppendIfNotEmpty(this StringBuilder sb, string flag, string? value)
     {
         if (!string.IsNullOrWhiteSpace(value))
@@ -226,10 +254,6 @@ public static class StringBuilderExtensions
     /// <summary>
     /// Append a flag if the condition is true.
     /// </summary>
-    /// <param name="sb">StringBuilder instance</param>
-    /// <param name="flag">Flag to append</param>
-    /// <param name="condition">Condition to check</param>
-    /// <returns>StringBuilder instance for chaining</returns>
     public static StringBuilder AppendIfTrue(this StringBuilder sb, string flag, bool condition)
     {
         if (condition)

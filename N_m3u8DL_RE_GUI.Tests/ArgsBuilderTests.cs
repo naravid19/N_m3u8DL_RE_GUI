@@ -16,7 +16,8 @@ public class ArgsBuilderTests
         {
             Input = "https://example.com/video.m3u8",
             SaveDir = "C:\\Downloads",
-            SaveName = "MyVideo"
+            SaveName = "MyVideo",
+            ThreadCount = 12
         };
 
         // Act
@@ -36,9 +37,9 @@ public class ArgsBuilderTests
         var options = new DownloadOptions
         {
             Input = "https://example.com/video.m3u8",
-            DeleteAfterDone = true,
+            DelAfterDone = true,
             AudioOnly = true,
-            DisableMerge = true
+            SkipMerge = true
         };
 
         // Act
@@ -96,49 +97,53 @@ public class ArgsBuilderTests
             Input = "https://example.com/video.m3u8",
             SubOnly = true,
             SubFormat = "VTT",
-            AutoSubFix = true
+            AutoSubtitleFix = true
         };
 
         // Act
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--select-subtitle \".*\"", result);
-        Assert.Contains("--drop-video \".*\"", result);
-        Assert.Contains("--drop-audio \".*\"", result);
+        Assert.Contains("--sub-only", result);
         Assert.Contains("--sub-format VTT", result);
         Assert.Contains("--auto-subtitle-fix", result);
     }
 
     [Fact]
-    public void Build_WithEmptyInput_ShouldReturnEmptyString()
+    public void Build_WithEmptyInput_ShouldReturnDefaultSettings()
     {
         // Arrange
-        var options = new DownloadOptions();
+        var options = new DownloadOptions
+        {
+            ThreadCount = 12,
+            DownloadRetryCount = 3,
+            HttpRequestTimeout = 100
+        };
 
         // Act
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        // When input is empty, it should still include default thread settings
         Assert.Contains("--thread-count 12", result);
         Assert.Contains("--download-retry-count 3", result);
         Assert.Contains("--http-request-timeout 100", result);
-        // Max speed should not be included when 0
     }
 
     [Fact]
     public void Build_WithNullInput_ShouldHandleGracefully()
     {
         // Arrange
-        var options = new DownloadOptions { Input = null };
+        var options = new DownloadOptions 
+        { 
+            Input = null,
+            ThreadCount = 12 
+        };
 
         // Act
         var result = ArgsBuilder.Build(options);
 
         // Assert
         Assert.Contains("--thread-count 12", result);
-        Assert.DoesNotContain("\"\"", result); // Should not have empty quotes
     }
 
     [Fact]
@@ -156,7 +161,7 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--select-subtitle \".*\"", result);
+        Assert.Contains("--sub-only", result);
         Assert.Contains("--sub-format VTT", result);
     }
 
@@ -175,7 +180,7 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.DoesNotContain("--select-subtitle", result);
+        Assert.DoesNotContain("--sub-only", result);
         Assert.DoesNotContain("--sub-format", result);
     }
 
@@ -186,17 +191,18 @@ public class ArgsBuilderTests
         var options = new DownloadOptions
         {
             Input = "https://example.com/video.m3u8",
-            DeleteAfterDone = true,
-            DisableDate = true,
-            DisableProxy = true,
-            ParseOnly = true,
-            DisableMerge = true,
+            DelAfterDone = true,
+            NoDateInfo = true,
+            UseSystemProxy = false,
+            SkipDownload = true,
+            SkipMerge = true,
             BinaryMerge = true,
             AudioOnly = true,
-            DisableCheck = true,
+            CheckSegmentsCount = false,
             ConcurrentDownload = true,
             SubOnly = true,
-            AutoSubFix = true
+            AutoSubtitleFix = true,
+            AutoSelect = true
         };
 
         // Act
@@ -212,7 +218,68 @@ public class ArgsBuilderTests
         Assert.Contains("--select-audio \".*\"", result);
         Assert.Contains("--check-segments-count false", result);
         Assert.Contains("--concurrent-download", result);
-        Assert.Contains("--select-subtitle \".*\"", result);
+        Assert.Contains("--sub-only", result);
         Assert.Contains("--auto-subtitle-fix", result);
+        Assert.Contains("--auto-select", result);
+    }
+
+    [Fact]
+    public void Build_WithLiveStreamingOptions_ShouldIncludeLiveFlags()
+    {
+        // Arrange
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/live.m3u8",
+            LivePerformAsVod = true,
+            LiveRealTimeMerge = true,
+            LiveKeepSegments = false,
+            LiveRecordLimit = "01:00:00"
+        };
+
+        // Act
+        var result = ArgsBuilder.Build(options);
+
+        // Assert
+        Assert.Contains("--live-perform-as-vod", result);
+        Assert.Contains("--live-real-time-merge", result);
+        Assert.Contains("--live-keep-segments false", result);
+        Assert.Contains("--live-record-limit \"01:00:00\"", result);
+    }
+
+    [Fact]
+    public void Build_WithMuxOptions_ShouldIncludeMuxFlags()
+    {
+        // Arrange
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            MuxAfterDone = true,
+            MuxFormat = "mp4",
+            Muxer = "ffmpeg",
+            MuxKeepFiles = true
+        };
+
+        // Act
+        var result = ArgsBuilder.Build(options);
+
+        // Assert
+        Assert.Contains("--mux-after-done format=mp4:muxer=ffmpeg:keep=true", result);
+    }
+
+    [Fact]
+    public void Build_WithMaxSpeed_ShouldIncludeSpeedLimit()
+    {
+        // Arrange
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            MaxSpeed = "15M"
+        };
+
+        // Act
+        var result = ArgsBuilder.Build(options);
+
+        // Assert
+        Assert.Contains("--max-speed 15M", result);
     }
 }

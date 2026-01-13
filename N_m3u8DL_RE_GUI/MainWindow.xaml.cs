@@ -128,6 +128,7 @@ namespace N_m3u8DL_RE_GUI
         }
 
 
+
         private void GetParameter()
         {
             if (TextBox_Parameter == null) return;
@@ -144,39 +145,40 @@ namespace N_m3u8DL_RE_GUI
                 SaveName = TextBox_Title.Text,
                 Headers = TextBox_Headers.Text,
                 BaseUrl = TextBox_Baseurl.Text,
-                MuxJson = TextBox_MuxJson.Text,
+                MuxImport = TextBox_MuxJson.Text,
                 
                 // Encryption
                 Key = TextBox_Key.Text?.Trim(),
-                IV = TextBox_IV.Text?.Trim(),
+                CustomHLSIv = TextBox_IV.Text?.Trim(),
                 
                 // Network
                 Proxy = TextBox_Proxy.Text?.Trim(),
+                UseSystemProxy = CheckBox_DisableProxy?.IsChecked != true,
                 
                 // Time Range
                 RangeStart = TextBox_RangeStart.Text,
                 RangeEnd = TextBox_RangeEnd.Text,
                 
                 // Thread Settings
-                MaxThreads = int.TryParse(TextBox_Max.Text, out var maxThreads) ? maxThreads : 12,
-                RetryCount = int.TryParse(TextBox_Retry.Text, out var retryCount) ? retryCount : 3,
+                ThreadCount = int.TryParse(TextBox_Max.Text, out var threadCount) ? threadCount : Environment.ProcessorCount,
+                DownloadRetryCount = int.TryParse(TextBox_Retry.Text, out var retryCount) ? retryCount : 3,
                 
                 // Timeout & Speed
-                Timeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 100,
-                MaxSpeed = int.TryParse(TextBox_MaxSpeed.Text, out var maxSpeed) ? maxSpeed : 0,
+                HttpRequestTimeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 100,
+                MaxSpeed = TextBox_MaxSpeed.Text?.Trim(),
                 
                 // Boolean Options
-                DeleteAfterDone = CheckBox_Del.IsChecked == true,
-                DisableDate = CheckBox_DisableDate.IsChecked == true,
-                DisableProxy = CheckBox_DisableProxy.IsChecked == true,
-                ParseOnly = CheckBox_ParserOnly.IsChecked == true,
-                DisableMerge = CheckBox_DisableMerge.IsChecked == true,
+                DelAfterDone = CheckBox_Del.IsChecked == true,
+                NoDateInfo = CheckBox_DisableDate.IsChecked == true,
+                SkipDownload = CheckBox_ParserOnly.IsChecked == true,
+                SkipMerge = CheckBox_DisableMerge.IsChecked == true,
                 BinaryMerge = CheckBox_BinaryMerge.IsChecked == true,
                 AudioOnly = CheckBox_AudioOnly.IsChecked == true,
-                DisableCheck = CheckBox_DisableCheck.IsChecked == true,
+                CheckSegmentsCount = CheckBox_DisableCheck?.IsChecked != true,
                 ConcurrentDownload = CheckBox_Concurrent?.IsChecked == true,
                 SubOnly = CheckBox_SubOnly?.IsChecked == true,
-                AutoSubFix = CheckBox_AutoSubFix?.IsChecked == true,
+                AutoSubtitleFix = CheckBox_AutoSubFix?.IsChecked == true,
+                AutoSelect = CheckBox_AutoSelect?.IsChecked == true,
                 
                 // Subtitle Format
                 SubFormat = (Combo_SubFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "SRT"
@@ -184,6 +186,7 @@ namespace N_m3u8DL_RE_GUI
 
             return ArgsBuilder.Build(options);
         }
+
 
         private void TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -710,6 +713,7 @@ namespace N_m3u8DL_RE_GUI
                 + ";并发下载=" + (CheckBox_Concurrent.IsChecked == true ? "1" : "0")
                 + ";仅下载字幕=" + (CheckBox_SubOnly.IsChecked == true ? "1" : "0")
                 + ";自动修复字幕=" + (CheckBox_AutoSubFix.IsChecked == true ? "1" : "0")
+                + ";自动选择=" + (CheckBox_AutoSelect?.IsChecked == true ? "1" : "0")
                 + ";字幕格式=" + (Combo_SubFormat.SelectedItem as ComboBoxItem)?.Content?.ToString();
             File.WriteAllText("config.txt", config);
         }
@@ -781,6 +785,8 @@ namespace N_m3u8DL_RE_GUI
                         CheckBox_SubOnly.IsChecked = true;
                     if (FindCookie("自动修复字幕", config) == "1")
                         CheckBox_AutoSubFix.IsChecked = true;
+                    if (FindCookie("自动选择", config) == "1")
+                        CheckBox_AutoSelect.IsChecked = true;
                     
                     var subFormat = FindCookie("字幕格式", config);
                     if (!string.IsNullOrEmpty(subFormat))
