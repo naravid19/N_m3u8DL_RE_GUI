@@ -264,3 +264,4 @@ __pycache__/
 .shared
 /N_m3u8DL-RE
 *.bat
+final_hashes.txt
