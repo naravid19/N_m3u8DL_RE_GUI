@@ -262,3 +262,5 @@ __pycache__/
 
 .agent
 .shared
+/N_m3u8DL-RE
+*.bat
