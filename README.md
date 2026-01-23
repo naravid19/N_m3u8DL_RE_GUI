@@ -12,10 +12,9 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <!-- Uncomment below when you have a logo -->
-  <!-- <a href="https://github.com/naravid19/N_m3u8DL_RE_GUI">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a> -->
+  <a href="https://github.com/naravid19/N_m3u8DL_RE_GUI">
+    <img src="images/logo.ico" alt="Logo" width="80" height="80">
+  </a>
 
   <h3 align="center">N_m3u8DL-RE GUI</h3>
 
@@ -65,7 +64,9 @@
 ## About The Project
 
 <!-- Uncomment below when you have a screenshot -->
-<!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
+<div align="center">
+  <img src="images/screenshot.png" alt="Product Screenshot" width="80%">
+</div>
 
 **N_m3u8DL-RE GUI** provides a graphical interface for the [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) command-line tool, making it easier to download DASH, HLS, and MSS streams without memorizing complex command-line arguments.
 
