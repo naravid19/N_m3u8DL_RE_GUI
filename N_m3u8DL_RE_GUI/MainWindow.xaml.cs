@@ -39,65 +39,40 @@ using N_m3u8DL_RE_GUI.Core;
 namespace N_m3u8DL_RE_GUI
 {
     /// <summary>
-    /// MainWindow.xaml 的交互逻辑
+    /// MainWindow.xaml interaction logic.
     /// 
-    /// 2019年6月17日
-    /// - 重构界面并修复爱奇艺标题获取BUG
-    /// 2019年6月18日
-    /// - 添加图标
-    /// 2019年6月23日
-    /// - 调整寻找主程序的逻辑
-    /// - 修改匹配URL的正则表达式
-    /// - 启动时自动匹配URL并识别标题
-    /// - 启动后M3U8地址文本框会自动获得焦点
-    /// - M3U8地址和标题两个文本框能够响应回车事件
-    /// - GO按钮点击可以使用ALT+S快捷键来触发
-    /// 2019年7月24日
-    /// - 优化获取视频标题的逻辑
-    /// - 增加生成--downloadRange参数
-    /// 2019年8月11日
-    /// - 批量txt支持自定义文件名
-    /// 2019年8月17日
-    /// - 支持爱奇艺dash链接直接下载
-    /// - 修复腾讯视频标题获取bug
-    /// 2019年9月18日
-    /// - 支持限速
-    /// - 全新界面
-    /// - 增加控件悬浮提示
-    /// 2019年9月28日
-    /// - 双击时判断URL是否一致再赋值
-    /// - 细节优化
-    /// 2019年10月9日
-    /// - 自动获取文件编码
-    /// 2019年10月24日
-    /// - 请求dash链接时尝试读取iqiyicookie.txt
-    /// 2019年12月16日
-    /// - 批量读取txt跳过空白行
-    /// - 腾讯Unicode转换
-    /// 2020年2月1日
-    /// - 修复部分wetv无法识别标题的问题 
-    /// 2020年2月17日
-    /// - 拖入meta.json自动命名
-    /// - 拖入KEY文件校验是否正确
-    /// - 可调节大小
-    /// 2020年4月17日
-    /// - 修改BAT为UTF-8编码
-    /// - 细微优化
-    /// 2020年11月21日
-    /// - 修正UI
-    /// 2021年1月24日
-    /// - 支持简繁英多语言
-    /// 2021年3月4日
-    /// - 支持设置代理
-    /// - 支持存储代理、请求头
-    /// 2021年3月21日
-    /// - 支持MPD批量
+    /// Changelog:
+    /// 2019-06-17: Refactored UI and fixed iQiyi title extraction bug
+    /// 2019-06-18: Added application icon
+    /// 2019-06-23: Improved executable search logic, URL regex matching,
+    ///             auto-detect URL and title on startup, focus on URL textbox,
+    ///             Enter key support for URL/title fields, ALT+S shortcut for GO button
+    /// 2019-07-24: Optimized video title extraction, added downloadRange parameter
+    /// 2019-08-11: Batch txt supports custom filenames
+    /// 2019-08-17: Added iQiyi DASH direct download, fixed Tencent Video title bug
+    /// 2019-09-18: Added speed limit, new UI design, control tooltips
+    /// 2019-09-28: URL comparison before assignment on double-click
+    /// 2019-10-09: Auto-detect file encoding
+    /// 2019-10-24: Read iqiyicookie.txt for DASH requests
+    /// 2019-12-16: Skip empty lines in batch txt, Tencent Unicode conversion
+    /// 2020-02-01: Fixed WeTV title detection issues
+    /// 2020-02-17: Auto-name from meta.json, KEY file validation, resizable window
+    /// 2020-04-17: Changed BAT encoding to UTF-8
+    /// 2020-11-21: UI fixes
+    /// 2021-01-24: Multi-language support (CN/TW/EN)
+    /// 2021-03-04: Proxy settings, save proxy and headers
+    /// 2021-03-21: MPD batch support
     /// </summary>
     public partial class MainWindow : Window
     {
+        /// <summary>
+        /// Helper method to wrap a string in quotes.
+        /// </summary>
         string Q(string s) => $"\"{s}\"";
 
-        //用于证书验证  
+        /// <summary>
+        /// Certificate validation callback for SSL/TLS connections.
+        /// </summary>  
         public static bool CertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
             X509Chain verify = new X509Chain();
@@ -415,15 +390,15 @@ namespace N_m3u8DL_RE_GUI
             }
         }
 
-        //获取网页源码  
+        // Get web page source code
         private static string GetWebSource(String url, string headers = "", int TimeOut = 60000)
         {
             ServicePointManager.ServerCertificateValidationCallback = CertificateValidationCallback;
-            //Init时执行，用于注册方法。
+            // Configure TLS versions for compatibility
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3
                                        | SecurityProtocolType.Tls
-                                       | (SecurityProtocolType)0x300 //Tls11  
-                                       | (SecurityProtocolType)0xC00; //Tls12  
+                                       | (SecurityProtocolType)0x300 // Tls11  
+                                       | (SecurityProtocolType)0xC00; // Tls12  
             string htmlCode = string.Empty;
             try
             {
@@ -431,9 +406,9 @@ namespace N_m3u8DL_RE_GUI
                 webRequest.Method = "GET";
                 webRequest.UserAgent = "Mozilla/4.0";
                 webRequest.Headers.Add("Accept-Encoding", "gzip, deflate");
-                webRequest.Timeout = TimeOut;  //设置超时  
+                webRequest.Timeout = TimeOut;  // Set timeout  
                 webRequest.KeepAlive = false;
-                //添加headers  
+                // Add custom headers  
                 if (headers != "")
                 {
                     foreach (string att in headers.Split('|'))
@@ -451,15 +426,15 @@ namespace N_m3u8DL_RE_GUI
                             else
                                 webRequest.Headers.Add(att);
                         }
-                        catch (Exception e)
+                        catch (Exception ex)
                         {
-
+                            Debug.WriteLine($"Header parsing error for '{att}': {ex.Message}");
                         }
                     }
                 }
                 HttpWebResponse webResponse = (HttpWebResponse)webRequest.GetResponse();
                 if (webResponse.ContentEncoding != null
-                    && webResponse.ContentEncoding.ToLower() == "gzip") //如果使用了GZip则先解压  
+                    && webResponse.ContentEncoding.ToLower() == "gzip") // Decompress GZip if used  
                 {
                     using (Stream streamReceive = webResponse.GetResponseStream())
                     {
@@ -493,19 +468,19 @@ namespace N_m3u8DL_RE_GUI
                     webRequest.Abort();
                 }
             }
-            catch (Exception e)  //捕获所有异常  
+            catch (Exception ex)
             {
-
+                Debug.WriteLine($"GetWebSource error for URL '{url}': {ex.Message}");
             }
 
             return htmlCode;
         }
 
         /// <summary>
-        /// Unicode转字符串
+        /// Convert Unicode escape sequences to string.
         /// </summary>
-        /// <param name="source">经过Unicode编码的字符串</param>
-        /// <returns>正常字符串</returns>
+        /// <param name="source">Unicode encoded string</param>
+        /// <returns>Decoded string</returns>
         public static string Unicode2String(string source)
         {
             return new Regex(@"\\u([0-9A-F]{4})", RegexOptions.IgnoreCase | RegexOptions.Compiled).Replace(
@@ -513,11 +488,11 @@ namespace N_m3u8DL_RE_GUI
         }
 
         /// <summary>    
-        /// 获取url字符串参数，返回参数值字符串    
+        /// Get URL query string parameter value.   
         /// </summary>    
-        /// <param name="name">参数名称</param>    
-        /// <param name="url">url字符串</param>    
-        /// <returns></returns>    
+        /// <param name="name">Parameter name</param>    
+        /// <param name="url">URL string</param>    
+        /// <returns>Parameter value or empty string</returns>    
         public string GetQueryString(string name, string url)
         {
             Regex re = new Regex(@"(^|&)?(\w+)=([^&]+)(&|$)?", System.Text.RegularExpressions.RegexOptions.Compiled);
@@ -539,7 +514,9 @@ namespace N_m3u8DL_RE_GUI
         }
 
 
-        //寻找cookie字符串中的value
+        /// <summary>
+        /// Find value in cookie string by key.
+        /// </summary>
         public static string FindCookie(string key, string cookie)
         {
             string[] values = cookie.Split(';');
@@ -552,7 +529,9 @@ namespace N_m3u8DL_RE_GUI
             return value;
         }
 
-        //此函数用于格式化输出时长  
+        /// <summary>
+        /// Format time duration as string.
+        /// </summary>
         public static String FormatTime(Int32 time)
         {
             TimeSpan ts = new TimeSpan(0, 0, time);
@@ -561,7 +540,9 @@ namespace N_m3u8DL_RE_GUI
             return str;
         }
 
-        //此函数用于格式化输出文件大小  
+        /// <summary>
+        /// Format file size as human-readable string.
+        /// </summary>
         public static String FormatFileSize(Double fileSize)
         {
             if (fileSize < 0)
@@ -629,19 +610,19 @@ namespace N_m3u8DL_RE_GUI
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
             {
-                //获取拖拽的文件地址
+                // Get dragged file path
                 var filenames = (string[])e.Data.GetData(DataFormats.FileDrop);
                 var hz = filenames[0].LastIndexOf('.') + 1;
-                var houzhui = filenames[0].Substring(hz).ToLower();//文件后缀名
+                var houzhui = filenames[0].Substring(hz).ToLower(); // File extension
                 string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
-                if (houzhui == "m3u8" || houzhui == "txt" || houzhui == "json" || houzhui == "mpd") //只允许拖入部分文件
+                if (houzhui == "m3u8" || houzhui == "txt" || houzhui == "json" || houzhui == "mpd") // Only allow certain file types
                 {
                     e.Effects = DragDropEffects.Copy;
                     e.Handled = true;
                     if (TextBox_URL.Text != path) FlashTextBox(TextBox_URL);
-                    TextBox_URL.Text = path; //将获取到的完整路径赋值到textBox1
+                    TextBox_URL.Text = path; // Set full path to textbox
                     if (houzhui == "m3u8" || houzhui == "json" || houzhui == "mpd")
-                        TextBox_Title.Text = Path.GetFileNameWithoutExtension(path);  //自动获取文件名
+                        TextBox_Title.Text = Path.GetFileNameWithoutExtension(path);  // Auto-get filename
                 }
                 if (Directory.Exists(path))
                 {
@@ -667,23 +648,23 @@ namespace N_m3u8DL_RE_GUI
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
             {
-                //获取拖拽的文件地址
+                // Get dragged file path
                 var filenames = (string[])e.Data.GetData(DataFormats.FileDrop);
                 var hz = filenames[0].LastIndexOf('.') + 1;
-                var houzhui = filenames[0].Substring(hz).ToLower();//文件后缀名
+                var houzhui = filenames[0].Substring(hz).ToLower(); // File extension
                 string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
-                if (houzhui == "json") //只允许拖入部分文件
+                if (houzhui == "json") // Only allow JSON files
                 {
                     e.Effects = DragDropEffects.Copy;
                     e.Handled = true;
-                    TextBox_MuxJson.Text = path; //将获取到的完整路径赋值到textBox1
+                    TextBox_MuxJson.Text = path; // Set full path to textbox
                 }
             }
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            //string  to  base64
+            // Convert strings to base64 for config storage
             Encoding encode = Encoding.UTF8;
             byte[] bytedata = encode.GetBytes(TextBox_EXE.Text);
             string exePath = Convert.ToBase64String(bytedata, 0, bytedata.Length);
@@ -694,6 +675,7 @@ namespace N_m3u8DL_RE_GUI
             bytedata = encode.GetBytes(TextBox_Headers.Text);
             string headers = Convert.ToBase64String(bytedata, 0, bytedata.Length);
 
+            // Note: Chinese keys kept for backward compatibility with existing user configs
             string config = "程序路径=" + exePath
                 + ";保存路径=" + saveDir
                 + ";代理=" + proxy
@@ -721,7 +703,7 @@ namespace N_m3u8DL_RE_GUI
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             Environment.CurrentDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
-            //读取配置
+            // Load configuration
             if (File.Exists("config.txt"))
             {
                 string config = File.ReadAllText("config.txt");
@@ -825,7 +807,7 @@ namespace N_m3u8DL_RE_GUI
             }
             else
             {
-                //从剪切板读取url
+                // Read URL from clipboard
                 Regex url = new Regex(@"(https?)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]", RegexOptions.Compiled | RegexOptions.Singleline);
                 string str = url.Match(Clipboard.GetText()).Value;
                 TextBox_URL.Text = str;
@@ -839,13 +821,14 @@ namespace N_m3u8DL_RE_GUI
 
         private void Button_GO_Click(object sender, RoutedEventArgs e)
         {
-            //hex to base64
+            // Convert hex key to base64 if applicable
             try
             {
                 TextBox_Key.Text = Convert.ToBase64String(HexStringToBytes(TextBox_Key.Text));
             }
-            catch(Exception) {
-
+            catch(Exception ex)
+            {
+                Debug.WriteLine($"Key conversion failed (may not be hex format): {ex.Message}");
             }
             if (!File.Exists(TextBox_EXE.Text))
             {
@@ -863,7 +846,7 @@ namespace N_m3u8DL_RE_GUI
                 return;
             }
 
-            //批量
+            // Batch download mode
             if ((!TextBox_URL.Text.StartsWith("http") && TextBox_URL.Text.EndsWith(".txt") && File.Exists(TextBox_URL.Text))
                 || Directory.Exists(TextBox_URL.Text))
             {
@@ -884,7 +867,6 @@ namespace N_m3u8DL_RE_GUI
                     StringBuilder sb = new StringBuilder();
                     sb.AppendLine("@echo off");
                     sb.AppendLine("::Created by N_m3u8DL_RE_GUI\r\n");
-                    //sb.AppendLine("chcp 65001 >nul");
                     int i = 0;
                     foreach (var item in m3u8list)
                     {
@@ -895,11 +877,10 @@ namespace N_m3u8DL_RE_GUI
                         sb.AppendLine($"\"{exePath}\" {argsPerItem}");
                     }
 
-                    //sb.AppendLine("del %0");
                     string bat = "Batch-" + DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss") + ".bat";
                     File.WriteAllText(bat,
                         sb.ToString(),
-                        Encoding.Default);
+                        new UTF8Encoding(false)); // Use UTF-8 without BOM for compatibility
                     Process.Start(bat);
                 }
                 else
@@ -908,31 +889,30 @@ namespace N_m3u8DL_RE_GUI
                     StringBuilder sb = new StringBuilder();
                     sb.AppendLine("@echo off");
                     sb.AppendLine("::Created by N_m3u8DL_RE_GUI");
-                    //sb.AppendLine("chcp 65001 >nul");
                     int i = 0;
                     foreach (var item in m3u8list)
                     {
                         var line = item?.Trim();
-                        if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue; // ข้ามว่าง/คอมเมนต์
+                        if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue; // Skip empty/comment lines
 
                         string url, title;
 
                         if (line.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                         {
-                            // บรรทัดเป็น URL ล้วน
+                            // Line is a plain URL
                             url   = line;
                             title = GetTitleFromURL(line);
                         }
                         else if (line.Contains(",http", StringComparison.OrdinalIgnoreCase))
                         {
-                            // บรรทัดรูปแบบ: ชื่อเรื่อง,http...
+                            // Line format: title,http...
                             var idx = line.IndexOf(",http", StringComparison.OrdinalIgnoreCase);
                             title = line.Substring(0, idx);
                             url   = line.Substring(idx + 1);
                         }
                         else
                         {
-                            // รูปแบบไม่รองรับ — ข้าม
+                            // Unsupported format - skip
                             continue;
                         }
 
@@ -943,11 +923,10 @@ namespace N_m3u8DL_RE_GUI
                         sb.AppendLine($"\"{exePath}\" {argsPerItem}");
                     }
 
-                    //sb.AppendLine("del %0");
                     string bat = "Batch-" + DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss") + ".bat";
                     File.WriteAllText(bat,
                         sb.ToString(),
-                        Encoding.Default);
+                        new UTF8Encoding(false)); // Use UTF-8 without BOM for compatibility
                     Process.Start(bat);
                 }
 
@@ -1098,12 +1077,12 @@ namespace N_m3u8DL_RE_GUI
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
             {
-                //获取拖拽的文件地址
+                // Get dragged file path
                 string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
                 if (new FileInfo(path).Length == 16)
-                    TextBox_Key.Text = path; //将获取到的完整路径赋值到textBox1
+                    TextBox_Key.Text = path; // Set key file path
                 else
                     MessageBox.Show(Properties.Resources.String6);
             }

@@ -128,12 +128,12 @@ public class DownloadService : IDownloadService
         }
         catch (OperationCanceledException)
         {
-            logCallback?.Invoke("ดาวน์โหลดถูกยกเลิก");
+            logCallback?.Invoke("Download was cancelled.");
             return false;
         }
         catch (Exception ex)
         {
-            logCallback?.Invoke($"เกิดข้อผิดพลาด: {ex.Message}");
+            logCallback?.Invoke($"Error occurred: {ex.Message}");
             return false;
         }
         finally

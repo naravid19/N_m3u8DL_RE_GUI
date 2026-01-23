@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -52,9 +53,9 @@ public class UtilityService : IUtilityService
                 return CleanTitle(title);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            Debug.WriteLine($"Failed to get iQiyi title: {ex.Message}");
         }
         return string.Empty;
     }
@@ -78,9 +79,9 @@ public class UtilityService : IUtilityService
                 }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            Debug.WriteLine($"Failed to get QQ title: {ex.Message}");
         }
         return string.Empty;
     }
@@ -97,9 +98,9 @@ public class UtilityService : IUtilityService
                 return CleanTitle(title);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            Debug.WriteLine($"Failed to get WeTV title: {ex.Message}");
         }
         return string.Empty;
     }
@@ -116,9 +117,9 @@ public class UtilityService : IUtilityService
                 return CleanTitle(title);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            Debug.WriteLine($"Failed to get generic title: {ex.Message}");
         }
         return string.Empty;
     }
@@ -184,9 +185,9 @@ public class UtilityService : IUtilityService
                 return dialog.SelectedPath;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignore errors
+            Debug.WriteLine($"Folder selection error: {ex.Message}");
         }
 
         return null;
