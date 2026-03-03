@@ -1,7 +1,9 @@
+#nullable enable
 using System.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
+using N_m3u8DL_RE_GUI.Core;
 
 namespace N_m3u8DL_RE_GUI.Services;
 
@@ -23,6 +25,9 @@ public class UtilityService : IUtilityService
         if (string.IsNullOrWhiteSpace(url))
             return string.Empty;
 
+        if (!InputValidation.IsHttpUrl(url))
+            return string.Empty;
+
         try
         {
             // Handle different URL patterns
@@ -35,8 +40,9 @@ public class UtilityService : IUtilityService
             else
                 return await GetGenericTitleAsync(url);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Debug.WriteLine($"Failed to resolve title from URL '{url}': {ex.Message}");
             return string.Empty;
         }
     }
@@ -130,11 +136,11 @@ public class UtilityService : IUtilityService
             return string.Empty;
 
         // Remove common suffixes
-        title = Regex.Replace(title, @"[-_\s]*爱奇艺.*$", "", RegexOptions.IgnoreCase);
-        title = Regex.Replace(title, @"[-_\s]*腾讯视频.*$", "", RegexOptions.IgnoreCase);
+        title = Regex.Replace(title, "[-_\\s]*(\\u7231\\u5947\\u827A).*?$", "", RegexOptions.IgnoreCase);
+        title = Regex.Replace(title, "[-_\\s]*(\\u817E\\u8BAF\\u89C6\\u9891).*?$", "", RegexOptions.IgnoreCase);
         title = Regex.Replace(title, @"[-_\s]*WeTV.*$", "", RegexOptions.IgnoreCase);
-        title = Regex.Replace(title, @"[-_\s]*哔哩哔哩.*$", "", RegexOptions.IgnoreCase);
-        title = Regex.Replace(title, @"[-_\s]*优酷.*$", "", RegexOptions.IgnoreCase);
+        title = Regex.Replace(title, "[-_\\s]*(\\u54D4\\u54E9\\u54D4\\u54E9).*?$", "", RegexOptions.IgnoreCase);
+        title = Regex.Replace(title, "[-_\\s]*(\\u4F18\\u9177).*?$", "", RegexOptions.IgnoreCase);
 
         // Clean up special characters
         title = Regex.Replace(title, @"[<>:""/\\|?*]", "");
@@ -169,6 +175,7 @@ public class UtilityService : IUtilityService
     {
         try
         {
+#pragma warning disable CA1416 // Validate platform compatibility
             using var dialog = new System.Windows.Forms.FolderBrowserDialog
             {
                 Description = description,
@@ -184,6 +191,7 @@ public class UtilityService : IUtilityService
             {
                 return dialog.SelectedPath;
             }
+#pragma warning restore CA1416
         }
         catch (Exception ex)
         {

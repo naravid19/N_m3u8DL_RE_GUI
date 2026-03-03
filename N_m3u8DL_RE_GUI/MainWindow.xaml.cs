@@ -1,40 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
+﻿#nullable enable
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-// using System.Windows.Forms;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using System.Windows.Threading;
 using Application = System.Windows.Application;
-using Button = System.Windows.Controls.Button;
 using Clipboard = System.Windows.Clipboard;
 using DataFormats = System.Windows.DataFormats;
 using DragDropEffects = System.Windows.DragDropEffects;
 using MessageBox = System.Windows.MessageBox;
 using Path = System.IO.Path;
 using TextBox = System.Windows.Controls.TextBox;
+using WpfComboBox = System.Windows.Controls.ComboBox;
 using Forms = System.Windows.Forms;
 using Media = System.Windows.Media;
 using MediaColor = System.Windows.Media.Color;
 using Anim = System.Windows.Media.Animation;
 using N_m3u8DL_RE_GUI.Core;
+using Services = N_m3u8DL_RE_GUI.Services;
 
 namespace N_m3u8DL_RE_GUI
 {
@@ -65,40 +53,31 @@ namespace N_m3u8DL_RE_GUI
     /// </summary>
     public partial class MainWindow : Window
     {
-        /// <summary>
-        /// Helper method to wrap a string in quotes.
-        /// </summary>
-        string Q(string s) => $"\"{s}\"";
-
-        /// <summary>
-        /// Certificate validation callback for SSL/TLS connections.
-        /// </summary>  
-        public static bool CertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
-        {
-            X509Chain verify = new X509Chain();
-            verify.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-            verify.ChainPolicy.RevocationMode = X509RevocationMode.Online; //revocation checking  
-            verify.ChainPolicy.RevocationFlag = X509RevocationFlag.ExcludeRoot;
-            if (verify.Build(new X509Certificate2(certificate)))
-            {
-                return true;
-            }
-            return false;
-        }
+        private readonly Services.IUtilityService _utilityService;
+        private readonly Services.IConfigService _configService;
+        private readonly Services.IBatchScriptService _batchScriptService;
+        private readonly Services.IDragDropService _dragDropService;
+        private bool _suspendParameterRefresh;
+        private static readonly Media.SolidColorBrush ErrorBorderBrush = new(MediaColor.FromRgb(231, 76, 60));
+        private static readonly Media.SolidColorBrush DefaultBorderBrush = new(MediaColor.FromRgb(63, 63, 70));
 
         public MainWindow()
         {
             InitializeComponent();
             TextBox_URL.Focus();
+            var serviceProvider = ViewModels.ViewModelLocator.ServiceProvider;
+            _utilityService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IUtilityService>(serviceProvider);
+            _configService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IConfigService>(serviceProvider);
+            _batchScriptService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IBatchScriptService>(serviceProvider);
+            _dragDropService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IDragDropService>(serviceProvider);
         }
 
         private void Button_SelectDir_Click(object sender, RoutedEventArgs e)
         {
-            var openFileDialog = new Forms.FolderBrowserDialog();  // ← ใช้ Forms. ตาม alias
-            openFileDialog.Description = Properties.Resources.String1;
-            if (openFileDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            var selectedPath = _utilityService.SelectFolder(Properties.Resources.String1);
+            if (!string.IsNullOrEmpty(selectedPath))
             {
-                TextBox_WorkDir.Text = openFileDialog.SelectedPath;
+                TextBox_WorkDir.Text = selectedPath;
             }
         }
 
@@ -106,25 +85,46 @@ namespace N_m3u8DL_RE_GUI
 
         private void GetParameter()
         {
-            if (TextBox_Parameter == null) return;
+            if (_suspendParameterRefresh || TextBox_Parameter == null) return;
             TextBox_Parameter.Text = BuildArgsRE(TextBox_URL.Text);
         }
 
-        string BuildArgsRE(string inputOverride = null)
+        private void ApplyValidationState(TextBox? textBox, bool isValid)
+        {
+            if (textBox == null)
+                return;
+            textBox.BorderBrush = isValid ? DefaultBorderBrush : ErrorBorderBrush;
+        }
+
+        private void RefreshValidationState()
+        {
+            ApplyValidationState(TextBox_URL, TextBox_URL == null || InputValidation.IsLikelyValidInput(TextBox_URL.Text));
+            ApplyValidationState(TextBox_Proxy, TextBox_Proxy == null || InputValidation.IsValidProxy(TextBox_Proxy.Text));
+            ApplyValidationState(TextBox_EXE, TextBox_EXE == null || string.IsNullOrWhiteSpace(TextBox_EXE.Text) || File.Exists(TextBox_EXE.Text));
+        }
+
+        string BuildArgsRE(string? inputOverride = null)
         {
             var options = new DownloadOptions
             {
                 // Basic Settings
                 Input = string.IsNullOrWhiteSpace(inputOverride) ? TextBox_URL.Text : inputOverride,
-                SaveDir = TextBox_WorkDir.Text?.Trim('\\'),
+                SaveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text),
+                TmpDir = TextBox_TmpDir?.Text?.Trim(),
                 SaveName = TextBox_Title.Text,
                 Headers = TextBox_Headers.Text,
                 BaseUrl = TextBox_Baseurl.Text,
-                MuxImport = TextBox_MuxJson.Text,
+                MuxImport = TextBox_MuxJson.Text?.Trim(),
                 
                 // Encryption
                 Key = TextBox_Key.Text?.Trim(),
+                CustomHLSKey = TextBox_CustomHLSKey?.Text?.Trim(),
                 CustomHLSIv = TextBox_IV.Text?.Trim(),
+                KeyTextFile = TextBox_KeyTextFile?.Text?.Trim(),
+                DecryptionEngine = (Combo_DecryptionEngine?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "MP4DECRYPT",
+                DecryptionBinaryPath = TextBox_DecryptionBinPath?.Text?.Trim(),
+                MP4RealTimeDecryption = CheckBox_MP4RealTimeDecryption?.IsChecked == true,
+                CustomHLSMethod = GetComboValue(Combo_CustomHLSMethod),
                 
                 // Network
                 Proxy = TextBox_Proxy.Text?.Trim(),
@@ -142,13 +142,12 @@ namespace N_m3u8DL_RE_GUI
                 HttpRequestTimeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 100,
                 MaxSpeed = TextBox_MaxSpeed.Text?.Trim(),
                 
-                // Boolean Options
+                // Boolean Options (original)
                 DelAfterDone = CheckBox_Del.IsChecked == true,
                 NoDateInfo = CheckBox_DisableDate.IsChecked == true,
                 SkipDownload = CheckBox_ParserOnly.IsChecked == true,
                 SkipMerge = CheckBox_DisableMerge.IsChecked == true,
                 BinaryMerge = CheckBox_BinaryMerge.IsChecked == true,
-                AudioOnly = CheckBox_AudioOnly.IsChecked == true,
                 CheckSegmentsCount = CheckBox_DisableCheck?.IsChecked != true,
                 ConcurrentDownload = CheckBox_Concurrent?.IsChecked == true,
                 SubOnly = CheckBox_SubOnly?.IsChecked == true,
@@ -156,35 +155,83 @@ namespace N_m3u8DL_RE_GUI
                 AutoSelect = CheckBox_AutoSelect?.IsChecked == true,
                 
                 // Subtitle Format
-                SubFormat = (Combo_SubFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "SRT"
+                SubFormat = (Combo_SubFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "SRT",
+                
+                // Mux After Done
+                MuxAfterDone = CheckBox_MuxAfterDone?.IsChecked == true,
+                MuxFormat = (Combo_MuxFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "mp4",
+                Muxer = (Combo_Muxer?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "ffmpeg",
+                MuxBinPath = TextBox_MuxBinPath?.Text?.Trim(),
+                MuxKeepFiles = CheckBox_MuxKeepFiles?.IsChecked == true,
+                MuxSkipSubtitle = CheckBox_MuxSkipSub?.IsChecked == true,
+                
+                // Live Recording
+                LivePerformAsVod = CheckBox_LivePerformAsVod?.IsChecked == true,
+                LiveRealTimeMerge = CheckBox_LiveRealTimeMerge?.IsChecked == true,
+                LiveKeepSegments = CheckBox_LiveKeepSegments?.IsChecked != false,
+                LivePipeMux = CheckBox_LivePipeMux?.IsChecked == true,
+                LiveFixVttByAudio = CheckBox_LiveFixVttByAudio?.IsChecked == true,
+                LiveRecordLimit = TextBox_LiveRecordLimit?.Text?.Trim(),
+                LiveWaitTime = int.TryParse(TextBox_LiveWaitTime?.Text, out var waitTime) ? waitTime : null,
+                LiveTakeCount = int.TryParse(TextBox_LiveTakeCount?.Text, out var takeCount) ? takeCount : 16,
+                
+                // Stream Selection
+                SelectVideo = TextBox_SelectVideo?.Text?.Trim(),
+                SelectAudio = CheckBox_AudioOnly?.IsChecked == true ? "best" : TextBox_SelectAudio?.Text?.Trim(),
+                SelectSubtitle = TextBox_SelectSubtitle?.Text?.Trim(),
+                DropVideo = CheckBox_AudioOnly?.IsChecked == true ? "true" : TextBox_DropVideo?.Text?.Trim(),
+                DropAudio = TextBox_DropAudio?.Text?.Trim(),
+                DropSubtitle = TextBox_DropSubtitle?.Text?.Trim(),
+                
+                // Advanced Settings
+                SavePattern = TextBox_SavePattern?.Text?.Trim(),
+                FFmpegBinaryPath = TextBox_FFmpegPath?.Text?.Trim(),
+                AdKeyword = TextBox_AdKeyword?.Text?.Trim(),
+                UrlProcessorArgs = TextBox_UrlProcessorArgs?.Text?.Trim(),
+                TaskStartAt = TextBox_TaskStartAt?.Text?.Trim(),
+                LogLevel = (Combo_LogLevel?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "INFO",
+                UILanguage = GetComboValue(Combo_UILanguage),
+                AppendUrlParams = CheckBox_AppendUrlParams?.IsChecked == true,
+                NoLog = CheckBox_NoLog?.IsChecked == true,
+                WriteMetaJson = CheckBox_WriteMetaJson?.IsChecked != false,
+                UseFFmpegConcatDemuxer = CheckBox_UseFFmpegConcat?.IsChecked == true,
+                AllowHlsMultiExtMap = CheckBox_AllowHlsMultiExtMap?.IsChecked == true,
+                ForceAnsiConsole = CheckBox_ForceAnsiConsole?.IsChecked == true,
+                NoAnsiColor = CheckBox_NoAnsiColor?.IsChecked == true,
+                DisableUpdateCheck = CheckBox_DisableUpdateCheck?.IsChecked == true,
             };
 
             return ArgsBuilder.Build(options);
         }
 
+        /// <summary>
+        /// Get ComboBox selected value, returning null for "(Default)" or empty selections.
+        /// </summary>
+        private static string? GetComboValue(WpfComboBox? combo)
+        {
+            var value = (combo?.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            return value == "(Default)" || string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
 
         private void TextChanged(object sender, TextChangedEventArgs e)
         {
+            RefreshValidationState();
             GetParameter();
         }
 
         private void CheckBoxChanged(object sender, RoutedEventArgs e)
         {
-            if (((System.Windows.Controls.CheckBox)sender).IsChecked == true)
-            {
-                ((System.Windows.Controls.CheckBox)sender).Foreground = new Media.SolidColorBrush(MediaColor.FromRgb(46, 204, 113));
-            }
-            else
-            {
-                ((System.Windows.Controls.CheckBox)sender).Foreground = new Media.SolidColorBrush(MediaColor.FromRgb(241, 241, 241));
-            }
             GetParameter();
         }
 
-        private void Combo_SubFormat_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            GetParameter();
-        }
+        private void Combo_SubFormat_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_MuxFormat_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_Muxer_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_DecryptionEngine_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_HLSMethod_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_LogLevel_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_UILanguage_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
 
         private void FlashTextBox(TextBox textBox)
         {
@@ -223,8 +270,7 @@ namespace N_m3u8DL_RE_GUI
         private void TextBox_URL_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             //从剪切板读取url
-            Regex url = new Regex(@"(https?)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]", RegexOptions.Compiled | RegexOptions.Singleline);//取已下载大小
-            string str = url.Match(Clipboard.GetText()).Value;
+            string str = InputValidation.ExtractFirstUrl(SafeGetClipboardText());
             if (str != "" && str != TextBox_URL.Text)
             {
                 TextBox_URL.Text = str;
@@ -232,603 +278,197 @@ namespace N_m3u8DL_RE_GUI
             }
         }
 
-        public static byte[] HexStringToBytes(string hexStr)
+
+        private async void TextBox_Title_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (string.IsNullOrEmpty(hexStr))
-            {
-                return new byte[0];
-            }
-
-            if (hexStr.StartsWith("0x") || hexStr.StartsWith("0X"))
-            {
-                hexStr = hexStr.Remove(0, 2);
-            }
-
-            int count = hexStr.Length;
-
-            if (count % 2 == 1)
-            {
-                throw new ArgumentException("Invalid length of bytes:" + count);
-            }
-
-            int byteCount = count / 2;
-            byte[] result = new byte[byteCount];
-            for (int ii = 0; ii < byteCount; ++ii)
-            {
-                var tempBytes = Byte.Parse(hexStr.Substring(2 * ii, 2), System.Globalization.NumberStyles.HexNumber);
-                result[ii] = tempBytes;
-            }
-
-            return result;
+            if (!string.IsNullOrEmpty(TextBox_URL.Text))
+                await PopulateTitleForInputAsync(TextBox_URL.Text, clearWhenUnknown: false);
         }
 
-        private string GetTitleFromURL(string url)
+        private async Task PopulateTitleForInputAsync(string input, bool clearWhenUnknown)
         {
-            try
-            {
-                if (File.Exists(url))
-                    return Path.GetFileNameWithoutExtension(url);
-                if (url.StartsWith("http"))
-                    url = url.Replace("http://", "").Replace("https://", "");
-                //从爱奇艺dash接口获取内容
-                if (url.Contains("dash") && (url.StartsWith("cache.video.iqiyi.com") || url.StartsWith("intel-cache.video.iqiyi.com"))) 
-                {
-                    string tvid = GetQueryString("tvid", url);
-                    string webSource = GetWebSource($"https://pcw-api.iqiyi.com/video/video/baseinfo/{tvid}");
-                    Regex rexTitle = new Regex("name\":\"(.*?)\"");
-                    string title = GetValidFileName(rexTitle.Match(webSource).Groups[1].Value);
+            if (string.IsNullOrWhiteSpace(input))
+                return;
 
-                    webSource = GetWebSource("https://" + url, "Cookie:" + (File.Exists("iqiyicookie.txt") ? File.ReadAllText("iqiyicookie.txt").Trim() : ""));
-                    string[] videoes = new Regex("\"video\"[\\s\\S]*").Match(webSource).Value.Replace("},{", "|").Split('|');
-                    string size = "";
-                    string m3u8Content = "";
-                    string code = "";
-                    string duration = "";
-                    string scrsz = "";
-                    string fileName = "";
-                    string filePath = "";
-                    foreach (var video in videoes)
-                    {
-                        if (video.Contains("\"_selected\":true"))
-                        {
-                            size = FormatFileSize(Convert.ToDouble(new Regex("\"vsize\":(\\d+)").Match(video).Groups[1].Value));
-                            m3u8Content = new Regex("\"m3u8\":\"(.*?)\"").Match(video).Groups[1].Value.Replace("\\n", "\n").Replace("\\/", "/");
-                            code = new Regex("\"code\":(\\d+)").Match(video).Groups[1].Value;
-                            duration = FormatTime(Convert.ToInt32(new Regex("\"duration\":(\\d+)").Match(video).Groups[1].Value));
-                            scrsz = new Regex("\"scrsz\":\"(.*?)\"").Match(video).Groups[1].Value;
-                            fileName = title + "_" + scrsz + "_" + (code == "2" ? "H264" : "H265") + "_" + duration + "_" + size;
-                            filePath = Path.Combine(Path.GetTempPath(), fileName + ".m3u8");
-                            break;
-                        }
-                    }
-                    File.WriteAllText(filePath, m3u8Content);
-                    TextBox_URL.Text = filePath;
-                    return GetValidFileName(fileName);
-                }
-                else if (url.StartsWith("cache.m.iqiyi.com"))
-                {
-                    string tvid = GetQueryString("tvid", url);
-                    string webSource = GetWebSource($"https://pcw-api.iqiyi.com/video/video/baseinfo/{tvid}");
-                    Regex rexTitle = new Regex("name\":\"(.*?)\"");
-                    Regex rexDur = new Regex("duration\":\"(.*?)\"");
-                    string title = rexTitle.Match(webSource).Groups[1].Value
-                        + "_"
-                        + rexDur.Match(webSource).Groups[1].Value;
-                    //获得有效文件名
-                    return GetValidFileName(title);
-                }
-                else if (url.Contains("ccode=") && url.Contains("vid="))
-                {
-                    string vid = GetQueryString("vid", url);
-                    string webSource = GetWebSource($"https://openapi.youku.com/v2/videos/show.json?video_id={vid}&client_id=3d01f04416cbe807");
-                    Regex rexTitle = new Regex("title\":\"(.*?)\"");
-                    Regex rexDur = new Regex("duration\":\"(.*?)\"");
-                    string type = GetQueryString("type", url);
-                    string title = Unicode2String(rexTitle.Match(webSource).Groups[1].Value)
-                        + "_"
-                        + FormatTime((int)Convert.ToDouble(rexDur.Match(webSource).Groups[1].Value));
-                    if (type != "")
-                        title += "_" + type;
-                    return GetValidFileName(title);
-                }
-                else if ((url.Contains(".ts.m3u8") || url.Contains(".mp4.m3u8")) && url.Contains("qq.com"))
-                {
-                    Regex rexVid = new Regex("\\/(\\w+).(\\d){6,}.*m3u8");
-                    string match = rexVid.Match(url).Groups[1].Value;
-                    string vid = "";
-                    if (match.Contains("_"))
-                        vid = match.Split('_')[1];
-                    else
-                        vid = match;
-
-                    return GetValidFileName(GetQQTitle(vid));
-                }
-                else
-                {
-                    return GetUrlFileName(url);
-                }
-            }
-            catch (Exception)
+            if (InputValidation.IsHttpUrl(input))
             {
-                return DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss");
+                TextBox_Title.Text = await _utilityService.GetTitleFromUrlAsync(input);
+                return;
             }
+
+            if (File.Exists(input) && DropInputRules.ShouldAutoFillTitleFromFileName(input))
+            {
+                TextBox_Title.Text = Path.GetFileNameWithoutExtension(input);
+                return;
+            }
+
+            if (clearWhenUnknown)
+                TextBox_Title.Text = string.Empty;
         }
 
-        public static string GetQQTitle(string vid)
+        private static bool HasFileDropData(System.Windows.DragEventArgs e)
         {
-            Regex rexTitle1 = new Regex("\"title\":(.*?),");
-            Regex rexDur = new Regex("duration\":\"(.*?)\"");
-            string webSource = GetWebSource($"https://union.video.qq.com/fcgi-bin/data?tid=682&otype=json&appid=20001373&appkey=f6301da6035cd6cc&client=tim&idlist={vid}");
-            string title = "";
-
-            if (rexTitle1.Match(webSource).Groups[1].Value.Trim('\"') != "null")
-            {
-                string t = rexTitle1.Match(webSource).Groups[1].Value.Trim('\"');
-                if (t.Contains("\\u"))
-                    t = Unicode2String(t);
-                title = t
-                + "_"
-                + FormatTime(Convert.ToInt32(rexDur.Match(webSource).Groups[1].Value));
-                return title;
-            }
-            else
-            {
-                Regex rexTitle = new Regex("\"ti\":\"(.*?)\"");
-                webSource = GetWebSource($"https://vv.video.qq.com/getinfo?otype=json&appver=3.4.40&platform=4830701&vid={vid}");
-                title = rexTitle.Match(webSource).Groups[1].Value;
-                if (title.Contains("\\u"))
-                    title = Unicode2String(title);
-                if (string.IsNullOrEmpty(title))
-                {
-                    rexTitle = new Regex("VIDEO_INFO.*\"title\":\"(.*?)\"");
-                    webSource = new WebClient() { Encoding = Encoding.UTF8 }.DownloadString($"https://v.qq.com/x/page/{vid}.html");
-                    title = rexTitle.Match(webSource).Groups[1].Value;
-                    return title;
-                }
-                else
-                    return title;
-            }
+            return e.Data.GetDataPresent(DataFormats.FileDrop, false);
         }
 
-        // Get web page source code
-        private static string GetWebSource(String url, string headers = "", int TimeOut = 60000)
+        private static void MarkDragCopy(System.Windows.DragEventArgs e)
         {
-            ServicePointManager.ServerCertificateValidationCallback = CertificateValidationCallback;
-            // Configure TLS versions for compatibility
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3
-                                       | SecurityProtocolType.Tls
-                                       | (SecurityProtocolType)0x300 // Tls11  
-                                       | (SecurityProtocolType)0xC00; // Tls12  
-            string htmlCode = string.Empty;
-            try
-            {
-                HttpWebRequest webRequest = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(url);
-                webRequest.Method = "GET";
-                webRequest.UserAgent = "Mozilla/4.0";
-                webRequest.Headers.Add("Accept-Encoding", "gzip, deflate");
-                webRequest.Timeout = TimeOut;  // Set timeout  
-                webRequest.KeepAlive = false;
-                // Add custom headers  
-                if (headers != "")
-                {
-                    foreach (string att in headers.Split('|'))
-                    {
-                        try
-                        {
-                            if (att.Split(':')[0].ToLower() == "referer")
-                                webRequest.Referer = att.Substring(att.IndexOf(":") + 1);
-                            else if (att.Split(':')[0].ToLower() == "user-agent")
-                                webRequest.UserAgent = att.Substring(att.IndexOf(":") + 1);
-                            else if (att.Split(':')[0].ToLower() == "range")
-                                webRequest.AddRange(Convert.ToInt32(att.Substring(att.IndexOf(":") + 1).Split('-')[0], Convert.ToInt32(att.Substring(att.IndexOf(":") + 1).Split('-')[1])));
-                            else if (att.Split(':')[0].ToLower() == "accept")
-                                webRequest.Accept = att.Substring(att.IndexOf(":") + 1);
-                            else
-                                webRequest.Headers.Add(att);
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"Header parsing error for '{att}': {ex.Message}");
-                        }
-                    }
-                }
-                HttpWebResponse webResponse = (HttpWebResponse)webRequest.GetResponse();
-                if (webResponse.ContentEncoding != null
-                    && webResponse.ContentEncoding.ToLower() == "gzip") // Decompress GZip if used  
-                {
-                    using (Stream streamReceive = webResponse.GetResponseStream())
-                    {
-                        using (var zipStream =
-                            new System.IO.Compression.GZipStream(streamReceive, System.IO.Compression.CompressionMode.Decompress))
-                        {
-                            using (StreamReader sr = new StreamReader(zipStream, Encoding.UTF8))
-                            {
-                                htmlCode = sr.ReadToEnd();
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    using (Stream streamReceive = webResponse.GetResponseStream())
-                    {
-                        using (StreamReader sr = new StreamReader(streamReceive, Encoding.UTF8))
-                        {
-                            htmlCode = sr.ReadToEnd();
-                        }
-                    }
-                }
-
-                if (webResponse != null)
-                {
-                    webResponse.Close();
-                }
-                if (webRequest != null)
-                {
-                    webRequest.Abort();
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"GetWebSource error for URL '{url}': {ex.Message}");
-            }
-
-            return htmlCode;
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
         }
 
-        /// <summary>
-        /// Convert Unicode escape sequences to string.
-        /// </summary>
-        /// <param name="source">Unicode encoded string</param>
-        /// <returns>Decoded string</returns>
-        public static string Unicode2String(string source)
+        private bool TryGetFirstDroppedPath(System.Windows.DragEventArgs e, out string path)
         {
-            return new Regex(@"\\u([0-9A-F]{4})", RegexOptions.IgnoreCase | RegexOptions.Compiled).Replace(
-                         source, x => string.Empty + Convert.ToChar(Convert.ToUInt16(x.Result("$1"), 16)));
-        }
+            path = string.Empty;
+            if (!HasFileDropData(e))
+                return false;
 
-        /// <summary>    
-        /// Get URL query string parameter value.   
-        /// </summary>    
-        /// <param name="name">Parameter name</param>    
-        /// <param name="url">URL string</param>    
-        /// <returns>Parameter value or empty string</returns>    
-        public string GetQueryString(string name, string url)
-        {
-            Regex re = new Regex(@"(^|&)?(\w+)=([^&]+)(&|$)?", System.Text.RegularExpressions.RegexOptions.Compiled);
-            MatchCollection mc = re.Matches(url);
-            foreach (Match m in mc)
-            {
-                if (m.Result("$2").Equals(name))
-                {
-                    return m.Result("$3");
-                }
-            }
-            return "";
-        }
+            var droppedPaths = _dragDropService.GetFilePaths(e.Data);
+            if (droppedPaths.Length == 0 || string.IsNullOrWhiteSpace(droppedPaths[0]))
+                return false;
 
-        private void TextBox_Title_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (TextBox_URL.Text != "")
-                TextBox_Title.Text = GetTitleFromURL(TextBox_URL.Text);
-        }
-
-
-        /// <summary>
-        /// Find value in cookie string by key.
-        /// </summary>
-        public static string FindCookie(string key, string cookie)
-        {
-            string[] values = cookie.Split(';');
-            string value = "";
-            foreach (var v in values)
-            {
-                if (v.Trim().StartsWith(key + "="))
-                    value = v.Remove(0, v.IndexOf('=') + 1).Trim();
-            }
-            return value;
-        }
-
-        /// <summary>
-        /// Format time duration as string.
-        /// </summary>
-        public static String FormatTime(Int32 time)
-        {
-            TimeSpan ts = new TimeSpan(0, 0, time);
-            string str = "";
-            str = (ts.Hours.ToString("00") == "00" ? "" : ts.Hours.ToString("00") + ".") + ts.Minutes.ToString("00") + "." + ts.Seconds.ToString("00");
-            return str;
-        }
-
-        /// <summary>
-        /// Format file size as human-readable string.
-        /// </summary>
-        public static String FormatFileSize(Double fileSize)
-        {
-            if (fileSize < 0)
-            {
-                throw new ArgumentOutOfRangeException("fileSize");
-            }
-            else if (fileSize >= 1024 * 1024 * 1024)
-            {
-                return string.Format("{0:########0.00}GB", ((Double)fileSize) / (1024 * 1024 * 1024));
-            }
-            else if (fileSize >= 1024 * 1024)
-            {
-                return string.Format("{0:####0.00}MB", ((Double)fileSize) / (1024 * 1024));
-            }
-            else if (fileSize >= 1024)
-            {
-                return string.Format("{0:####0.00}KB", ((Double)fileSize) / 1024);
-            }
-            else
-            {
-                return string.Format("{0}bytes", fileSize);
-            }
-        }
-
-        public static string GetUrlFileName(string url)
-        {
-            if (string.IsNullOrEmpty(url))
-            {
-                return "None";
-            }
-            try
-            {
-                string[] strs1 = url.Split(new char[] { '/' });
-                return GetValidFileName(System.Web.HttpUtility.UrlDecode(strs1[strs1.Length - 1].Split(new char[] { '?' })[0].Replace(".m3u8", "")));
-            }
-            catch (Exception)
-            {
-                return DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss");
-            }
-        }
-
-        public static string GetValidFileName(string input, string re = ".")
-        {
-            string title = input;
-            foreach (char invalidChar in Path.GetInvalidFileNameChars())
-            {
-                title = title.Replace(invalidChar.ToString(), re);
-            }
-            return title;
+            path = droppedPaths[0];
+            return true;
         }
 
         private void TextBox_URL_PreviewDragOver(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
+            if (HasFileDropData(e))
+                MarkDragCopy(e);
         }
 
         private void TextBox_URL_PreviewDragEnter(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
+            if (HasFileDropData(e))
+                MarkDragCopy(e);
         }
 
         private void TextBox_URL_PreviewDrop(object sender, System.Windows.DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
+            if (TryGetFirstDroppedPath(e, out var path) && DropInputRules.IsSupportedUrlInputPath(path))
             {
-                // Get dragged file path
-                var filenames = (string[])e.Data.GetData(DataFormats.FileDrop);
-                var hz = filenames[0].LastIndexOf('.') + 1;
-                var houzhui = filenames[0].Substring(hz).ToLower(); // File extension
-                string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
-                if (houzhui == "m3u8" || houzhui == "txt" || houzhui == "json" || houzhui == "mpd") // Only allow certain file types
-                {
-                    e.Effects = DragDropEffects.Copy;
-                    e.Handled = true;
-                    if (TextBox_URL.Text != path) FlashTextBox(TextBox_URL);
-                    TextBox_URL.Text = path; // Set full path to textbox
-                    if (houzhui == "m3u8" || houzhui == "json" || houzhui == "mpd")
-                        TextBox_Title.Text = Path.GetFileNameWithoutExtension(path);  // Auto-get filename
-                }
-                if (Directory.Exists(path))
-                {
-                    if (TextBox_URL.Text != path) FlashTextBox(TextBox_URL);
-                    TextBox_URL.Text = path;
-                }
+                MarkDragCopy(e);
+                if (TextBox_URL.Text != path) FlashTextBox(TextBox_URL);
+                TextBox_URL.Text = path;
+                if (DropInputRules.ShouldAutoFillTitleFromFileName(path))
+                    TextBox_Title.Text = Path.GetFileNameWithoutExtension(path);
             }
         }
 
         private void TextBox_MuxJson_PreviewDragEnter(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
+            if (HasFileDropData(e))
+                MarkDragCopy(e);
         }
 
         private void TextBox_MuxJson_PreviewDragOver(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
+            if (HasFileDropData(e))
+                MarkDragCopy(e);
         }
 
         private void TextBox_MuxJson_PreviewDrop(object sender, System.Windows.DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
+            if (TryGetFirstDroppedPath(e, out var path) && DropInputRules.IsValidMuxImportPath(path))
             {
-                // Get dragged file path
-                var filenames = (string[])e.Data.GetData(DataFormats.FileDrop);
-                var hz = filenames[0].LastIndexOf('.') + 1;
-                var houzhui = filenames[0].Substring(hz).ToLower(); // File extension
-                string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
-                if (houzhui == "json") // Only allow JSON files
-                {
-                    e.Effects = DragDropEffects.Copy;
-                    e.Handled = true;
-                    TextBox_MuxJson.Text = path; // Set full path to textbox
-                }
+                MarkDragCopy(e);
+                if (TextBox_MuxJson.Text != path) FlashTextBox(TextBox_MuxJson);
+                TextBox_MuxJson.Text = path;
             }
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // Convert strings to base64 for config storage
-            Encoding encode = Encoding.UTF8;
-            byte[] bytedata = encode.GetBytes(TextBox_EXE.Text);
-            string exePath = Convert.ToBase64String(bytedata, 0, bytedata.Length);
-            bytedata = encode.GetBytes(TextBox_WorkDir.Text);
-            string saveDir = Convert.ToBase64String(bytedata, 0, bytedata.Length);
-            bytedata = encode.GetBytes(TextBox_Proxy.Text);
-            string proxy = Convert.ToBase64String(bytedata, 0, bytedata.Length);
-            bytedata = encode.GetBytes(TextBox_Headers.Text);
-            string headers = Convert.ToBase64String(bytedata, 0, bytedata.Length);
-
-            // Note: Chinese keys kept for backward compatibility with existing user configs
-            string config = "程序路径=" + exePath
-                + ";保存路径=" + saveDir
-                + ";代理=" + proxy
-                + ";请求头=" + headers
-                + ";删除临时文件=" + (CheckBox_Del.IsChecked == true ? "1" : "0")
-                + ";二进制合并=" + (CheckBox_BinaryMerge.IsChecked == true ? "1" : "0")
-                + ";仅解析模式=" + (CheckBox_ParserOnly.IsChecked == true ? "1" : "0")
-                + ";不写入日期=" + (CheckBox_DisableDate.IsChecked == true ? "1" : "0")
-                + ";最大线程=" + TextBox_Max.Text
-                + ";重试次数=" + TextBox_Retry.Text
-                + ";超时秒数=" + TextBox_Timeout.Text
-                + ";最大速度=" + TextBox_MaxSpeed.Text
-                + ";不合并=" + (CheckBox_DisableMerge.IsChecked == true ? "1" : "0")
-                + ";不使用系统代理=" + (CheckBox_DisableProxy.IsChecked == true ? "1" : "0")
-                + ";仅合并音频=" + (CheckBox_AudioOnly.IsChecked == true ? "1" : "0")
-                + ";不检查分片=" + (CheckBox_DisableCheck.IsChecked == true ? "1" : "0")
-                + ";并发下载=" + (CheckBox_Concurrent.IsChecked == true ? "1" : "0")
-                + ";仅下载字幕=" + (CheckBox_SubOnly.IsChecked == true ? "1" : "0")
-                + ";自动修复字幕=" + (CheckBox_AutoSubFix.IsChecked == true ? "1" : "0")
-                + ";自动选择=" + (CheckBox_AutoSelect?.IsChecked == true ? "1" : "0")
-                + ";字幕格式=" + (Combo_SubFormat.SelectedItem as ComboBoxItem)?.Content?.ToString();
-            File.WriteAllText("config.txt", config);
+            var state = Services.MainWindowConfigMapper.Capture(this);
+            _configService.Save("config.txt", state);
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            Environment.CurrentDirectory = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule.FileName);
-            // Load configuration
-            if (File.Exists("config.txt"))
+            _suspendParameterRefresh = true;
+            try
             {
-                string config = File.ReadAllText("config.txt");
+                SetCurrentDirectoryToAppBase();
+                var config = _configService.Load("config.txt");
+                Services.MainWindowConfigMapper.Restore(this, config);
 
-                TextBox_EXE.Text = Encoding.UTF8.GetString(Convert.FromBase64String(FindCookie("程序路径", config)));
-                TextBox_WorkDir.Text = Encoding.UTF8.GetString(Convert.FromBase64String(FindCookie("保存路径", config)));
-                try
+                if (!File.Exists(TextBox_EXE.Text))
                 {
-                    TextBox_Proxy.Text = Encoding.UTF8.GetString(Convert.FromBase64String(FindCookie("代理", config)));
-                }
-                catch (Exception) {; }
-                try
-                {
-                    TextBox_Headers.Text = Encoding.UTF8.GetString(Convert.FromBase64String(FindCookie("请求头", config)));
-                }
-                catch (Exception) {; }
-                if (FindCookie("删除临时文件", config) == "1")
-                    CheckBox_Del.IsChecked = true;
-                if (FindCookie("二进制合并", config) == "1")
-                    CheckBox_BinaryMerge.IsChecked = true;
-                if (FindCookie("仅解析模式", config) == "1")
-                    CheckBox_ParserOnly.IsChecked = true;
-                if (FindCookie("不写入日期", config) == "1")
-                    CheckBox_DisableDate.IsChecked = true;
-                TextBox_Max.Text = FindCookie("最大线程", config);
-                TextBox_Retry.Text = FindCookie("重试次数", config);
-                try
-                {
-                    if (!string.IsNullOrEmpty(FindCookie("超时秒数", config)))
-                        TextBox_Timeout.Text = FindCookie("超时秒数", config);
-                }
-                catch (Exception) {; }
-                try
-                {
-                    if (!string.IsNullOrEmpty(FindCookie("最大速度", config)))
-                        TextBox_MaxSpeed.Text = FindCookie("最大速度", config);
-                }
-                catch (Exception) {; }
-                try
-                {
-                    if (FindCookie("不合并", config) == "1")
-                        CheckBox_DisableMerge.IsChecked = true;
-                    if (FindCookie("不使用系统代理", config) == "1")
-                        CheckBox_DisableProxy.IsChecked = true;
-                }
-                catch (Exception) {; }
-
-                try
-                {
-                    if (FindCookie("仅合并音频", config) == "1")
-                        CheckBox_AudioOnly.IsChecked = true;
-                }
-                catch (Exception) {; }
-                try
-                {
-                    if (FindCookie("不检查分片", config) == "1")
-                        CheckBox_DisableCheck.IsChecked = true;
-                    if (FindCookie("并发下载", config) == "1")
-                        CheckBox_Concurrent.IsChecked = true;
-                    if (FindCookie("仅下载字幕", config) == "1")
-                        CheckBox_SubOnly.IsChecked = true;
-                    if (FindCookie("自动修复字幕", config) == "1")
-                        CheckBox_AutoSubFix.IsChecked = true;
-                    if (FindCookie("自动选择", config) == "1")
-                        CheckBox_AutoSelect.IsChecked = true;
-                    
-                    var subFormat = FindCookie("字幕格式", config);
-                    if (!string.IsNullOrEmpty(subFormat))
+                    var currentDir = Environment.CurrentDirectory;
+                    if (!string.IsNullOrEmpty(currentDir))
                     {
-                        foreach (ComboBoxItem item in Combo_SubFormat.Items)
-                        {
-                            if (item.Content.ToString() == subFormat)
-                            {
-                                Combo_SubFormat.SelectedItem = item;
-                                break;
-                            }
-                        }
+                        var d = new DirectoryInfo(currentDir);
+                        var re = d.GetFiles("N_m3u8DL-RE.exe").FirstOrDefault();
+                        if (re != null) TextBox_EXE.Text = re.FullName;
                     }
                 }
-                catch (Exception) {; }
-            }
 
-            if (!File.Exists(TextBox_EXE.Text)) // 尝试寻找主程序
-            {
-                var d = new DirectoryInfo(Environment.CurrentDirectory);
-                var re = d.GetFiles("N_m3u8DL-RE.exe").FirstOrDefault();
-                if (re != null) TextBox_EXE.Text = re.FullName;
-            }
-
-            if (Environment.GetCommandLineArgs().Length > 1)
-            {
-                var ext = Path.GetExtension(Environment.GetCommandLineArgs()[1]);
-                if (ext == ".m3u8" || ext == ".json" || ext == ".txt" || Directory.Exists(Environment.GetCommandLineArgs()[1]))
-                    TextBox_URL.Text = Environment.GetCommandLineArgs()[1];
-                if (TextBox_URL.Text != "")
+                var commandLineArgs = Environment.GetCommandLineArgs();
+                if (commandLineArgs.Length > 1)
                 {
-                    FlashTextBox(TextBox_URL);
-                    if (!Directory.Exists(TextBox_URL.Text))
-                        TextBox_Title.Text = GetTitleFromURL(TextBox_URL.Text);
+                    var startupInput = commandLineArgs[1];
+                    if (InputValidation.IsSupportedStartupInputArgument(startupInput))
+                        TextBox_URL.Text = startupInput;
+                    if (TextBox_URL.Text != "")
+                    {
+                        FlashTextBox(TextBox_URL);
+                        await PopulateTitleForInputAsync(TextBox_URL.Text, clearWhenUnknown: true);
+                    }
+                }
+                else
+                {
+                    string str = InputValidation.ExtractFirstUrl(SafeGetClipboardText());
+                    TextBox_URL.Text = str;
+                    if (TextBox_URL.Text != "")
+                    {
+                        FlashTextBox(TextBox_URL);
+                        await PopulateTitleForInputAsync(TextBox_URL.Text, clearWhenUnknown: false);
+                    }
                 }
             }
-            else
+            finally
             {
-                // Read URL from clipboard
-                Regex url = new Regex(@"(https?)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]", RegexOptions.Compiled | RegexOptions.Singleline);
-                string str = url.Match(Clipboard.GetText()).Value;
-                TextBox_URL.Text = str;
-                if (TextBox_URL.Text != "")
-                {
-                    FlashTextBox(TextBox_URL);
-                    TextBox_Title.Text = GetTitleFromURL(TextBox_URL.Text);
-                }
+                _suspendParameterRefresh = false;
+                RefreshValidationState();
+                GetParameter();
             }
         }
 
-        private void Button_GO_Click(object sender, RoutedEventArgs e)
+        private static void SetCurrentDirectoryToAppBase()
+        {
+            var baseDirectory = AppContext.BaseDirectory;
+            if (!string.IsNullOrWhiteSpace(baseDirectory) && Directory.Exists(baseDirectory))
+            {
+                Environment.CurrentDirectory = baseDirectory;
+                return;
+            }
+
+            // Fallback for legacy runtime hosts that do not provide AppContext.BaseDirectory.
+            var mainModule = Process.GetCurrentProcess().MainModule;
+            var legacyExecutablePath = mainModule?.FileName;
+            var legacyDirectory = string.IsNullOrWhiteSpace(legacyExecutablePath)
+                ? null
+                : Path.GetDirectoryName(legacyExecutablePath);
+            if (!string.IsNullOrWhiteSpace(legacyDirectory))
+                Environment.CurrentDirectory = legacyDirectory;
+        }
+
+        private async void Button_GO_Click(object sender, RoutedEventArgs e)
         {
             // Convert hex key to base64 if applicable
             try
             {
-                TextBox_Key.Text = Convert.ToBase64String(HexStringToBytes(TextBox_Key.Text));
+                string hex = TextBox_Key.Text.Replace("0x", "", StringComparison.OrdinalIgnoreCase).Replace("-", "").Replace(" ", "");
+                if (hex.Length % 2 == 0 && Regex.IsMatch(hex, @"\A\b[0-9a-fA-F]+\b\Z"))
+                    TextBox_Key.Text = Convert.ToBase64String(Convert.FromHexString(hex));
             }
-            catch(Exception ex)
+            catch (FormatException ex)
             {
-                Debug.WriteLine($"Key conversion failed (may not be hex format): {ex.Message}");
+                Debug.WriteLine($"Key conversion failed (invalid hex format): {ex.Message}");
+            }
+            catch (ArgumentException ex)
+            {
+                Debug.WriteLine($"Key conversion failed (invalid key input): {ex.Message}");
             }
             if (!File.Exists(TextBox_EXE.Text))
             {
@@ -840,105 +480,55 @@ namespace N_m3u8DL_RE_GUI
                 MessageBox.Show(Properties.Resources.String3);
                 return;
             }
-            if (TextBox_Proxy.Text != "" && (!TextBox_Proxy.Text.StartsWith("http://") && !TextBox_Proxy.Text.StartsWith("socks5://")))
+            if (!InputValidation.IsValidProxy(TextBox_Proxy.Text))
             {
                 MessageBox.Show(Properties.Resources.String7);
                 return;
             }
 
             // Batch download mode
-            if ((!TextBox_URL.Text.StartsWith("http") && TextBox_URL.Text.EndsWith(".txt") && File.Exists(TextBox_URL.Text))
-                || Directory.Exists(TextBox_URL.Text))
+            if (_batchScriptService.IsBatchInput(TextBox_URL.Text))
             {
                 this.IsEnabled = false;
                 Button_GO.Content = Properties.Resources.String4;
-                string inputUrl = TextBox_URL.Text;
-                string exePath = TextBox_EXE.Text;
-                List<string> m3u8list = new List<string>();
-                if (Directory.Exists(inputUrl))
+                try
                 {
-                    foreach (var file in Directory.GetFiles(inputUrl))
-                    {
-                        if (new FileInfo(file).Name.ToLower().EndsWith(".m3u8") || new FileInfo(file).Name.ToLower().EndsWith(".mpd"))
-                        {
-                            m3u8list.Add(new FileInfo(file).FullName);
-                        }
-                    }
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("@echo off");
-                    sb.AppendLine("::Created by N_m3u8DL_RE_GUI\r\n");
-                    int i = 0;
-                    foreach (var item in m3u8list)
-                    {
-                        TextBox_Title.Text = GetTitleFromURL(item);
-                        sb.AppendLine($"TITLE \"[{++i}/{m3u8list.Count}] - {TextBox_Title.Text}\"");
+                    var result = await _batchScriptService.BuildScriptAsync(
+                        inputPath: TextBox_URL.Text,
+                        exePath: TextBox_EXE.Text,
+                        resolveTitleAsync: _utilityService.GetTitleFromUrlAsync,
+                        buildArgsForInput: BuildArgsRE,
+                        onTitleResolved: title => TextBox_Title.Text = title);
 
-                        var argsPerItem = BuildArgsRE(item).Replace("%", "%%");
-                        sb.AppendLine($"\"{exePath}\" {argsPerItem}");
-                    }
-
-                    string bat = "Batch-" + DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss") + ".bat";
-                    File.WriteAllText(bat,
-                        sb.ToString(),
-                        new UTF8Encoding(false)); // Use UTF-8 without BOM for compatibility
-                    Process.Start(bat);
+                    _batchScriptService.SaveScript(result.FilePath, result.Content);
+                    StartShellTarget(result.FilePath);
                 }
-                else
+                catch (Exception ex)
                 {
-                    m3u8list = File.ReadAllLines(inputUrl, GetType(inputUrl)).ToList();
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("@echo off");
-                    sb.AppendLine("::Created by N_m3u8DL_RE_GUI");
-                    int i = 0;
-                    foreach (var item in m3u8list)
-                    {
-                        var line = item?.Trim();
-                        if (string.IsNullOrEmpty(line) || line.StartsWith("#")) continue; // Skip empty/comment lines
-
-                        string url, title;
-
-                        if (line.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Line is a plain URL
-                            url   = line;
-                            title = GetTitleFromURL(line);
-                        }
-                        else if (line.Contains(",http", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Line format: title,http...
-                            var idx = line.IndexOf(",http", StringComparison.OrdinalIgnoreCase);
-                            title = line.Substring(0, idx);
-                            url   = line.Substring(idx + 1);
-                        }
-                        else
-                        {
-                            // Unsupported format - skip
-                            continue;
-                        }
-
-                        TextBox_Title.Text = title;
-                        sb.AppendLine($"TITLE \"[{++i}/{m3u8list.Count}] - {TextBox_Title.Text}\"");
-
-                        var argsPerItem = BuildArgsRE(url).Replace("%", "%%");
-                        sb.AppendLine($"\"{exePath}\" {argsPerItem}");
-                    }
-
-                    string bat = "Batch-" + DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss") + ".bat";
-                    File.WriteAllText(bat,
-                        sb.ToString(),
-                        new UTF8Encoding(false)); // Use UTF-8 without BOM for compatibility
-                    Process.Start(bat);
+                    MessageBox.Show(ex.Message);
                 }
-
-                Button_GO.Content = "GO";
-                this.IsEnabled = true;
+                finally
+                {
+                    Button_GO.Content = "GO";
+                    this.IsEnabled = true;
+                }
             }
             else
             {
                 Button_GO.IsEnabled = false;
-                TextBox_Parameter.Text = BuildArgsRE();
-                Process.Start(TextBox_EXE.Text, TextBox_Parameter.Text);
-                Button_GO.IsEnabled = true;
+                try
+                {
+                    TextBox_Parameter.Text = BuildArgsRE();
+                    StartExecutableWithArguments(TextBox_EXE.Text, TextBox_Parameter.Text);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+                finally
+                {
+                    Button_GO.IsEnabled = true;
+                }
             }
         }
 
@@ -968,7 +558,46 @@ namespace N_m3u8DL_RE_GUI
 
         private void Menu_GetDownloader(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://github.com/nilaoda/N_m3u8DL-RE/releases");
+            StartShellTarget("https://github.com/nilaoda/N_m3u8DL-RE/releases");
+        }
+
+        private static void StartShellTarget(string targetPath)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = targetPath,
+                UseShellExecute = true
+            };
+            Process.Start(startInfo);
+        }
+
+        private static string SafeGetClipboardText()
+        {
+            try
+            {
+                return Clipboard.ContainsText() ? Clipboard.GetText() : string.Empty;
+            }
+            catch (ExternalException ex)
+            {
+                Debug.WriteLine($"Clipboard access failed (external lock): {ex.Message}");
+                return string.Empty;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Debug.WriteLine($"Clipboard access failed (thread state): {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        private static void StartExecutableWithArguments(string executablePath, string arguments)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = executablePath,
+                Arguments = arguments,
+                UseShellExecute = false
+            };
+            Process.Start(startInfo);
         }
 
         /// <summary> 
@@ -978,10 +607,7 @@ namespace N_m3u8DL_RE_GUI
         /// <returns>文件的编码类型</returns> 
         public static Encoding GetType(string FILE_NAME)
         {
-            FileStream fs = new FileStream(FILE_NAME, FileMode.Open, FileAccess.Read);
-            Encoding r = GetType(fs);
-            fs.Close();
-            return r;
+            return TextEncodingDetector.DetectFromFile(FILE_NAME);
         }
 
         /// <summary> 
@@ -991,101 +617,33 @@ namespace N_m3u8DL_RE_GUI
         /// <returns>文件的编码类型</returns> 
         public static Encoding GetType(FileStream fs)
         {
-            byte[] Unicode = new byte[] { 0xFF, 0xFE, 0x41 };
-            byte[] UnicodeBIG = new byte[] { 0xFE, 0xFF, 0x00 };
-            byte[] UTF8 = new byte[] { 0xEF, 0xBB, 0xBF }; //带BOM 
-            Encoding reVal = Encoding.Default;
-
-            BinaryReader r = new BinaryReader(fs, System.Text.Encoding.Default);
-            int i;
-            int.TryParse(fs.Length.ToString(), out i);
-            byte[] ss = r.ReadBytes(i);
-            if (IsUTF8Bytes(ss) || (ss[0] == 0xEF && ss[1] == 0xBB && ss[2] == 0xBF))
-            {
-                reVal = Encoding.UTF8;
-            }
-            else if (ss[0] == 0xFE && ss[1] == 0xFF && ss[2] == 0x00)
-            {
-                reVal = Encoding.BigEndianUnicode;
-            }
-            else if (ss[0] == 0xFF && ss[1] == 0xFE && ss[2] == 0x41)
-            {
-                reVal = Encoding.Unicode;
-            }
-            r.Close();
-            return reVal;
-        }
-
-        /// <summary> 
-        /// 判断是否是不带 BOM 的 UTF8 格式 
-        /// </summary> 
-        /// <param name=“data“></param> 
-        /// <returns></returns> 
-        private static bool IsUTF8Bytes(byte[] data)
-        {
-            int charByteCounter = 1; //计算当前正分析的字符应还有的字节数 
-            byte curByte; //当前分析的字节. 
-            for (int i = 0; i < data.Length; i++)
-            {
-                curByte = data[i];
-                if (charByteCounter == 1)
-                {
-                    if (curByte >= 0x80)
-                    {
-                        //判断当前 
-                        while (((curByte <<= 1) & 0x80) != 0)
-                        {
-                            charByteCounter++;
-                        }
-                        //标记位首位若为非0 则至少以2个1开始 如:110XXXXX...........1111110X 
-                        if (charByteCounter == 1 || charByteCounter > 6)
-                        {
-                            return false;
-                        }
-                    }
-                }
-                else
-                {
-                    //若是UTF-8 此时第一位必须为1 
-                    if ((curByte & 0xC0) != 0x80)
-                    {
-                        return false;
-                    }
-                    charByteCounter--;
-                }
-            }
-            if (charByteCounter > 1)
-            {
-                throw new Exception(Properties.Resources.String5);
-            }
-            return true;
+            return TextEncodingDetector.DetectFromStream(fs);
         }
 
         private void TextBox_Key_PreviewDragEnter(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
+            if (HasFileDropData(e))
+                MarkDragCopy(e);
         }
 
         private void TextBox_Key_PreviewDragOver(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = DragDropEffects.Copy;
-            e.Handled = true;
+            if (HasFileDropData(e))
+                MarkDragCopy(e);
         }
 
         private void TextBox_Key_PreviewDrop(object sender, System.Windows.DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop, false) == true)
+            if (TryGetFirstDroppedPath(e, out var path))
             {
-                // Get dragged file path
-                string path = ((System.Array)e.Data.GetData(DataFormats.FileDrop)).GetValue(0).ToString();
-                e.Effects = DragDropEffects.Copy;
-                e.Handled = true;
-                if (new FileInfo(path).Length == 16)
-                    TextBox_Key.Text = path; // Set key file path
+                MarkDragCopy(e);
+                if (DropInputRules.IsValidKeyFilePath(path))
+                    TextBox_Key.Text = path;
                 else
                     MessageBox.Show(Properties.Resources.String6);
             }
         }
+
     }
 }
+

@@ -1,3 +1,4 @@
+#nullable enable
 using System.Windows;
 using IDataObject = System.Windows.IDataObject;
 using DataFormats = System.Windows.DataFormats;

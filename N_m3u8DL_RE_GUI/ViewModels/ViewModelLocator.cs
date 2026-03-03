@@ -1,3 +1,4 @@
+#nullable enable
 using Microsoft.Extensions.DependencyInjection;
 using N_m3u8DL_RE_GUI.Services;
 using System;
@@ -22,6 +23,8 @@ public class ViewModelLocator
         services.AddSingleton<IDownloadService, DownloadService>();
         services.AddSingleton<IUtilityService, UtilityService>();
         services.AddSingleton<IDragDropService, DragDropService>();
+        services.AddSingleton<IConfigService, ConfigService>();
+        services.AddSingleton<IBatchScriptService, BatchScriptService>();
         
         // Register ViewModels
         services.AddTransient<MainViewModel>();
@@ -41,6 +44,18 @@ public class ViewModelLocator
                 Initialize();
             }
             return _serviceProvider!.GetRequiredService<MainViewModel>();
+        }
+    }
+
+    /// <summary>
+    /// Expose ServiceProvider for code-behind access to services.
+    /// </summary>
+    public static IServiceProvider ServiceProvider
+    {
+        get
+        {
+            if (_serviceProvider == null) Initialize();
+            return _serviceProvider!;
         }
     }
 

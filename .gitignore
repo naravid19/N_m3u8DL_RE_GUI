@@ -262,6 +262,19 @@ __pycache__/
 
 .agent
 .shared
+# Keep utility scripts trackable; ignore generated batch outputs only
+Batch-*.bat
+/N_m3u8DL-CLI
+/N_m3u8DL-CLI_v3.0.2_with_ffmpeg_and_SimpleG
 /N_m3u8DL-RE
-*.bat
-final_hashes.txt
+project_requirements.txt
+
+# Local publish artifacts
+/Publish/
+publish.bat
+
+# Keep log structure docs, ignore daily/raw logs
+/log
+
+# Local reference snapshots
+/docs

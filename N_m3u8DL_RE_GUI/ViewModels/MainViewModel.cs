@@ -206,7 +206,7 @@ public partial class MainViewModel : ObservableObject
         var droppedFile = _dragDropService.HandleFileDrop(data);
         if (!string.IsNullOrWhiteSpace(droppedFile) && _utilityService.FileExists(droppedFile))
         {
-            DownloadOptions.MuxJson = droppedFile;
+            DownloadOptions.MuxImport = droppedFile;
             RefreshParameters();
         }
     }

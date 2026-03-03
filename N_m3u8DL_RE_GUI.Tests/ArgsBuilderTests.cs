@@ -8,6 +8,8 @@ namespace N_m3u8DL_RE_GUI.Tests;
 /// </summary>
 public class ArgsBuilderTests
 {
+    private static int NonDefaultThreadCount => Environment.ProcessorCount == 1 ? 2 : 1;
+
     [Fact]
     public void Build_WithBasicOptions_ShouldGenerateCorrectArguments()
     {
@@ -17,7 +19,7 @@ public class ArgsBuilderTests
             Input = "https://example.com/video.m3u8",
             SaveDir = "C:\\Downloads",
             SaveName = "MyVideo",
-            ThreadCount = 12
+            ThreadCount = NonDefaultThreadCount
         };
 
         // Act
@@ -27,7 +29,7 @@ public class ArgsBuilderTests
         Assert.Contains("\"https://example.com/video.m3u8\"", result);
         Assert.Contains("--save-dir \"C:\\Downloads\"", result);
         Assert.Contains("--save-name \"MyVideo\"", result);
-        Assert.Contains("--thread-count 12", result);
+        Assert.Contains($"--thread-count {NonDefaultThreadCount}", result);
     }
 
     [Fact]
@@ -38,7 +40,8 @@ public class ArgsBuilderTests
         {
             Input = "https://example.com/video.m3u8",
             DelAfterDone = true,
-            AudioOnly = true,
+            SelectAudio = "best",
+            DropVideo = "true",
             SkipMerge = true
         };
 
@@ -47,8 +50,8 @@ public class ArgsBuilderTests
 
         // Assert
         Assert.Contains("--del-after-done", result);
-        Assert.Contains("--select-audio \".*\"", result);
-        Assert.Contains("--drop-video \".*\"", result);
+        Assert.Contains("--select-audio \"best\"", result);
+        Assert.Contains("--drop-video \"true\"", result);
         Assert.Contains("--skip-merge", result);
     }
 
@@ -115,18 +118,18 @@ public class ArgsBuilderTests
         // Arrange
         var options = new DownloadOptions
         {
-            ThreadCount = 12,
-            DownloadRetryCount = 3,
-            HttpRequestTimeout = 100
+            ThreadCount = NonDefaultThreadCount,
+            DownloadRetryCount = 5,
+            HttpRequestTimeout = 200
         };
 
         // Act
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--thread-count 12", result);
-        Assert.Contains("--download-retry-count 3", result);
-        Assert.Contains("--http-request-timeout 100", result);
+        Assert.Contains($"--thread-count {NonDefaultThreadCount}", result);
+        Assert.Contains("--download-retry-count 5", result);
+        Assert.Contains("--http-request-timeout 200", result);
     }
 
     [Fact]
@@ -136,14 +139,14 @@ public class ArgsBuilderTests
         var options = new DownloadOptions 
         { 
             Input = null,
-            ThreadCount = 12 
+            ThreadCount = NonDefaultThreadCount
         };
 
         // Act
         var result = ArgsBuilder.Build(options);
 
         // Assert
-        Assert.Contains("--thread-count 12", result);
+        Assert.Contains($"--thread-count {NonDefaultThreadCount}", result);
     }
 
     [Fact]
@@ -197,7 +200,8 @@ public class ArgsBuilderTests
             SkipDownload = true,
             SkipMerge = true,
             BinaryMerge = true,
-            AudioOnly = true,
+            SelectAudio = "best",
+            DropVideo = "true",
             CheckSegmentsCount = false,
             ConcurrentDownload = true,
             SubOnly = true,
@@ -215,7 +219,7 @@ public class ArgsBuilderTests
         Assert.Contains("--skip-download", result);
         Assert.Contains("--skip-merge", result);
         Assert.Contains("--binary-merge", result);
-        Assert.Contains("--select-audio \".*\"", result);
+        Assert.Contains("--select-audio \"best\"", result);
         Assert.Contains("--check-segments-count false", result);
         Assert.Contains("--concurrent-download", result);
         Assert.Contains("--sub-only", result);
@@ -267,6 +271,20 @@ public class ArgsBuilderTests
     }
 
     [Fact]
+    public void Build_WithMuxImport_ShouldIncludeMuxImportFlag()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            MuxImport = @"C:\subs\episode01.srt"
+        };
+
+        var result = ArgsBuilder.Build(options);
+
+        Assert.Contains("--mux-import \"C:\\subs\\episode01.srt\"", result);
+    }
+
+    [Fact]
     public void Build_WithMaxSpeed_ShouldIncludeSpeedLimit()
     {
         // Arrange
@@ -281,5 +299,72 @@ public class ArgsBuilderTests
 
         // Assert
         Assert.Contains("--max-speed 15M", result);
+    }
+
+    [Fact]
+    public void Build_WithParityOptions_ShouldIncludeNewArguments()
+    {
+        // Arrange
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            TmpDir = "C:\\Temp\\Segments",
+            CustomHLSKey = "ABCD1234",
+            UrlProcessorArgs = "--token abc",
+            TaskStartAt = "20260301101530",
+            ForceAnsiConsole = true,
+            NoAnsiColor = true
+        };
+
+        // Act
+        var result = ArgsBuilder.Build(options);
+
+        // Assert
+        Assert.Contains("--tmp-dir \"C:\\Temp\\Segments\"", result);
+        Assert.Contains("--custom-hls-key \"ABCD1234\"", result);
+        Assert.Contains("--urlprocessor-args \"--token abc\"", result);
+        Assert.Contains("--task-start-at \"20260301101530\"", result);
+        Assert.Contains("--force-ansi-console", result);
+        Assert.Contains("--no-ansi-color", result);
+    }
+
+    [Fact]
+    public void NormalizeSaveDir_ShouldPreserveDriveRoot()
+    {
+        Assert.Equal("C:\\", OptionValueNormalizer.NormalizeSaveDir("C:\\"));
+    }
+
+    [Fact]
+    public void NormalizeSaveDir_ShouldTrimTrailingSeparatorsForNormalPath()
+    {
+        Assert.Equal("C:\\Downloads", OptionValueNormalizer.NormalizeSaveDir("C:\\Downloads\\"));
+    }
+
+    [Fact]
+    public void Build_WithRootSaveDir_ShouldEscapeTrailingBackslashInQuotedArgument()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            SaveDir = @"C:\"
+        };
+
+        var result = ArgsBuilder.Build(options);
+
+        Assert.Contains("--save-dir \"C:\\\\\"", result);
+    }
+
+    [Fact]
+    public void Build_WithQuotedValue_ShouldEscapeInnerDoubleQuotes()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            SaveName = "My \"Video\""
+        };
+
+        var result = ArgsBuilder.Build(options);
+
+        Assert.Contains("--save-name \"My \\\"Video\\\"\"", result);
     }
 }

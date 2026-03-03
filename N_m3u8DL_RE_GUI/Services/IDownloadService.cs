@@ -1,3 +1,4 @@
+#nullable enable
 using N_m3u8DL_RE_GUI.Core;
 
 namespace N_m3u8DL_RE_GUI.Services;

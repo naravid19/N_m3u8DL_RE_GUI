@@ -21,13 +21,13 @@
   <p align="center">
     A modern, user-friendly Windows GUI wrapper for the powerful N_m3u8DL-RE CLI tool.
     <br />
-    <a href="https://github.com/nilaoda/N_m3u8DL-RE"><strong>View Original CLI Tool »</strong></a>
+    <a href="https://github.com/nilaoda/N_m3u8DL-RE"><strong>View Original CLI Tool</strong></a>
     <br />
     <br />
     <a href="#usage">View Demo</a>
-    ·
+    |
     <a href="https://github.com/naravid19/N_m3u8DL_RE_GUI/issues/new?labels=bug">Report Bug</a>
-    ·
+    |
     <a href="https://github.com/naravid19/N_m3u8DL_RE_GUI/issues/new?labels=enhancement">Request Feature</a>
   </p>
 </div>
@@ -63,18 +63,17 @@
 
 ## About The Project
 
-<!-- Uncomment below when you have a screenshot -->
 <div align="center">
   <img src="images/screenshot.png" alt="Product Screenshot" width="80%">
 </div>
 
 **N_m3u8DL-RE GUI** provides a graphical interface for the [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) command-line tool, making it easier to download DASH, HLS, and MSS streams without memorizing complex command-line arguments.
 
-Here's why you should use this GUI:
+Main benefits:
 
-- **No command-line memorization** — All options are available through intuitive UI controls
-- **Batch processing** — Download multiple streams from text files or folders with one click
-- **Configuration persistence** — Your settings are automatically saved between sessions
+- **No command-line memorization** - Common options are available through UI controls
+- **Batch processing** - Download multiple streams from text files or folders with one click
+- **Configuration persistence** - Your settings are automatically saved between sessions
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -90,37 +89,33 @@ Here's why you should use this GUI:
 
 ## Getting Started
 
-This section explains how to set up the application locally.
+This section explains how to set up and run the application locally as an end user.
 
 ### Prerequisites
 
 Before using this application, ensure you have the following:
 
-- **N_m3u8DL-RE** — The core download engine
+- **N_m3u8DL-RE** - The core download engine
   ```sh
   # Download from: https://github.com/nilaoda/N_m3u8DL-RE/releases
   ```
-- **FFmpeg** — Required for muxing and processing
+- **FFmpeg** - Required for muxing and processing
   ```sh
   # Download from: https://ffmpeg.org/download.html
-  ```
-- **.NET 9.0 Desktop Runtime**
-  ```sh
-  # Download from: https://dotnet.microsoft.com/download
   ```
 
 ### Installation
 
-1. Download the latest release of N_m3u8DL-RE GUI
-2. Extract the archive to your preferred location
+1. Download the latest release of N_m3u8DL-RE GUI.
+2. Extract the archive to your preferred location.
 3. Place required executables in the same directory:
+   ```text
+   N_m3u8DL_RE_GUI/
+   |- N_m3u8DL_RE_GUI.exe
+   |- N_m3u8DL-RE.exe      <- Required
+   |- ffmpeg.exe           <- Optional, for muxing
    ```
-   📁 N_m3u8DL_RE_GUI/
-   ├── 📄 N_m3u8DL_RE_GUI.exe
-   ├── 📄 N_m3u8DL-RE.exe      ← Required
-   └── 📄 ffmpeg.exe           ← Optional, for muxing
-   ```
-4. Launch the application
+4. Launch `N_m3u8DL_RE_GUI.exe`.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -130,9 +125,9 @@ Before using this application, ensure you have the following:
 
 ### Quick Start
 
-1. **Enter URL** — Paste your `.m3u8`, `.mpd`, or stream URL in the URL field
-2. **Configure Options** — Select desired options (Audio Only, Sub Only, etc.)
-3. **Click GO** — The application will generate and execute the command
+1. **Enter URL** - Paste your `.m3u8`, `.mpd`, or stream URL in the URL field
+2. **Configure Options** - Select desired options (Audio Only, Sub Only, etc.)
+3. **Click GO** - The application generates and executes the command
 
 ### Input Methods
 
@@ -151,7 +146,7 @@ Add custom headers in the Headers field using this format:
 Cookie: your_cookie_value|User-Agent: Mozilla/5.0
 ```
 
-_For more examples, please refer to the [N_m3u8DL-RE Documentation](https://github.com/nilaoda/N_m3u8DL-RE)_
+For more examples, refer to the [N_m3u8DL-RE Documentation](https://github.com/nilaoda/N_m3u8DL-RE).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -159,27 +154,61 @@ _For more examples, please refer to the [N_m3u8DL-RE Documentation](https://gith
 
 ## Features
 
-### 🎯 Core Features
+### Core Features
 
-- **Intuitive Interface** — Easy-to-use graphical interface for all download options
-- **Full RE Support** — Compatible with all N_m3u8DL-RE command-line arguments
-- **Batch Downloads** — Process multiple URLs from text files or folders
-- **Config Persistence** — Settings are saved automatically between sessions
+- **Intuitive Interface** - Easy-to-use graphical interface for major options
+- **Full RE Support** - Compatible with N_m3u8DL-RE command-line arguments
+- **Batch Downloads** - Process multiple URLs from text files or folders
+- **Config Persistence** - Settings saved automatically between sessions
+- **Collapsible Sections** - Reduce clutter while keeping advanced controls available
 
-### 📥 Download Options
+### Stability and Quality
 
-- **Concurrent Downloads** — Download multiple streams simultaneously
-- **Audio/Subtitle Selection** — Download audio-only or subtitles-only
-- **Time Range** — Download specific portions of a stream
-- **Speed Limit** — Set maximum download speed
-- **Custom Proxy** — Support for HTTP and SOCKS5 proxies
+- **Safe Config Handling** - Backward-compatible `config.txt` parsing with safe fallbacks
+- **Deterministic Tests** - Cross-machine stable unit tests for args/config/parser/batch services
+- **Batch Service Layer** - Batch script generation moved out of heavy UI event code
+- **Safe Startup Validation** - Null-safe validation refresh at startup
+- **Windows-safe Argument Quoting** - Command arguments now safely handle trailing `\` paths and embedded quotes
+- **Safer Batch Titles** - Batch `TITLE` lines are escaped for CMD context and directory mode uses predictable file-based titles
+- **Safe Clipboard Access** - Clipboard-read failures are handled gracefully without crashing startup/UI flows
 
-### 🔧 Advanced Features
+### Download Options
 
-- **Custom Headers** — Add HTTP headers (Cookie, User-Agent, etc.)
-- **Mux Import** — Import external media files during muxing
-- **Thread Control** — Customize thread count, retry count, and timeouts
-- **Auto Subtitle Fix** — Automatically fix subtitle synchronization issues
+- **Concurrent Downloads** - Download multiple streams simultaneously
+- **Audio/Subtitle Selection** - Download audio-only or subtitles-only
+- **Stream Selection (Regex)** - Select/drop video/audio/subtitle streams by regex
+- **Time Range** - Download specific portions of a stream
+- **Speed Limit** - Set maximum download speed
+- **Custom Proxy** - Support for HTTP and SOCKS5 proxies
+
+### Muxing and Output
+
+- **Mux After Done** - Automatically mux to mp4/mkv with ffmpeg or mkvmerge
+- **Mux Import** - Import external media files during muxing
+- **Subtitle Format** - Choose between SRT and VTT output
+
+### Live Recording
+
+- **Perform as VOD** - Treat live streams as VOD for full download
+- **Realtime Merge** - Merge segments in real time
+- **Pipe Mux** - Direct pipe to muxer
+- **Record Limit** - Set maximum recording duration
+
+### Decryption
+
+- **Engine Selection** - MP4DECRYPT, SHAKA_PACKAGER, or FFMPEG
+- **HLS Method Override** - Custom HLS decryption method
+- **Real-Time Decryption** - Decrypt MP4 segments on the fly
+- **Key Text File** - Load decryption keys from file
+
+### Advanced Features
+
+- **Custom Headers** - Add HTTP headers (Cookie, User-Agent, etc.)
+- **Thread Control** - Customize thread count, retry count, and timeouts
+- **Auto Subtitle Fix** - Automatically fix subtitle synchronization issues
+- **Save Pattern** - Custom naming pattern for downloaded files
+- **Log Level** - Control output verbosity (OFF/ERROR/WARN/INFO/DEBUG)
+- **Readable Dropdowns** - High-contrast ComboBox dropdown list behavior
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -191,11 +220,19 @@ _For more examples, please refer to the [N_m3u8DL-RE Documentation](https://gith
 - [x] Batch download from text files
 - [x] UTF-8 batch file encoding
 - [x] Multi-language UI (EN/CN/TW)
-- [ ] Dark/Light theme toggle
+- [x] Dark theme with collapsible sections
+- [x] Mux After Done with format/muxer selection
+- [x] Live recording options
+- [x] Stream selection with regex
+- [x] Decryption engine selection
+- [x] Advanced settings (Log Level, Save Pattern, etc.)
+- [x] Safe config parser and backward compatibility hardening
+- [x] Batch generation moved to service layer
+- [x] Encoding detector/parser/core hardening with automated tests
 - [ ] Download progress visualization
 - [ ] Queue management
 
-See the [open issues](https://github.com/naravid19/N_m3u8DL_RE_GUI/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/naravid19/N_m3u8DL_RE_GUI/issues) for a full list of proposed features and known issues.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -203,15 +240,12 @@ See the [open issues](https://github.com/naravid19/N_m3u8DL_RE_GUI/issues) for a
 
 ## Contributing
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+Contributions are welcome. To contribute:
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -236,10 +270,10 @@ Project Link: [https://github.com/naravid19/N_m3u8DL_RE_GUI](https://github.com/
 
 ## Acknowledgments
 
-- [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) by nilaoda — The powerful CLI tool this GUI wraps
-- [FFmpeg](https://ffmpeg.org/) — For media processing and muxing
-- [Best-README-Template](https://github.com/othneildrew/Best-README-Template) — README template inspiration
-- [Img Shields](https://shields.io) — For the README badges
+- [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) by nilaoda
+- [FFmpeg](https://ffmpeg.org/)
+- [Best-README-Template](https://github.com/othneildrew/Best-README-Template)
+- [Img Shields](https://shields.io)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -247,7 +281,7 @@ Project Link: [https://github.com/naravid19/N_m3u8DL_RE_GUI](https://github.com/
 
 ## Disclaimer
 
-This application is a **GUI wrapper only**. All downloading and processing is handled by [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) and [FFmpeg](https://ffmpeg.org/). For issues related to downloading or media processing, please refer to their respective repositories.
+This application is a **GUI wrapper only**. All downloading and processing is handled by [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) and [FFmpeg](https://ffmpeg.org/). For issues related to downloading or media processing, refer to their respective repositories.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->

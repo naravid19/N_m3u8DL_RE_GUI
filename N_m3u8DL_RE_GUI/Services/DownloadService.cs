@@ -1,3 +1,4 @@
+#nullable enable
 using N_m3u8DL_RE_GUI.Core;
 using System.Diagnostics;
 
@@ -158,9 +159,9 @@ public class DownloadService : IDownloadService
                 {
                     _currentProcess.Kill();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Ignore exceptions when killing process
+                    Debug.WriteLine($"Failed to stop download process: {ex.Message}");
                 }
             }
         }

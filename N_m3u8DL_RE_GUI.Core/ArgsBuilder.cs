@@ -1,3 +1,4 @@
+#nullable enable
 using System.Text;
 
 namespace N_m3u8DL_RE_GUI.Core;
@@ -46,13 +47,14 @@ public static class ArgsBuilder
         // ============================================
         // Thread & Performance Settings
         // ============================================
-        if (options.ThreadCount > 0)
+        // Only emit if different from N_m3u8DL-RE defaults
+        if (options.ThreadCount > 0 && options.ThreadCount != Environment.ProcessorCount)
             sb.Append($" --thread-count {options.ThreadCount}");
         
-        if (options.DownloadRetryCount > 0)
+        if (options.DownloadRetryCount > 0 && options.DownloadRetryCount != 3)
             sb.Append($" --download-retry-count {options.DownloadRetryCount}");
         
-        if (options.HttpRequestTimeout > 0)
+        if (options.HttpRequestTimeout > 0 && options.HttpRequestTimeout != 100)
             sb.Append($" --http-request-timeout {options.HttpRequestTimeout}");
         
         // Max Speed - format like "15M" or "100K"
@@ -134,14 +136,8 @@ public static class ArgsBuilder
         sb.AppendIfNotEmpty("--drop-audio", options.DropAudio);
         sb.AppendIfNotEmpty("--drop-subtitle", options.DropSubtitle);
         
-        // Legacy AudioOnly support - convert to select-audio + drop-video
-        if (options.AudioOnly)
-        {
-            if (string.IsNullOrWhiteSpace(options.SelectAudio))
-                sb.Append(" --select-audio \".*\"");
-            if (string.IsNullOrWhiteSpace(options.DropVideo))
-                sb.Append(" --drop-video \".*\"");
-        }
+        // Note: AudioOnly checkbox is now mapped to SelectAudio + DropVideo
+        // directly in BuildArgsRE(), so no legacy conversion needed here.
         
         // ============================================
         // Subtitle Settings
@@ -229,6 +225,45 @@ public static class ArgsBuilder
 /// </summary>
 public static class StringBuilderExtensions
 {
+    private static string QuoteForWindowsArgument(string value)
+    {
+        // Follow CommandLineToArgvW-compatible escaping rules.
+        var quoted = new StringBuilder(value.Length + 2);
+        quoted.Append('"');
+        var pendingBackslashes = 0;
+
+        foreach (var ch in value)
+        {
+            if (ch == '\\')
+            {
+                pendingBackslashes++;
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                quoted.Append('\\', pendingBackslashes * 2 + 1);
+                quoted.Append('"');
+                pendingBackslashes = 0;
+                continue;
+            }
+
+            if (pendingBackslashes > 0)
+            {
+                quoted.Append('\\', pendingBackslashes);
+                pendingBackslashes = 0;
+            }
+
+            quoted.Append(ch);
+        }
+
+        if (pendingBackslashes > 0)
+            quoted.Append('\\', pendingBackslashes * 2);
+
+        quoted.Append('"');
+        return quoted.ToString();
+    }
+
     /// <summary>
     /// Append a quoted string to StringBuilder.
     /// </summary>
@@ -236,7 +271,8 @@ public static class StringBuilderExtensions
     {
         if (string.IsNullOrWhiteSpace(value))
             return sb;
-        return sb.Append($" \"{value}\"");
+
+        return sb.Append(' ').Append(QuoteForWindowsArgument(value));
     }
 
     /// <summary>
