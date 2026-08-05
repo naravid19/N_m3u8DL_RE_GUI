@@ -17,12 +17,21 @@ public class DownloadOptions
     public string? TmpDir { get; set; }
     public string? BaseUrl { get; set; }
     public string? Headers { get; set; }
+    public string? LogFilePath { get; set; } // --log-file-path
     
     // ============================================
     // Network Settings
     // ============================================
     public string? Proxy { get; set; }
     public bool UseSystemProxy { get; set; } = true;
+
+    /// <summary>
+    /// Bypass Cloudflare via curl_cffi TLS fingerprint impersonation.
+    /// When enabled, the GUI calls m3u8_cf_bypass.py (Python) instead of N_m3u8DL-RE,
+    /// because N_m3u8DL-RE's .NET HTTP client cannot forge a browser TLS fingerprint.
+    /// Requires Python 3 + curl_cffi installed on the machine.
+    /// </summary>
+    public bool BypassCloudflare { get; set; }
     
     // ============================================
     // Thread & Performance Settings
@@ -100,6 +109,7 @@ public class DownloadOptions
     public bool MuxSkipSubtitle { get; set; }
     public string? MuxImport { get; set; } // External files to import during muxing
     public string? FFmpegBinaryPath { get; set; }
+    public string? MkvmergeBinaryPath { get; set; }
     
     // ============================================
     // Live Streaming Settings

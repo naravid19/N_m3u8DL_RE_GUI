@@ -95,13 +95,17 @@ This section explains how to set up and run the application locally as an end us
 
 Before using this application, ensure you have the following:
 
-- **N_m3u8DL-RE** - The core download engine
+- **N_m3u8DL-RE (v0.6.0-beta+)** - The core download engine (bundled version: v0.6.0-beta, git master 2026-07-30)
   ```sh
   # Download from: https://github.com/nilaoda/N_m3u8DL-RE/releases
   ```
 - **FFmpeg** - Required for muxing and processing
   ```sh
   # Download from: https://ffmpeg.org/download.html
+  ```
+- **Python + curl_cffi** - Optional, required for Cloudflare WAF bypass mode
+  ```sh
+  pip install curl_cffi
   ```
 
 ### Installation
@@ -114,6 +118,7 @@ Before using this application, ensure you have the following:
    |- N_m3u8DL_RE_GUI.exe
    |- N_m3u8DL-RE.exe      <- Required
    |- ffmpeg.exe           <- Optional, for muxing
+   |- m3u8_cf_bypass.py    <- Optional, for Cloudflare bypass
    ```
 4. Launch `N_m3u8DL_RE_GUI.exe`.
 
@@ -126,7 +131,7 @@ Before using this application, ensure you have the following:
 ### Quick Start
 
 1. **Enter URL** - Paste your `.m3u8`, `.mpd`, or stream URL in the URL field
-2. **Configure Options** - Select desired options (Audio Only, Sub Only, etc.)
+2. **Configure Options** - Select desired options (Audio Only, Sub Only, Bypass CF, etc.)
 3. **Click GO** - The application generates and executes the command
 
 ### Input Methods
@@ -158,6 +163,7 @@ For more examples, refer to the [N_m3u8DL-RE Documentation](https://github.com/n
 
 - **Intuitive Interface** - Easy-to-use graphical interface for major options
 - **Full RE Support** - Compatible with N_m3u8DL-RE command-line arguments
+- **Cloudflare WAF Bypass** - Dedicated amber-accented expander with browser TLS fingerprint impersonation (`curl_cffi`), dedicated Referer/Cookie inputs, and dynamic domain auto-derivation
 - **Batch Downloads** - Process multiple URLs from text files or folders
 - **Config Persistence** - Settings saved automatically between sessions
 - **Collapsible Sections** - Reduce clutter while keeping advanced controls available
@@ -174,6 +180,7 @@ For more examples, refer to the [N_m3u8DL-RE Documentation](https://github.com/n
 
 ### Download Options
 
+- **Cloudflare Bypass** - Impersonate Chrome TLS fingerprint to download Cloudflare-protected m3u8 streams
 - **Concurrent Downloads** - Download multiple streams simultaneously
 - **Audio/Subtitle Selection** - Download audio-only or subtitles-only
 - **Stream Selection (Regex)** - Select/drop video/audio/subtitle streams by regex

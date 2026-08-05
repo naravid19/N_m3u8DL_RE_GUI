@@ -29,6 +29,7 @@ public static class ArgsBuilder
         sb.AppendIfNotEmpty("--save-dir", options.SaveDir);
         sb.AppendIfNotEmpty("--save-name", options.SaveName);
         sb.AppendIfNotEmpty("--save-pattern", options.SavePattern);
+        sb.AppendIfNotEmpty("--log-file-path", options.LogFilePath);
         sb.AppendIfNotEmpty("--base-url", options.BaseUrl);
         
         // Headers - RE supports multiple -H "key: value"
@@ -121,6 +122,7 @@ public static class ArgsBuilder
             sb.Append(" --check-segments-count false");
         
         sb.AppendIfNotEmpty("--ffmpeg-binary-path", options.FFmpegBinaryPath);
+        sb.AppendIfNotEmpty("--mkvmerge-binary-path", options.MkvmergeBinaryPath);
         
         // ============================================
         // Stream Selection Settings

@@ -85,6 +85,8 @@ internal static class MainWindowConfigMapper
         state.Set("TaskStartAt", window.TextBox_TaskStartAt.Text);
         state.Set("ForceAnsiConsole", Flag(window.CheckBox_ForceAnsiConsole.IsChecked == true));
         state.Set("NoAnsiColor", Flag(window.CheckBox_NoAnsiColor.IsChecked == true));
+        state.Set("LogFilePath", window.TextBox_LogFilePath.Text);
+        state.Set("BypassCloudflare", Flag(window.CheckBox_BypassCF?.IsChecked == true));
 
         return state;
     }
@@ -159,6 +161,8 @@ internal static class MainWindowConfigMapper
         RestoreTextBox(window.TextBox_TaskStartAt, config.Get("TaskStartAt"));
         RestoreCheckBox(window.CheckBox_ForceAnsiConsole, config.Get("ForceAnsiConsole"));
         RestoreCheckBox(window.CheckBox_NoAnsiColor, config.Get("NoAnsiColor"));
+        RestoreTextBox(window.TextBox_LogFilePath, config.Get("LogFilePath"));
+        RestoreCheckBox(window.CheckBox_BypassCF, config.Get("BypassCloudflare"));
     }
 
     private static string Flag(bool value) => value ? "1" : "0";

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
@@ -17,6 +17,18 @@
   <ItemGroup>
     <None Include="App.config" Condition="Exists('App.config')" />
     <Resource Include="logo_3Iv_icon.ico" />
+    <None Include="..\N_m3u8DL-RE.exe" Condition="Exists('..\N_m3u8DL-RE.exe')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>N_m3u8DL-RE.exe</Link>
+    </None>
+    <None Include="..\ffmpeg.exe" Condition="Exists('..\ffmpeg.exe')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>ffmpeg.exe</Link>
+    </None>
+    <None Include="..\m3u8_cf_bypass.py" Condition="Exists('..\m3u8_cf_bypass.py')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>m3u8_cf_bypass.py</Link>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

@@ -271,6 +271,26 @@ public class ArgsBuilderTests
     }
 
     [Fact]
+    public void Build_WithMuxSkipSubtitle_ShouldIncludeSkipSubInMuxFlags()
+    {
+        // Arrange
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            MuxAfterDone = true,
+            MuxFormat = "mkv",
+            Muxer = "mkvmerge",
+            MuxSkipSubtitle = true
+        };
+
+        // Act
+        var result = ArgsBuilder.Build(options);
+
+        // Assert
+        Assert.Contains("--mux-after-done format=mkv:muxer=mkvmerge:skip_sub=true", result);
+    }
+
+    [Fact]
     public void Build_WithMuxImport_ShouldIncludeMuxImportFlag()
     {
         var options = new DownloadOptions
@@ -366,5 +386,49 @@ public class ArgsBuilderTests
         var result = ArgsBuilder.Build(options);
 
         Assert.Contains("--save-name \"My \\\"Video\\\"\"", result);
+    }
+
+    [Fact]
+    public void Build_WithLogFilePath_ShouldIncludeLogFilePathArgument()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            LogFilePath = @"C:\Logs\download.log"
+        };
+
+        var result = ArgsBuilder.Build(options);
+
+        Assert.Contains("--log-file-path", result);
+        Assert.Contains(@"C:\Logs\download.log", result);
+    }
+
+    [Fact]
+    public void Build_WithEmptyLogFilePath_ShouldNotIncludeLogFilePathArgument()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            LogFilePath = ""
+        };
+
+        var result = ArgsBuilder.Build(options);
+
+        Assert.DoesNotContain("--log-file-path", result);
+    }
+
+    [Fact]
+    public void Build_WithMkvmergeBinaryPath_ShouldIncludeMkvmergeBinaryPathArgument()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/video.m3u8",
+            MkvmergeBinaryPath = @"C:\Tools\mkvmerge.exe"
+        };
+
+        var result = ArgsBuilder.Build(options);
+
+        Assert.Contains("--mkvmerge-binary-path", result);
+        Assert.Contains(@"C:\Tools\mkvmerge.exe", result);
     }
 }

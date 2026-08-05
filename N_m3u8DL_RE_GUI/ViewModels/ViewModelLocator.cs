@@ -23,7 +23,7 @@ public class ViewModelLocator
         services.AddSingleton<IDownloadService, DownloadService>();
         services.AddSingleton<IUtilityService, UtilityService>();
         services.AddSingleton<IDragDropService, DragDropService>();
-        services.AddSingleton<IConfigService, ConfigService>();
+        services.AddSingleton<IConfigService, JsonConfigService>();
         services.AddSingleton<IBatchScriptService, BatchScriptService>();
         
         // Register ViewModels

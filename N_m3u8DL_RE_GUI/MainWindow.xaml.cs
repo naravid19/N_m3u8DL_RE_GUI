@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -86,7 +86,11 @@ namespace N_m3u8DL_RE_GUI
         private void GetParameter()
         {
             if (_suspendParameterRefresh || TextBox_Parameter == null) return;
-            TextBox_Parameter.Text = BuildArgsRE(TextBox_URL.Text);
+            // In Cloudflare bypass mode, preview the python command instead of N_m3u8DL-RE args
+            if (CheckBox_BypassCF?.IsChecked == true)
+                TextBox_Parameter.Text = BuildCfCommand();
+            else
+                TextBox_Parameter.Text = BuildArgsRE(TextBox_URL.Text);
         }
 
         private void ApplyValidationState(TextBox? textBox, bool isValid)
@@ -177,15 +181,19 @@ namespace N_m3u8DL_RE_GUI
                 
                 // Stream Selection
                 SelectVideo = TextBox_SelectVideo?.Text?.Trim(),
-                SelectAudio = CheckBox_AudioOnly?.IsChecked == true ? "best" : TextBox_SelectAudio?.Text?.Trim(),
+                SelectAudio = CheckBox_AudioOnly?.IsChecked == true 
+                    ? (string.IsNullOrWhiteSpace(TextBox_SelectAudio?.Text) ? "best" : TextBox_SelectAudio.Text.Trim()) 
+                    : TextBox_SelectAudio?.Text?.Trim(),
                 SelectSubtitle = TextBox_SelectSubtitle?.Text?.Trim(),
-                DropVideo = CheckBox_AudioOnly?.IsChecked == true ? "true" : TextBox_DropVideo?.Text?.Trim(),
+                DropVideo = CheckBox_AudioOnly?.IsChecked == true ? ".*" : TextBox_DropVideo?.Text?.Trim(),
                 DropAudio = TextBox_DropAudio?.Text?.Trim(),
                 DropSubtitle = TextBox_DropSubtitle?.Text?.Trim(),
                 
                 // Advanced Settings
                 SavePattern = TextBox_SavePattern?.Text?.Trim(),
+                LogFilePath = TextBox_LogFilePath?.Text?.Trim(),
                 FFmpegBinaryPath = TextBox_FFmpegPath?.Text?.Trim(),
+                MkvmergeBinaryPath = string.Equals((Combo_Muxer?.SelectedItem as ComboBoxItem)?.Content?.ToString(), "mkvmerge", StringComparison.OrdinalIgnoreCase) ? TextBox_MuxBinPath?.Text?.Trim() : null,
                 AdKeyword = TextBox_AdKeyword?.Text?.Trim(),
                 UrlProcessorArgs = TextBox_UrlProcessorArgs?.Text?.Trim(),
                 TaskStartAt = TextBox_TaskStartAt?.Text?.Trim(),
@@ -232,6 +240,7 @@ namespace N_m3u8DL_RE_GUI
         private void Combo_HLSMethod_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
         private void Combo_LogLevel_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
         private void Combo_UILanguage_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_CFImpersonate_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
 
         private void FlashTextBox(TextBox textBox)
         {
@@ -269,7 +278,7 @@ namespace N_m3u8DL_RE_GUI
 
         private void TextBox_URL_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            //从剪切板读取url
+            // Read URL from clipboard on double-click
             string str = InputValidation.ExtractFirstUrl(SafeGetClipboardText());
             if (str != "" && str != TextBox_URL.Text)
             {
@@ -470,7 +479,8 @@ namespace N_m3u8DL_RE_GUI
             {
                 Debug.WriteLine($"Key conversion failed (invalid key input): {ex.Message}");
             }
-            if (!File.Exists(TextBox_EXE.Text))
+            // Skip the N_m3u8DL-RE.exe check when using Cloudflare bypass (Python m3u8_cf_bypass.py is used instead)
+            if (CheckBox_BypassCF?.IsChecked != true && !File.Exists(TextBox_EXE.Text))
             {
                 MessageBox.Show(Properties.Resources.String2);
                 return;
@@ -518,8 +528,15 @@ namespace N_m3u8DL_RE_GUI
                 Button_GO.IsEnabled = false;
                 try
                 {
-                    TextBox_Parameter.Text = BuildArgsRE();
-                    StartExecutableWithArguments(TextBox_EXE.Text, TextBox_Parameter.Text);
+                    if (CheckBox_BypassCF?.IsChecked == true)
+                    {
+                        StartCloudflareDownload();
+                    }
+                    else
+                    {
+                        TextBox_Parameter.Text = BuildArgsRE();
+                        StartExecutableWithArguments(TextBox_EXE.Text, TextBox_Parameter.Text);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -544,17 +561,8 @@ namespace N_m3u8DL_RE_GUI
                 Button_GO.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
         }
 
-        private void SetTopMost(object sender, RoutedEventArgs e)
-        {
-            if (CheckBox_TopMost.IsChecked == true) 
-            {
-                Topmost = true;
-            }
-            else
-            {
-                Topmost = false;
-            }
-        }
+        private void SetTopMost(object sender, RoutedEventArgs e) =>
+            Topmost = CheckBox_TopMost.IsChecked == true;
 
         private void Menu_GetDownloader(object sender, RoutedEventArgs e)
         {
@@ -563,12 +571,245 @@ namespace N_m3u8DL_RE_GUI
 
         private static void StartShellTarget(string targetPath)
         {
-            var startInfo = new ProcessStartInfo
+            try
             {
-                FileName = targetPath,
-                UseShellExecute = true
-            };
-            Process.Start(startInfo);
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = targetPath,
+                    UseShellExecute = true
+                };
+                Process.Start(startInfo);
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                Debug.WriteLine($"Failed to open target '{targetPath}': {ex.Message}");
+            }
+        }
+
+        // ============================================================
+        // Cloudflare Bypass via curl_cffi
+        // ============================================================
+
+        private static string EscapeBatchArg(string arg)
+        {
+            if (string.IsNullOrEmpty(arg)) return string.Empty;
+            return arg.Replace("\"", "\\\"");
+        }
+
+        /// <summary>
+        /// Build the Python command that invokes m3u8_cf_bypass.py.
+        /// Uses dedicated CF bypass controls (TextBox_CFReferer, TextBox_CFCookie,
+        /// Combo_CFImpersonate, CheckBox_CFKeepSegs) for a clean, predictable data path.
+        /// </summary>
+        private string BuildCfCommand(string pythonExe = "python")
+        {
+            string scriptPath = Path.Combine(AppContext.BaseDirectory, "m3u8_cf_bypass.py");
+            if (!File.Exists(scriptPath))
+                scriptPath = Path.Combine(Environment.CurrentDirectory, "m3u8_cf_bypass.py");
+
+            string url = EscapeBatchArg(TextBox_URL.Text);
+            string titleClean = GetValidFileName(TextBox_Title.Text);
+            if (string.IsNullOrWhiteSpace(titleClean)) titleClean = "output";
+            if (!titleClean.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)) titleClean += ".mp4";
+            string title = EscapeBatchArg(titleClean);
+
+            string saveDirRaw = string.IsNullOrWhiteSpace(TextBox_WorkDir.Text)
+                ? Environment.CurrentDirectory
+                : TextBox_WorkDir.Text;
+            string saveDir = EscapeBatchArg(saveDirRaw);
+
+            // Segment temp directory next to GUI exe (doesn't pollute user save dir).
+            // Merged successfully → m3u8_cf_bypass.py auto-deletes it.
+            string segDir = EscapeBatchArg(Path.Combine(AppContext.BaseDirectory, "cf_segments"));
+
+            // --- CF-specific controls ---
+            // Referer: read from dedicated CF Referer field. If blank, auto-derive from input URL domain.
+            string referer = TextBox_CFReferer?.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(referer) && !string.IsNullOrWhiteSpace(TextBox_URL.Text))
+            {
+                if (Uri.TryCreate(TextBox_URL.Text.Trim(), UriKind.Absolute, out var parsedUri))
+                {
+                    referer = parsedUri.GetLeftPart(UriPartial.Authority) + "/";
+                }
+            }
+
+            // Cookie: read from dedicated CF Cookie field.
+            string cookie = TextBox_CFCookie?.Text?.Trim() ?? string.Empty;
+
+            // Impersonation fingerprint: read from ComboBox selection.
+            string impersonate = "chrome";
+            if (Combo_CFImpersonate?.SelectedItem is ComboBoxItem cfi && cfi.Tag is string tag && !string.IsNullOrEmpty(tag))
+                impersonate = tag;
+
+            var cmd = $"\"{pythonExe}\" \"{scriptPath}\" \"{url}\" --referer \"{EscapeBatchArg(referer)}\" -o \"{title}\" --work-dir \"{saveDir}\" --seg-dir \"{segDir}\" --impersonate \"{impersonate}\"";
+            if (!string.IsNullOrEmpty(cookie))
+                cmd += $" --cookie \"{EscapeBatchArg(cookie)}\"";
+            // CheckBox_CFKeepSegs: when checked, keep segments after merge.
+            if (CheckBox_CFKeepSegs?.IsChecked == true)
+                cmd += " --keep-segs";
+            return cmd;
+        }
+
+        /// <summary>
+        /// Sanitise a string so it can be used as a Windows filename.
+        /// </summary>
+        private static string GetValidFileName(string name)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            return name.Trim();
+        }
+
+        /// <summary>
+        /// Find a Python interpreter that can import curl_cffi, by probing a list of
+        /// candidate interpreters and running `python -c "import curl_cffi"` for each.
+        /// Returns the first interpreter whose exit code is 0, or null if none found.
+        ///
+        /// Candidate order:
+        ///   1. Explicit full paths to common CPython installs (avoids Windows Store stub)
+        ///   2. `py` launcher (reliable on Windows)
+        ///   3. Bare `python` / `python3` (PATH-resolved; last resort)
+        /// </summary>
+        private static string? FindPythonWithCurlCffi()
+        {
+            var candidates = new List<string>();
+
+            // 1. Explicit full paths to standard CPython installs
+            try
+            {
+                string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string progFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                string progFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+                foreach (var baseDir in new[] { progFiles, progFilesX86 })
+                {
+                    if (string.IsNullOrEmpty(baseDir)) continue;
+                    var pyRoot = Path.Combine(baseDir, "Python");
+                    if (Directory.Exists(pyRoot))
+                        foreach (var d in Directory.GetDirectories(pyRoot))
+                            candidates.Add(Path.Combine(d, "python.exe"));
+                }
+                if (!string.IsNullOrEmpty(localApp))
+                {
+                    var pp = Path.Combine(localApp, "Programs", "Python");
+                    if (Directory.Exists(pp))
+                        foreach (var d in Directory.GetDirectories(pp))
+                            candidates.Add(Path.Combine(d, "python.exe"));
+                }
+            }
+            catch { }
+
+            // 2. WorkBuddy & Anaconda/Miniconda managed environments
+            try
+            {
+                string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                if (!string.IsNullOrEmpty(userProfile))
+                {
+                    string wbPy = Path.Combine(userProfile, ".workbuddy", "binaries", "python", "versions");
+                    if (Directory.Exists(wbPy))
+                        foreach (var v in Directory.GetDirectories(wbPy))
+                            candidates.Add(Path.Combine(v, "python.exe"));
+
+                    foreach (var condaName in new[] { "anaconda3", "miniconda3", "Anaconda3", "Miniconda3" })
+                    {
+                        var condaPath = Path.Combine(userProfile, condaName, "python.exe");
+                        if (File.Exists(condaPath))
+                            candidates.Add(condaPath);
+                    }
+                }
+            }
+            catch { }
+
+            // 3. Named launchers resolved via PATH.
+            candidates.Add("py");
+            candidates.Add("python");
+            candidates.Add("python3");
+
+            foreach (var c in candidates)
+            {
+                try
+                {
+                    // Skip full paths that don't exist on disk.
+                    if (c.IndexOf(Path.DirectorySeparatorChar) >= 0 && !File.Exists(c))
+                        continue;
+
+                    var psi = new ProcessStartInfo(c, "-c \"import curl_cffi\"")
+                    {
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                    };
+                    using (var p = Process.Start(psi))
+                    {
+                        if (p == null) continue;
+                        // Read both streams to avoid deadlock, wait up to 10 s.
+                        p.StandardOutput.ReadToEnd();
+                        p.StandardError.ReadToEnd();
+                        if (!p.WaitForExit(10000))
+                        {
+                            try { p.Kill(); } catch { }
+                            continue;
+                        }
+                        if (p.ExitCode == 0)
+                            return c;
+                    }
+                }
+                catch { }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Launch m3u8_cf_bypass.py via a temp .bat so the console window stays open
+        /// and the user can see download progress / errors.
+        /// Resolves a Python that has curl_cffi installed so the download actually runs.
+        /// </summary>
+        private void StartCloudflareDownload()
+        {
+            string scriptPath = Path.Combine(AppContext.BaseDirectory, "m3u8_cf_bypass.py");
+            if (!File.Exists(scriptPath))
+                scriptPath = Path.Combine(Environment.CurrentDirectory, "m3u8_cf_bypass.py");
+            if (!File.Exists(scriptPath))
+            {
+                MessageBox.Show(
+                    "m3u8_cf_bypass.py not found.\nPlease place it in the same directory as the GUI executable.",
+                    "Bypass Cloudflare", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Resolve a Python that actually has curl_cffi installed.
+            string? pythonExe = FindPythonWithCurlCffi();
+            if (string.IsNullOrEmpty(pythonExe))
+            {
+                MessageBox.Show(
+                    "No Python interpreter with curl_cffi found.\n\n" +
+                    "Install the dependency once (run in your terminal):\n" +
+                    "    pip install curl_cffi\n" +
+                    "or: python -m pip install curl_cffi\n\n" +
+                    "Then click Start Download again.",
+                    "Bypass Cloudflare", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string cfCmd = BuildCfCommand(pythonExe);
+            TextBox_Parameter.Text = cfCmd;
+
+            var sb = new StringBuilder();
+            sb.AppendLine("@echo off");
+            sb.AppendLine("chcp 65001 >nul");
+            sb.AppendLine("set PYTHONUTF8=1");
+            sb.AppendLine($"echo [*] Python = {pythonExe}");
+            sb.AppendLine("echo [*] Cloudflare bypass mode active (curl_cffi TLS fingerprint impersonation)");
+            sb.AppendLine("echo [*] Downloading... do not close this window.");
+            sb.AppendLine("echo.");
+            sb.AppendLine(cfCmd);
+            sb.AppendLine("echo.");
+            sb.AppendLine("pause");
+
+            string bat = Path.Combine(Path.GetTempPath(), "cf_dl_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".bat");
+            // UTF-8 without BOM + chcp 65001 + PYTHONUTF8=1 avoids the '∩╗┐@echo' warning in CMD
+            File.WriteAllText(bat, sb.ToString(), new UTF8Encoding(false));
+            StartShellTarget(bat);
         }
 
         private static string SafeGetClipboardText()
@@ -597,28 +838,26 @@ namespace N_m3u8DL_RE_GUI
                 Arguments = arguments,
                 UseShellExecute = false
             };
-            Process.Start(startInfo);
+            var process = Process.Start(startInfo);
+            if (process == null)
+                Debug.WriteLine($"Failed to start process: {executablePath}");
         }
 
-        /// <summary> 
-        /// 给定文件的路径，读取文件的二进制数据，判断文件的编码类型 
-        /// </summary> 
-        /// <param name=“FILE_NAME“>文件路径</param> 
-        /// <returns>文件的编码类型</returns> 
-        public static Encoding GetType(string FILE_NAME)
-        {
-            return TextEncodingDetector.DetectFromFile(FILE_NAME);
-        }
+        /// <summary>
+        /// Detects the text encoding of a file by reading its byte-order mark.
+        /// </summary>
+        /// <param name="filePath">Absolute path to the file.</param>
+        /// <returns>The detected <see cref="Encoding"/>.</returns>
+        public static Encoding DetectFileEncoding(string filePath) =>
+            TextEncodingDetector.DetectFromFile(filePath);
 
-        /// <summary> 
-        /// 通过给定的文件流，判断文件的编码类型 
-        /// </summary> 
-        /// <param name=“fs“>文件流</param> 
-        /// <returns>文件的编码类型</returns> 
-        public static Encoding GetType(FileStream fs)
-        {
-            return TextEncodingDetector.DetectFromStream(fs);
-        }
+        /// <summary>
+        /// Detects the text encoding from a file stream by reading its byte-order mark.
+        /// </summary>
+        /// <param name="stream">An open <see cref="FileStream"/>.</param>
+        /// <returns>The detected <see cref="Encoding"/>.</returns>
+        public static Encoding DetectFileEncoding(FileStream stream) =>
+            TextEncodingDetector.DetectFromStream(stream);
 
         private void TextBox_Key_PreviewDragEnter(object sender, System.Windows.DragEventArgs e)
         {

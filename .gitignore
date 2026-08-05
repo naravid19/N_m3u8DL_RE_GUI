@@ -273,8 +273,11 @@ project_requirements.txt
 /Publish/
 publish.bat
 
-# Keep log structure docs, ignore daily/raw logs
-/log
+# Temporary Cloudflare bypass segments and temp scripts
+/cf_segments/
+cf_dl_*.bat
 
-# Local reference snapshots
+test.txt
+/tools
 /docs
+/references

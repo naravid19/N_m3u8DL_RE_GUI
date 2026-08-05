@@ -1,9 +1,73 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [2.1.2] - 2026-08-05
+
+### Added
+
+- **Dedicated Cloudflare Bypass UX/UI Expander**:
+  - Dedicated `<Expander>` section styled with amber accent (`#F39C12`) matching VS Code theme.
+  - TLS Fingerprint impersonation selector dropdown (`chrome`, `chrome120`, `chrome131`, `edge101`, `safari17_0`).
+  - Dedicated **Referer** input with dynamic origin auto-derivation from input M3U8 URL.
+  - Dedicated **CF Cookie** input for `cf_clearance` / `__cf_bm` headers.
+  - Independent **Keep Segments** toggle decoupled from global file deletion settings.
+  - Contextual tip panel for Cloudflare challenge bypass guidance.
+- **Enhanced Python Downloader (`m3u8_cf_bypass.py`)**:
+  - Auto-derivation of `Referer` from M3U8 URL domain via `urllib.parse.urlparse`.
+  - Robust URL resolution for relative, root-relative, and query-string URLs using `urllib.parse.urljoin`.
+  - HLS Encryption detection warning (`#EXT-X-KEY` detection).
+  - Real-time download progress percentage logging (every 5-10 segments).
+
+### Changed
+
+- Renamed previous version entry from `2.2.0` to `2.1.1`.
+- Updated Window Title to `N_m3u8DL-RE GUI v2.1.2`.
+- Updated `AssemblyVersion` and `AssemblyFileVersion` to `2.1.2.0`.
+
+### Verification
+
+- `python m3u8_cf_bypass.py --help` executed cleanly (Exit code 0).
+- `dotnet build N_m3u8DL_RE_GUI.sln` passes cleanly (0 Error, 0 Warning).
+- `dotnet test N_m3u8DL_RE_GUI.sln` passes cleanly (104/104 tests passed).
+
+---
+
+## [2.1.1] - 2026-08-01
+
+### Added
+
+- **Enhanced Cloudflare Bypass (`m3u8_cf_bypass.py`)**:
+  - Automatic Master Playlist resolution (`#EXT-X-STREAM-INF`) to select highest bandwidth stream.
+  - Per-segment download retry loop (`max_retries=5`) for resilient downloads under unstable network conditions.
+  - Batch command injection prevention via `EscapeBatchArg()` argument sanitization.
+  - Expanded Python interpreter probing (`FindPythonWithCurlCffi`) supporting standard CPython, WorkBuddy managed Python, Anaconda/Miniconda, `py` launcher, and PATH resolvers.
+  - Real-time parameter preview for Cloudflare bypass script in UI parameter box.
+- **Improved UX & Format Guidance**:
+  - Enhanced tooltips for `MuxImport`, `MuxBinPath`, `CustomRange`, and `AdKeyword` controls with exact CLI format examples.
+- **Repository Structure Normalization**:
+  - Migrated agent handoff notes to `docs/dev-notes/` to separate development context from runtime logs (`/Logs/`).
+  - Added `.gitignore` rules for `/cf_segments/` and temporary batch execution files.
+
+### Changed
+
+- **Updated Core Engine Binary (`N_m3u8DL-RE.exe`)**:
+  - Upgraded bundled core engine to `N_m3u8DL-RE v0.6.0-beta` (latest git master branch build version `2026-07-30-git-2ae2413488`).
+
+### Fixed
+
+- **Audio Only Stream Selection**: Corrected `--drop-video` argument in Audio Only mode to use regex wildcard (`.*`) instead of invalid boolean string (`"true"`).
+- **Mux Skip Subtitles**: Verified and added unit test coverage for `skip_sub=true` mapping in `-M` parameter.
+
+### Verification
+
+- `dotnet build N_m3u8DL_RE_GUI.sln` passes cleanly (0 Error, 0 Warning).
+- `dotnet test N_m3u8DL_RE_GUI.sln` passes cleanly (104/104 tests passed).
 
 ---
 
@@ -138,6 +202,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
+| 2.2.0   | 2026-08-01 | Cloudflare bypass hardening, AudioOnly regex fix, UX hints |
 | 2.1.0   | 2026-03-03 | 5 new settings sections, Expander UI, stability hardening |
 | 2.0.0   | 2026-01-23 | Code refactoring, English codebase, UTF-8 encoding        |
 | 1.1.0   | 2026-01-13 | Stream settings refactor                                  |
