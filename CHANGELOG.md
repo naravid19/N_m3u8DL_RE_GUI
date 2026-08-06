@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.1.2] - 2026-08-05
+## [2.1.2] - 2026-08-06
 
 ### Added
 
@@ -22,11 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-derivation of `Referer` from M3U8 URL domain via `urllib.parse.urlparse`.
   - Robust URL resolution for relative, root-relative, and query-string URLs using `urllib.parse.urljoin`.
   - HLS Encryption detection warning (`#EXT-X-KEY` detection).
-  - Real-time download progress percentage logging (every 5-10 segments).
+  - Real-time download progress percentage logging.
+  - **Upstream N_m3u8DL-RE Log & UX Parity**:
+    - `Mediainfo.ToString()` stream probing formatting (`[0x100]: Video, h264 (High), 640x360, 29.97 fps, 130 kb/s`) matching C# upstream `MediainfoUtil`.
+    - Corrected stream ID fallback to `"NaN"` matching upstream `IdRegex`.
+    - Standardized terminal log strings matching upstream `StaticText.cs` (`Content Matched: HTTP Live Streaming`, `Master List detected, try parse all streams`, `Selected streams:`).
+    - Optimized single-pass `ffmpeg` binary path resolution.
+- **Project Knowledge Architecture**:
+  - Graphify Knowledge Graph generation (`graphify-out/graph.json` - 12 Nodes, 14 Edges, 3 Communities).
+  - `claude-mem` Knowledge Corpus setup (`N_m3u8DL_RE_GUI_corpus`).
 
 ### Changed
 
-- Renamed previous version entry from `2.2.0` to `2.1.1`.
 - Updated Window Title to `N_m3u8DL-RE GUI v2.1.2`.
 - Updated `AssemblyVersion` and `AssemblyFileVersion` to `2.1.2.0`.
 

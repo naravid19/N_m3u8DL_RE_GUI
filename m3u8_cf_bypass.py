@@ -243,7 +243,7 @@ def probe_media_info(seg_path, ffmpeg_cmd="ffmpeg"):
         for stream_line in stream_matches:
             # Extract stream ID e.g. [0x100] or #0:0
             id_match = re.search(r'#0:\d(\[0x\w+\])?', stream_line)
-            stream_id = id_match.group(1) if id_match and id_match.group(1) else "[0x01]"
+            stream_id = id_match.group(1) if id_match and id_match.group(1) else "NaN"
 
             # Extract Type (Video / Audio / Subtitle) and Text
             type_match = re.search(r': (\w+): (.*)', stream_line)
@@ -331,12 +331,12 @@ def main():
         print_error_box(r.status_code, a.url, referer, bool(a.cookie))
         sys.exit(1)
 
-    Logger.info("Content Matched: HTTP Live Streaming (HLS)")
+    Logger.info("Content Matched: HTTP Live Streaming")
 
     # Master Playlist handling: Check if this is a master playlist containing #EXT-X-STREAM-INF
     if "#EXT-X-STREAM-INF" in r.text:
         Logger.info("Parsing streams...")
-        Logger.warn("Master List detected, parsing all variant streams...")
+        Logger.warn("Master List detected, try parse all streams")
         variants = parse_master_playlist(a.url, r.text)
         if variants:
             Logger.info(f"Extracted, there are {len(variants)} stream(s):")
@@ -344,7 +344,7 @@ def main():
                 Logger.info(f"  {format_variant_info(v)}")
 
             best_variant = variants[0]
-            Logger.info("Selected streams (Highest Quality):")
+            Logger.info("Selected streams:")
             Logger.info(f"  {format_variant_info(best_variant)}")
             a.url = best_variant["url"]
             try:
@@ -423,12 +423,6 @@ def main():
             f.write("file '" + os.path.abspath(t).replace("\\", "/") + "'\n")
 
     out_path = os.path.join(out_dir, out_name)
-    ff = "ffmpeg"
-    if not shutil.which(ff):
-        here = os.path.dirname(os.path.abspath(__file__))
-        cand = os.path.join(here, "ffmpeg.exe") if os.name == "nt" else os.path.join(here, "ffmpeg")
-        if os.path.exists(cand):
-            ff = cand
 
     Logger.info(f"Merging segments with FFmpeg -> {out_path}")
     try:
