@@ -796,12 +796,9 @@ namespace N_m3u8DL_RE_GUI
 
             var sb = new StringBuilder();
             sb.AppendLine("@echo off");
+            sb.AppendLine("title N_m3u8DL-RE (Cloudflare Bypass Mode)");
             sb.AppendLine("chcp 65001 >nul");
             sb.AppendLine("set PYTHONUTF8=1");
-            sb.AppendLine($"echo [*] Python = {pythonExe}");
-            sb.AppendLine("echo [*] Cloudflare bypass mode active (curl_cffi TLS fingerprint impersonation)");
-            sb.AppendLine("echo [*] Downloading... do not close this window.");
-            sb.AppendLine("echo.");
             sb.AppendLine(cfCmd);
             sb.AppendLine("echo.");
             sb.AppendLine("pause");

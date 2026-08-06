@@ -202,7 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
-| 2.2.0   | 2026-08-01 | Cloudflare bypass hardening, AudioOnly regex fix, UX hints |
+| 2.1.2   | 2026-08-05 | Dedicated CF Bypass Expander UX/UI, TLS fingerprinting, Referer/Cookie inputs |
+| 2.1.1   | 2026-08-01 | Cloudflare bypass hardening, AudioOnly regex fix, UX hints |
 | 2.1.0   | 2026-03-03 | 5 new settings sections, Expander UI, stability hardening |
 | 2.0.0   | 2026-01-23 | Code refactoring, English codebase, UTF-8 encoding        |
 | 1.1.0   | 2026-01-13 | Stream settings refactor                                  |
