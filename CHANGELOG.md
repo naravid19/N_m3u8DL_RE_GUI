@@ -28,9 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Corrected stream ID fallback to `"NaN"` matching upstream `IdRegex`.
     - Standardized terminal log strings matching upstream `StaticText.cs` (`Content Matched: HTTP Live Streaming`, `Master List detected, try parse all streams`, `Selected streams:`).
     - Optimized single-pass `ffmpeg` binary path resolution.
-- **Project Knowledge Architecture**:
-  - Graphify Knowledge Graph generation (`graphify-out/graph.json` - 12 Nodes, 14 Edges, 3 Communities).
-  - `claude-mem` Knowledge Corpus setup (`N_m3u8DL_RE_GUI_corpus`).
 
 ### Changed
 
