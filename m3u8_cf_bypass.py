@@ -309,7 +309,7 @@ def main():
     if a.cookie:
         headers["Cookie"] = a.cookie
 
-    print(f"\n{Colors.BOLD}{Colors.CYAN}N_m3u8DL-RE{Colors.RESET} {Colors.DIM}(Cloudflare TLS Bypass Extension v2.1.2){Colors.RESET}")
+    print(f"\n{Colors.BOLD}{Colors.CYAN}N_m3u8DL-RE{Colors.RESET} {Colors.DIM}(Cloudflare TLS Bypass Extension v2.1.3){Colors.RESET}")
     print(f"{Colors.DIM}{'=' * 75}{Colors.RESET}")
     Logger.info(f"Fingerprint Impersonation = {Colors.BOLD}{a.impersonate}{Colors.RESET}")
     Logger.info(f"Target URL                 = {Colors.WHITE}{a.url}{Colors.RESET}")

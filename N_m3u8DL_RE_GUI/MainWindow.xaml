@@ -6,1031 +6,989 @@
         xmlns:local="clr-namespace:N_m3u8DL_RE_GUI"
         xmlns:props="clr-namespace:N_m3u8DL_RE_GUI.Properties"
         mc:Ignorable="d"
-        Title="N_m3u8DL-RE GUI v2.1.2" 
-        Height="850" Width="650"
-        MinHeight="750" MinWidth="580"
+        Title="N_m3u8DL-RE GUI v2.1.3" 
+        Height="680" Width="920"
+        MinHeight="580" MinWidth="800"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
         Closing="Window_Closing" 
         Loaded="Window_Loaded"
-        Background="#FF1E1E1E"
+        Background="#0D0D0F"
+        FontFamily="Segoe UI"
+        TextOptions.TextFormattingMode="Display"
         DataContext="{Binding Source={StaticResource Locator}, Path=MainViewModel}">
     
     <Window.Resources>
-        <!-- Style for Labels -->
+        <!-- Color Brushes -->
+        <SolidColorBrush x:Key="BgDarkBrush" Color="#0D0D0F"/>
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#141418"/>
+        <SolidColorBrush x:Key="CardBrush" Color="#1C1C22"/>
+        <SolidColorBrush x:Key="BorderBrushCustom" Color="#2A2A38"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#5865F2"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#6B78FF"/>
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="#4350D8"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F2F2F8"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8888A8"/>
+        <SolidColorBrush x:Key="CfAmberBrush" Color="#F39C12"/>
+        <SolidColorBrush x:Key="CommandBarBrush" Color="#0A0A0D"/>
+        <SolidColorBrush x:Key="CommandTextBrush" Color="#A8C0FF"/>
+
+        <!-- Label Style -->
         <Style x:Key="LabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFE0E0E0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Width" Value="75"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
         </Style>
         
-        <!-- Style for TextBoxes -->
+        <!-- TextBox Style -->
         <Style x:Key="TextBoxStyle" TargetType="TextBox">
-            <Setter Property="Background" Value="#FF2D2D30"/>
-            <Setter Property="Foreground" Value="#FFF1F1F1"/>
-            <Setter Property="BorderBrush" Value="#FF3F3F46"/>
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushCustom}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="5,3"/>
-            <Setter Property="CaretBrush" Value="#FFF1F1F1"/>
-            <Setter Property="SelectionBrush" Value="#FF007ACC"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="CaretBrush" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Style.Triggers>
                 <Trigger Property="IsFocused" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF007ACC"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                 </Trigger>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF007ACC"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
         
-        <!-- Style for Checkboxes -->
+        <!-- CheckBox Style -->
         <Style x:Key="CheckBoxStyle" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#FFE0E0E0"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Style.Triggers>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Foreground" Value="#FF2ECC71"/>
+                    <Setter Property="Foreground" Value="#2ECC71"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
         
-        <!-- Style for Buttons -->
+        <!-- Primary Action Button Style -->
         <Style x:Key="ButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#FF0E639C"/>
-            <Setter Property="Foreground" Value="#FFFFFFFF"/>
-            <Setter Property="BorderBrush" Value="#FF1177BB"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,6"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FF1177BB"/>
+                    <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="#FF094771"/>
+                    <Setter Property="Background" Value="{StaticResource AccentPressedBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
         
-        <!-- Style for Secondary Buttons -->
+        <!-- Secondary Button Style -->
         <Style x:Key="SecondaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#FFE0E0E0"/>
-            <Setter Property="BorderBrush" Value="#FF3F3F46"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushCustom}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,4"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FF3F3F46"/>
+                    <Setter Property="Background" Value="{StaticResource BorderBrushCustom}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
         
-        <!-- Style for GroupBox -->
+        <!-- GroupBox Style with full dark-theme template -->
         <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
-            <Setter Property="Foreground" Value="#FF007ACC"/>
-            <Setter Property="BorderBrush" Value="#FF3F3F46"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushCustom}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="0,5"/>
-            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupBox">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <!-- Header pill -->
+                            <Border Grid.Row="0" Background="{StaticResource CardBrush}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1,1,1,0"
+                                    Padding="10,5" CornerRadius="3,3,0,0">
+                                <ContentPresenter ContentSource="Header"
+                                                  RecognizesAccessKey="True"
+                                                  TextBlock.Foreground="{TemplateBinding Foreground}"
+                                                  TextBlock.FontWeight="{TemplateBinding FontWeight}"
+                                                  TextBlock.FontSize="11"/>
+                            </Border>
+                            <!-- Content area -->
+                            <Border Grid.Row="1" Background="{StaticResource CardBrush}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1,0,1,1"
+                                    Padding="{TemplateBinding Padding}"
+                                    CornerRadius="0,0,3,3">
+                                <ContentPresenter/>
+                            </Border>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        
-        <!-- Style for ComboBox -->
-        <Style x:Key="ComboBoxItemStyle" TargetType="ComboBoxItem">
-            <Setter Property="Foreground" Value="#FF1E1E1E"/>
-            <Setter Property="Background" Value="#FFFFFFFF"/>
-            <Setter Property="Padding" Value="6,3"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+
+        <!-- Dark ContextMenu Style -->
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushCustom}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="2"/>
+        </Style>
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="8,4"/>
             <Style.Triggers>
                 <Trigger Property="IsHighlighted" Value="True">
-                    <Setter Property="Background" Value="#FF007ACC"/>
-                    <Setter Property="Foreground" Value="#FFFFFFFF"/>
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="Separator">
+            <Setter Property="Background" Value="{StaticResource BorderBrushCustom}"/>
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Margin" Value="4,2"/>
+        </Style>
+
+        <!-- Dark ScrollBar / ScrollViewer -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="MinWidth" Value="8"/>
+        </Style>
+        <Style TargetType="ScrollViewer">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <!-- ComboBox ToggleButton Template -->
+        <ControlTemplate x:Key="ComboBoxToggleButtonTemplate" TargetType="ToggleButton">
+            <Border x:Name="templateRoot"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="2">
+                <Grid x:Name="hasGroup">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                    </Grid.ColumnDefinitions>
+                    <Path x:Name="arrow" Grid.Column="1"
+                          Data="M 0 0 L 4 4 L 8 0 Z"
+                          Fill="{StaticResource TextSecondaryBrush}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="templateRoot" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                    <Setter TargetName="arrow" Property="Fill" Value="{StaticResource TextPrimaryBrush}"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- ComboBox Dark Theme Styling (Fixes White Dropdown & Light Box Bug) -->
+        <Style x:Key="ComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#FFDCEBFA"/>
-                    <Setter Property="Foreground" Value="#FF1E1E1E"/>
-                </Trigger>
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
-                        <Condition Property="IsSelected" Value="True"/>
-                        <Condition Property="IsHighlighted" Value="True"/>
-                    </MultiTrigger.Conditions>
-                    <Setter Property="Background" Value="#FF007ACC"/>
-                    <Setter Property="Foreground" Value="#FFFFFFFF"/>
-                </MultiTrigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Foreground" Value="#FF7A7A7A"/>
+                    <Setter Property="Background" Value="{StaticResource BorderBrushCustom}"/>
+                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#FFFFFFFF"/>
-            <Setter Property="Foreground" Value="#FF1E1E1E"/>
-            <Setter Property="BorderBrush" Value="#FF3F3F46"/>
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushCustom}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="5,3"/>
-            <Setter Property="MinHeight" Value="24"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="MinHeight" Value="26"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="ItemContainerStyle" Value="{StaticResource ComboBoxItemStyle}"/>
-            <Style.Resources>
-                <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#FFFFFFFF"/>
-                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FFFFFFFF"/>
-                <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#FF1E1E1E"/>
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#FF007ACC"/>
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFFFF"/>
-            </Style.Resources>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF007ACC"/>
-                </Trigger>
-                <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="BorderBrush" Value="#FF007ACC"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        
-        <!-- Style for Expander (collapsible sections) -->
-        <Style x:Key="ExpanderStyle" TargetType="Expander">
-            <Setter Property="Foreground" Value="#FF007ACC"/>
-            <Setter Property="Background" Value="#FF1E1E1E"/>
-            <Setter Property="BorderBrush" Value="#FF3F3F46"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="0,3"/>
-            <Setter Property="Padding" Value="5"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="mainGrid">
+                            <ToggleButton x:Name="toggleButton"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Template="{StaticResource ComboBoxToggleButtonTemplate}"/>
+
+                            <ContentPresenter x:Name="contentTemplate"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              IsHitTestVisible="False"
+                                              Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Margin="1"
+                                   PopupAnimation="Slide"
+                                   Placement="Bottom">
+                                <Border x:Name="dropDownBorder"
+                                        Background="{StaticResource CardBrush}"
+                                        BorderBrush="{StaticResource BorderBrushCustom}"
+                                        BorderThickness="1"
+                                        MinWidth="{Binding ActualWidth, ElementName=mainGrid}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <ScrollViewer x:Name="DropDownScrollViewer">
+                                        <ItemsPresenter x:Name="ItemsPresenter"
+                                                        KeyboardNavigation.DirectionalNavigation="Contained"
+                                                        SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                <Setter TargetName="toggleButton" Property="Background" Value="#141418"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- Style for Cloudflare Bypass Expander (amber accent) -->
-        <Style x:Key="ExpanderStyleCF" TargetType="Expander">
-            <Setter Property="Foreground" Value="#FFF39C12"/>
-            <Setter Property="Background" Value="#FF1E1E1E"/>
-            <Setter Property="BorderBrush" Value="#80F39C12"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="0,3"/>
-            <Setter Property="Padding" Value="5"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+        <!-- Vertical TabControl Navigation Style -->
+        <Style x:Key="LeftTabItemStyle" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="Margin" Value="0,2"/>
             <Setter Property="FontSize" Value="12"/>
-        </Style>
-
-        <!-- Style for CF Status Panel -->
-        <Style x:Key="CFStatusLabelStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FFB8860B"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{StaticResource AccentBrush}"
+                                BorderThickness="0,0,0,0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter x:Name="ContentSite"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"
+                                              RecognizesAccessKey="True"
+                                              ContentSource="Header"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#1C1C22"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#1C1C22"/>
+                                <Setter TargetName="TabBorder" Property="BorderThickness" Value="3,0,0,0"/>
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
     
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#FF1E1E1E">
-        <StackPanel Margin="12">
-            
-            <!-- ================== HEADER ================== -->
-            <Grid Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="N_m3u8DL-RE GUI" FontSize="18" FontWeight="SemiBold" Foreground="#FF007ACC"/>
-                <CheckBox Grid.Column="1" x:Name="CheckBox_TopMost" Style="{StaticResource CheckBoxStyle}"
-                          Content="Always on Top" ToolTip="Keep window on top"
-                          Checked="SetTopMost" Unchecked="SetTopMost"/>
-            </Grid>
-            
-            <!-- ================== BASIC SETTINGS ================== -->
-            <GroupBox Header="Basic Settings" Style="{StaticResource GroupBoxStyle}">
-                <StackPanel>
-                    <!-- Executable Path -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Executable" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_EXE" Text="N_m3u8DL-RE.exe" 
-                                 Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"
-                                 ToolTip="Path to N_m3u8DL-RE executable">
-                            <TextBox.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="Cut" Command="Cut"/>
-                                    <MenuItem Header="Copy" Command="Copy"/>
-                                    <MenuItem Header="Paste" Command="Paste"/>
-                                    <Separator/>
-                                    <MenuItem Header="Get Downloader" Click="Menu_GetDownloader"/>
-                                </ContextMenu>
-                            </TextBox.ContextMenu>
-                        </TextBox>
-                    </Grid>
-                    
-                    <!-- Working Directory -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Save Dir" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_WorkDir" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged" ToolTip="Output directory for downloads"/>
-                        <Button Grid.Column="2" Content="Browse" Style="{StaticResource SecondaryButtonStyle}"
-                                Click="Button_SelectDir_Click" Margin="5,0,0,0"/>
-                    </Grid>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- ZONE A: Top Dock -->
+            <RowDefinition Height="*"/>    <!-- ZONE B & C: Sidebar + Content -->
+            <RowDefinition Height="Auto"/> <!-- ZONE D: Bottom Command Bar -->
+        </Grid.RowDefinitions>
 
-                    <!-- Temp Directory -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Tmp Dir" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_TmpDir" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged"
-                                 ToolTip="Temporary directory for segment files"/>
-                    </Grid>
-                    
-                    <!-- M3U8 URL -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Input URL" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_URL" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged" AllowDrop="True"
-                                 PreviewKeyDown="TextBox_URL_PreviewKeyDown"
-                                 MouseDoubleClick="TextBox_URL_MouseDoubleClick"
-                                 PreviewDragOver="TextBox_URL_PreviewDragOver"
-                                 PreviewDrop="TextBox_URL_PreviewDrop"
-                                 PreviewDragEnter="TextBox_URL_PreviewDragEnter"
-                                 ToolTip="M3U8/MPD/ISM URL or local file path. Double-click to paste from clipboard"/>
-                    </Grid>
-                    
-                    <!-- Save Name -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Save Name" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_Title" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 PreviewKeyDown="TextBox_Title_PreviewKeyDown"
-                                 MouseDoubleClick="TextBox_Title_MouseDoubleClick"
-                                 ToolTip="Output filename. Double-click to auto-detect from URL"/>
-                    </Grid>
-                </StackPanel>
-            </GroupBox>
-            
-            <!-- ================== NETWORK SETTINGS ================== -->
-            <Expander Header="Network Settings" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <StackPanel>
-                    <!-- Headers -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Headers" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_Headers" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="HTTP headers separated by | (e.g., Cookie:xxx|User-Agent:yyy)"/>
-                    </Grid>
-                    
-                    <!-- Base URL -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Base URL" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_Baseurl" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Override base URL for relative paths"/>
-                    </Grid>
-                    
-                    <!-- Proxy -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Proxy" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_Proxy" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="HTTP/SOCKS5 proxy (e.g., http://127.0.0.1:8080)"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
-            
-            <!-- ================== ENCRYPTION SETTINGS ================== -->
-            <Expander Header="Encryption" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <StackPanel>
-                    <!-- Decryption Key -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Key" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_Key" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged" AllowDrop="True"
-                                 PreviewDragEnter="TextBox_Key_PreviewDragEnter"
-                                 PreviewDragOver="TextBox_Key_PreviewDragOver"
-                                 PreviewDrop="TextBox_Key_PreviewDrop"
-                                 ToolTip="Decryption key (HEX/Base64) or path to key file. Supports KID:KEY format"/>
-                    </Grid>
-
-                    <!-- Custom HLS Key -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="HLS Key" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_CustomHLSKey" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged"
-                                 ToolTip="Custom HLS key (HEX/Base64) for --custom-hls-key"/>
-                    </Grid>
-                    
-                    <!-- Custom HLS IV -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="IV" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_IV" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Custom HLS initialization vector (HEX/Base64)"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
-            
-            <!-- ================== TIME RANGE ================== -->
-            <Expander Header="Time Range" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <Grid Margin="3">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="30"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Range" Style="{StaticResource LabelStyle}"/>
-                    <TextBox Grid.Column="1" x:Name="TextBox_RangeStart" Text="00:00:00" 
-                             Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"
-                             ToolTip="Start time (HH:mm:ss) or segment index"/>
-                    <TextBlock Grid.Column="2" Text="—" HorizontalAlignment="Center" VerticalAlignment="Center" 
-                               Foreground="#FFE0E0E0"/>
-                    <TextBox Grid.Column="3" x:Name="TextBox_RangeEnd" Text="00:00:00" 
-                             Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"
-                             ToolTip="End time (HH:mm:ss) or segment index"/>
-                </Grid>
-            </Expander>
-            
-            <!-- ================== DOWNLOAD OPTIONS ================== -->
-            <Expander Header="Download Options" Style="{StaticResource ExpanderStyle}" IsExpanded="True">
-              <StackPanel>
-                <Grid>
+        <!-- ================== ZONE A: TOP DOCK ================== -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}" 
+                BorderBrush="{StaticResource BorderBrushCustom}" BorderThickness="1"
+                Padding="12" Margin="0,0,0,10">
+            <StackPanel>
+                <!-- Title Row -->
+                <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    
-                    <!-- Row 0 -->
-                    <CheckBox Grid.Row="0" Grid.Column="0" x:Name="CheckBox_Del" Style="{StaticResource CheckBoxStyle}"
-                              Content="Delete After Done" ToolTip="Delete temporary files after merge"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="0" Grid.Column="1" x:Name="CheckBox_DisableDate" Style="{StaticResource CheckBoxStyle}"
-                              Content="No Date Info" ToolTip="Don't write date info during muxing"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="0" Grid.Column="2" x:Name="CheckBox_DisableProxy" Style="{StaticResource CheckBoxStyle}"
-                              Content="No System Proxy" ToolTip="Disable system proxy"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    
-                    <!-- Row 1 -->
-                    <CheckBox Grid.Row="1" Grid.Column="0" x:Name="CheckBox_ParserOnly" Style="{StaticResource CheckBoxStyle}"
-                              Content="Skip Download" ToolTip="Parse only, don't download"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="CheckBox_Concurrent" Style="{StaticResource CheckBoxStyle}"
-                              Content="Concurrent DL" ToolTip="Download audio/video/subtitle concurrently"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="1" Grid.Column="2" x:Name="CheckBox_DisableMerge" Style="{StaticResource CheckBoxStyle}"
-                              Content="Skip Merge" ToolTip="Don't merge segments after download"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    
-                    <!-- Row 2 -->
-                    <CheckBox Grid.Row="2" Grid.Column="0" x:Name="CheckBox_BinaryMerge" Style="{StaticResource CheckBoxStyle}"
-                              Content="Binary Merge" ToolTip="Use binary concatenation instead of ffmpeg"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="2" Grid.Column="1" x:Name="CheckBox_AudioOnly" Style="{StaticResource CheckBoxStyle}"
-                              Content="Audio Only" ToolTip="Download only audio tracks"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="2" Grid.Column="2" x:Name="CheckBox_DisableCheck" Style="{StaticResource CheckBoxStyle}"
-                              Content="Skip Check" ToolTip="Don't verify segment count"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    
-                    <!-- Row 3 -->
-                    <CheckBox Grid.Row="3" Grid.Column="0" x:Name="CheckBox_SubOnly" Style="{StaticResource CheckBoxStyle}"
-                              Content="Subtitle Only" ToolTip="Download only subtitles"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="3" Grid.Column="1" x:Name="CheckBox_AutoSubFix" Style="{StaticResource CheckBoxStyle}"
-                              Content="Auto Sub Fix" ToolTip="Automatically fix subtitle timing"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <CheckBox Grid.Row="3" Grid.Column="2" x:Name="CheckBox_AutoSelect" Style="{StaticResource CheckBoxStyle}"
-                              Content="Auto Select" ToolTip="Automatically select best quality"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    <!-- Row 4 intentionally left for future options -->
-                </Grid>
-                
-                <!-- Sub Format -->
-                <Grid Margin="5,5,0,0">
-                    <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="N_m3u8DL-RE GUI" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                        <TextBlock Text="v2.1.3" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="8,0,0,2"/>
+                    </StackPanel>
+                    <CheckBox Grid.Column="1" x:Name="CheckBox_TopMost" Style="{StaticResource CheckBoxStyle}"
+                              Content="Always on Top" ToolTip="Keep window on top"
+                              Checked="SetTopMost" Unchecked="SetTopMost"/>
+                </Grid>
+
+                <!-- URL Hero Row -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="105"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Sub Format:" Foreground="#FFE0E0E0" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="Normal"/>
-                    <ComboBox Grid.Column="1" x:Name="Combo_SubFormat" SelectedIndex="0"
-                              SelectionChanged="Combo_SubFormat_SelectionChanged">
-                        <ComboBoxItem Content="SRT"/>
-                        <ComboBoxItem Content="VTT"/>
-                    </ComboBox>
+                    <TextBlock Text="Input URL" Style="{StaticResource LabelStyle}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBox Grid.Column="1" x:Name="TextBox_URL" Style="{StaticResource TextBoxStyle}" 
+                             FontSize="13" TextChanged="TextChanged" AllowDrop="True"
+                             PreviewKeyDown="TextBox_URL_PreviewKeyDown"
+                             MouseDoubleClick="TextBox_URL_MouseDoubleClick"
+                             PreviewDragOver="TextBox_URL_PreviewDragOver"
+                             PreviewDrop="TextBox_URL_PreviewDrop"
+                             PreviewDragEnter="TextBox_URL_PreviewDragEnter"
+                             ToolTip="M3U8/MPD/ISM URL or local file path. Double-click to paste from clipboard"/>
+                    <Button Grid.Column="2" x:Name="Button_GO" Content="▶ Download" 
+                            Style="{StaticResource ButtonStyle}"
+                            Click="Button_GO_Click" Margin="8,0,0,0"
+                            ToolTip="Start download (Alt+S)"/>
                 </Grid>
-              </StackPanel>
-            </Expander>
 
-            <!-- ================== CLOUDFLARE BYPASS ================== -->
-            <Expander Style="{StaticResource ExpanderStyleCF}" IsExpanded="False" Margin="0,3">
-                <Expander.Header>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="⚡" FontSize="13" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Cloudflare Bypass" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center" Foreground="#FFF39C12"/>
-                        <Border Background="#30F39C12" BorderBrush="#60F39C12" BorderThickness="1"
-                                CornerRadius="3" Margin="10,0,0,0" Padding="5,1">
-                            <TextBlock Text="curl_cffi" FontSize="10" Foreground="#FFF39C12" FontFamily="Consolas"/>
-                        </Border>
-                    </StackPanel>
-                </Expander.Header>
-                <StackPanel Margin="0,4,0,0">
-
-                    <!-- Enable toggle + info banner -->
-                    <Border Background="#18F39C12" BorderBrush="#40F39C12" BorderThickness="1"
-                            CornerRadius="3" Margin="0,0,0,6" Padding="8,6">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <CheckBox x:Name="CheckBox_BypassCF"
-                                      Content="Enable Cloudflare Bypass"
-                                      Foreground="#FFF39C12" FontWeight="SemiBold" FontSize="12"
-                                      Cursor="Hand" VerticalAlignment="Center"
-                                      Checked="CheckBoxChanged" Unchecked="CheckBoxChanged">
-                                <CheckBox.Style>
-                                    <Style TargetType="CheckBox">
-                                        <Setter Property="Foreground" Value="#FFF39C12"/>
-                                        <Setter Property="Cursor" Value="Hand"/>
-                                    </Style>
-                                </CheckBox.Style>
-                            </CheckBox>
-                            <TextBlock Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                       FontSize="10" Foreground="#80F39C12" FontFamily="Consolas"
-                                       Text="pip install curl_cffi"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- Info note -->
-                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,6" FontSize="11" Foreground="#FF9A9A9A"
-                               Text="Impersonates Chrome TLS/HTTP2 fingerprint (JA3/JA4) so Cloudflare WAF sees a real browser instead of a .NET HttpClient. Cookie from browser extension recommended for JS-challenge sites."/>
-
-                    <!-- Fingerprint selector -->
-                    <Grid Margin="0,3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="160"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Fingerprint" Foreground="#FFE0E0E0" VerticalAlignment="Center" FontSize="12"/>
-                        <ComboBox Grid.Column="1" x:Name="Combo_CFImpersonate" SelectedIndex="0"
-                                  SelectionChanged="Combo_CFImpersonate_SelectionChanged"
-                                  ToolTip="Browser TLS fingerprint to impersonate. chrome = latest stable Chrome. Use chrome120/chrome131 to pin a specific version.">
-                            <ComboBoxItem Content="chrome" Tag="chrome"/>
-                            <ComboBoxItem Content="chrome120" Tag="chrome120"/>
-                            <ComboBoxItem Content="chrome131" Tag="chrome131"/>
-                            <ComboBoxItem Content="edge101" Tag="edge101"/>
-                            <ComboBoxItem Content="safari17_0" Tag="safari17_0"/>
-                        </ComboBox>
-                        <TextBlock Grid.Column="2" Text="← Browser TLS identity to mimic" Foreground="#FF6A6A6A"
-                                   VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11"/>
-                    </Grid>
-
-                    <!-- Referer -->
-                    <Grid Margin="0,3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Referer" Foreground="#FFE0E0E0" VerticalAlignment="Center" FontSize="12"
-                                   ToolTip="HTTP Referer header — the player page that embeds the video"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_CFReferer"
-                                 Style="{StaticResource TextBoxStyle}"
-                                 Text=""
-                                 TextChanged="TextChanged"
-                                 ToolTip="Referer (player page URL, e.g. https://site.com/). Leave empty to auto-derive from input URL domain."/>
-                    </Grid>
-
-                    <!-- Cookie -->
-                    <Grid Margin="0,3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="90"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="CF Cookie" Foreground="#FFE0E0E0" VerticalAlignment="Center" FontSize="12"
-                                   ToolTip="Paste cf_clearance and __cf_bm from browser DevTools when the site serves a JS challenge"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_CFCookie"
-                                 Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged"
-                                 ToolTip="Full Cookie header: cf_clearance=...;  __cf_bm=...  (use browser DevTools → Network → Copy request headers)"/>
-                    </Grid>
-
-                    <!-- Keep Segments option -->
-                    <CheckBox x:Name="CheckBox_CFKeepSegs"
-                              Content="Keep segment files after merge"
-                              Foreground="#FFE0E0E0" Cursor="Hand" Margin="0,4,0,0"
-                              ToolTip="Normally segments are auto-deleted after successful ffmpeg merge. Check to keep them."
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged">
-                        <CheckBox.Style>
-                            <Style TargetType="CheckBox">
-                                <Setter Property="Foreground" Value="#FFE0E0E0"/>
-                                <Setter Property="Cursor" Value="Hand"/>
-                            </Style>
-                        </CheckBox.Style>
-                    </CheckBox>
-
-                    <!-- Tip footer -->
-                    <Border Background="#0D007ACC" BorderBrush="#20007ACC" BorderThickness="1"
-                            CornerRadius="3" Margin="0,8,0,0" Padding="8,5">
-                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#FF6A9AC4">
-                            <Run FontWeight="SemiBold">Tip:</Run>
-                            <Run>Set</Run>
-                            <Run FontFamily="Consolas">Referer</Run>
-                            <Run>to the player page URL. For JS-challenge sites, also paste the</Run>
-                            <Run FontFamily="Consolas">cf_clearance</Run>
-                            <Run>cookie from your browser after visiting the page once.</Run>
-                        </TextBlock>
-                    </Border>
-                </StackPanel>
-            </Expander>
-
-            <!-- ================== PERFORMANCE SETTINGS ================== -->
-            <Expander Header="Performance" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
+                <!-- Quick Path Sub-row -->
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- Threads -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="3">
-                        <TextBlock Text="Threads" Foreground="#FFE0E0E0" Width="55" VerticalAlignment="Center"/>
-                        <TextBox x:Name="TextBox_Max" Text="12" Width="50" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged" HorizontalContentAlignment="Center"
-                                 ToolTip="Maximum download threads"/>
-                    </StackPanel>
-                    
-                    <!-- Retry -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="3">
-                        <TextBlock Text="Retry" Foreground="#FFE0E0E0" Width="40" VerticalAlignment="Center"/>
-                        <TextBox x:Name="TextBox_Retry" Text="3" Width="40" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged" HorizontalContentAlignment="Center"
-                                 ToolTip="Retry count on failure"/>
-                    </StackPanel>
-                    
-                    <!-- Timeout -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="3">
-                        <TextBlock Text="Timeout" Foreground="#FFE0E0E0" Width="55" VerticalAlignment="Center"/>
-                        <TextBox x:Name="TextBox_Timeout" Text="100" Width="50" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged" HorizontalContentAlignment="Center"
-                                 ToolTip="HTTP timeout in seconds"/>
-                    </StackPanel>
-                    
-                    <!-- Max Speed -->
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="3">
-                        <TextBlock Text="Limit" Foreground="#FFE0E0E0" Width="35" VerticalAlignment="Center"/>
-                        <TextBox x:Name="TextBox_MaxSpeed" Text="" Width="50" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged" HorizontalContentAlignment="Center"
-                                 ToolTip="Speed limit (e.g., 15M or 500K)"/>
-                    </StackPanel>
-                </Grid>
-            </Expander>
-            
-            <!-- ================== MUX IMPORT ================== -->
-            <Expander Header="Mux Import" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <Grid Margin="3">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Import" Style="{StaticResource LabelStyle}"/>
-                    <TextBox Grid.Column="1" x:Name="TextBox_MuxJson" Style="{StaticResource TextBoxStyle}" 
-                             TextChanged="TextChanged" AllowDrop="True"
-                             PreviewDragEnter="TextBox_MuxJson_PreviewDragEnter"
-                             PreviewDragOver="TextBox_MuxJson_PreviewDragOver"
-                             PreviewDrop="TextBox_MuxJson_PreviewDrop"
-                             ToolTip="Import external file to muxer. Format: path=sub.srt:lang=eng:name=&quot;English&quot; or drag file"/>
-                </Grid>
-            </Expander>
-            
-            <!-- ================== MUX AFTER DONE ================== -->
-            <Expander Header="Mux After Done" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <StackPanel>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <CheckBox Grid.Column="0" x:Name="CheckBox_MuxAfterDone" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Enable Mux" ToolTip="Mux audio/video after download completes"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Column="1" x:Name="CheckBox_MuxKeepFiles" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Keep Files" ToolTip="Keep original files after muxing"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Column="2" x:Name="CheckBox_MuxSkipSub" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Skip Subtitles" ToolTip="Skip muxing subtitle files"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="80"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="80"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Format" Foreground="#FFE0E0E0" VerticalAlignment="Center"/>
-                        <ComboBox Grid.Column="1" x:Name="Combo_MuxFormat" SelectedIndex="0"
-                                  SelectionChanged="Combo_MuxFormat_SelectionChanged">
-                            <ComboBoxItem Content="mp4"/>
-                            <ComboBoxItem Content="mkv"/>
-                        </ComboBox>
-                        <TextBlock Grid.Column="3" Text="Muxer" Foreground="#FFE0E0E0" VerticalAlignment="Center"/>
-                        <ComboBox Grid.Column="4" x:Name="Combo_Muxer" SelectedIndex="0"
-                                  SelectionChanged="Combo_Muxer_SelectionChanged">
-                            <ComboBoxItem Content="ffmpeg"/>
-                            <ComboBoxItem Content="mkvmerge"/>
-                        </ComboBox>
-                        <TextBlock Grid.Column="6" Text="Bin Path" Foreground="#FFE0E0E0" VerticalAlignment="Center"/>
-                        <TextBox Grid.Column="7" x:Name="TextBox_MuxBinPath" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Custom executable path for chosen muxer (ffmpeg or mkvmerge)"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
-            
-            <!-- ================== LIVE RECORDING ================== -->
-            <Expander Header="Live Recording" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <StackPanel>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <CheckBox Grid.Row="0" Grid.Column="0" x:Name="CheckBox_LivePerformAsVod" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Perform as VOD" ToolTip="Download live stream as VOD"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="0" Grid.Column="1" x:Name="CheckBox_LiveRealTimeMerge" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Realtime Merge" ToolTip="Merge segments in real-time during live recording"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="0" Grid.Column="2" x:Name="CheckBox_LiveKeepSegments" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Keep Segments" ToolTip="Keep segment files during real-time merge" IsChecked="True"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="1" Grid.Column="0" x:Name="CheckBox_LivePipeMux" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Pipe Mux" ToolTip="Pipe live segments to ffmpeg for real-time TS muxing"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="1" Grid.Column="1" x:Name="CheckBox_LiveFixVttByAudio" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Fix VTT by Audio" ToolTip="Fix VTT subtitle timing using audio start time"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="3">
-                            <TextBlock Text="Rec Limit" Foreground="#FFE0E0E0" Width="60" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TextBox_LiveRecordLimit" Width="70" Style="{StaticResource TextBoxStyle}"
-                                     TextChanged="TextChanged" HorizontalContentAlignment="Center"
-                                     ToolTip="Recording time limit (HH:mm:ss)"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="3">
-                            <TextBlock Text="Wait (s)" Foreground="#FFE0E0E0" Width="55" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TextBox_LiveWaitTime" Width="50" Style="{StaticResource TextBoxStyle}"
-                                     TextChanged="TextChanged" HorizontalContentAlignment="Center"
-                                     ToolTip="Playlist refresh interval in seconds"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="3">
-                            <TextBlock Text="Take" Foreground="#FFE0E0E0" Width="40" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TextBox_LiveTakeCount" Text="16" Width="50" Style="{StaticResource TextBoxStyle}"
-                                     TextChanged="TextChanged" HorizontalContentAlignment="Center"
-                                     ToolTip="Initial segment count for live recording (default: 16)"/>
-                        </StackPanel>
-                    </Grid>
-                </StackPanel>
-            </Expander>
-            
-            <!-- ================== STREAM SELECTION ================== -->
-            <Expander Header="Stream Selection (Regex)" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <StackPanel>
-                    <!-- Select Streams -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Select Video" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_SelectVideo" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Regex to select video streams (e.g., res=&quot;3840*&quot;:codecs=hvc1:for=best)"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Select Audio" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_SelectAudio" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Regex to select audio streams (e.g., lang=en:for=best)"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Select Sub" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_SelectSubtitle" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Regex to select subtitle streams (e.g., name=&quot;中文&quot;:for=all)"/>
-                    </Grid>
-                    <!-- Drop Streams -->
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Drop Video" Style="{StaticResource LabelStyle}" Foreground="#FFE74C3C"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_DropVideo" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Regex to drop/exclude video streams"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Drop Audio" Style="{StaticResource LabelStyle}" Foreground="#FFE74C3C"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_DropAudio" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Regex to drop/exclude audio streams"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Drop Sub" Style="{StaticResource LabelStyle}" Foreground="#FFE74C3C"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_DropSubtitle" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Regex to drop/exclude subtitle streams"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
-            
-            <!-- ================== DECRYPTION ENGINE ================== -->
-            <Expander Header="Decryption" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <StackPanel>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Engine" Style="{StaticResource LabelStyle}"/>
-                        <ComboBox Grid.Column="1" x:Name="Combo_DecryptionEngine" SelectedIndex="0"
-                                  SelectionChanged="Combo_DecryptionEngine_SelectionChanged">
-                            <ComboBoxItem Content="MP4DECRYPT"/>
-                            <ComboBoxItem Content="SHAKA_PACKAGER"/>
-                            <ComboBoxItem Content="FFMPEG"/>
-                        </ComboBox>
-                        <TextBlock Grid.Column="3" Text="HLS Method" Style="{StaticResource LabelStyle}"/>
-                        <ComboBox Grid.Column="4" x:Name="Combo_CustomHLSMethod" SelectedIndex="0"
-                                  SelectionChanged="Combo_HLSMethod_SelectionChanged">
-                            <ComboBoxItem Content="(Default)"/>
-                            <ComboBoxItem Content="AES_128"/>
-                            <ComboBoxItem Content="AES_128_ECB"/>
-                            <ComboBoxItem Content="CENC"/>
-                            <ComboBoxItem Content="CHACHA20"/>
-                            <ComboBoxItem Content="NONE"/>
-                            <ComboBoxItem Content="SAMPLE_AES"/>
-                            <ComboBoxItem Content="SAMPLE_AES_CTR"/>
-                        </ComboBox>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Bin Path" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_DecryptionBinPath" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Path to decryption binary (mp4decrypt/shaka-packager)"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Key File" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_KeyTextFile" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged" AllowDrop="True"
-                                 ToolTip="Path to key text file for decryption (searches KID:KEY pairs)"/>
-                    </Grid>
-                    <CheckBox x:Name="CheckBox_MP4RealTimeDecryption" Style="{StaticResource CheckBoxStyle}"
-                              Content="MP4 Real-Time Decryption" ToolTip="Decrypt MP4 segments in real-time"
-                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged" Margin="3"/>
-                </StackPanel>
-            </Expander>
-            
-            <!-- ================== ADVANCED SETTINGS ================== -->
-            <Expander Header="Advanced" Style="{StaticResource ExpanderStyle}" IsExpanded="False">
-                <StackPanel>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Save Pattern" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_SavePattern" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Save filename pattern using variables: &lt;SaveName&gt;, &lt;Resolution&gt;, &lt;Bandwidth&gt;, &lt;Language&gt;, etc."/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Log File" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_LogFilePath" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Set log file path, e.g. C:\Logs\log.txt"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="FFmpeg Path" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_FFmpegPath" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Full path to ffmpeg executable"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Ad Keyword" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_AdKeyword" Style="{StaticResource TextBoxStyle}" 
-                                 TextChanged="TextChanged"
-                                 ToolTip="Regex to identify and remove ad segments"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="URL Args" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_UrlProcessorArgs" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged"
-                                 ToolTip="Arguments for --urlprocessor-args"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Start At" Style="{StaticResource LabelStyle}"/>
-                        <TextBox Grid.Column="1" x:Name="TextBox_TaskStartAt" Style="{StaticResource TextBoxStyle}"
-                                 TextChanged="TextChanged"
-                                 ToolTip="Task schedule time in yyyyMMddHHmmss format"/>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="75"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Log Level" Style="{StaticResource LabelStyle}"/>
-                        <ComboBox Grid.Column="1" x:Name="Combo_LogLevel" SelectedIndex="2"
-                                  SelectionChanged="Combo_LogLevel_SelectionChanged">
-                            <ComboBoxItem Content="DEBUG"/>
-                            <ComboBoxItem Content="ERROR"/>
-                            <ComboBoxItem Content="INFO"/>
-                            <ComboBoxItem Content="WARN"/>
-                            <ComboBoxItem Content="OFF"/>
-                        </ComboBox>
-                        <TextBlock Grid.Column="3" Text="UI Language" Style="{StaticResource LabelStyle}"/>
-                        <ComboBox Grid.Column="4" x:Name="Combo_UILanguage" SelectedIndex="0"
-                                  SelectionChanged="Combo_UILanguage_SelectionChanged">
-                            <ComboBoxItem Content="(Default)"/>
-                            <ComboBoxItem Content="en-US"/>
-                            <ComboBoxItem Content="zh-CN"/>
-                            <ComboBoxItem Content="zh-TW"/>
-                        </ComboBox>
-                    </Grid>
-                    <Grid Margin="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <CheckBox Grid.Row="0" Grid.Column="0" x:Name="CheckBox_AppendUrlParams" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Append URL Params" ToolTip="Add input URL params to segment URLs"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="0" Grid.Column="1" x:Name="CheckBox_NoLog" Style="{StaticResource CheckBoxStyle}"
-                                  Content="No Log" ToolTip="Disable log file output"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="0" Grid.Column="2" x:Name="CheckBox_WriteMetaJson" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Write Meta JSON" ToolTip="Output parsed info as JSON" IsChecked="True"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="1" Grid.Column="0" x:Name="CheckBox_UseFFmpegConcat" Style="{StaticResource CheckBoxStyle}"
-                                  Content="FFmpeg Concat" ToolTip="Use ffmpeg concat demuxer instead of concat protocol"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="1" Grid.Column="1" x:Name="CheckBox_AllowHlsMultiExtMap" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Multi EXT-MAP" ToolTip="Allow multiple #EXT-X-MAP in HLS (experimental)"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="1" Grid.Column="2" x:Name="CheckBox_DisableUpdateCheck" Style="{StaticResource CheckBoxStyle}"
-                                  Content="No Update Check" ToolTip="Disable version update checking"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="2" Grid.Column="0" x:Name="CheckBox_ForceAnsiConsole" Style="{StaticResource CheckBoxStyle}"
-                                  Content="Force ANSI Console" ToolTip="Force ANSI-enabled console mode"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                        <CheckBox Grid.Row="2" Grid.Column="1" x:Name="CheckBox_NoAnsiColor" Style="{StaticResource CheckBoxStyle}"
-                                  Content="No ANSI Color" ToolTip="Disable ANSI color output"
-                                  Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
-                    </Grid>
-                </StackPanel>
-            </Expander>
-            
-            <!-- ================== GENERATED PARAMETERS ================== -->
-            <GroupBox Header="Generated Command" Style="{StaticResource GroupBoxStyle}">
-                <Grid Margin="3">
-                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="15"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="TextBox_Parameter" Style="{StaticResource TextBoxStyle}" 
-                             IsReadOnly="True"
-                             ToolTip="Generated command-line arguments"/>
-                    <Button Grid.Column="1" x:Name="Button_GO" Content="▶ GO" 
-                            Style="{StaticResource ButtonStyle}"
-                            Click="Button_GO_Click" Margin="10,0,0,0"
-                            ToolTip="Start download (Alt+S)" FontWeight="SemiBold"/>
+                    <TextBlock Text="Save Dir" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Column="1" x:Name="TextBox_WorkDir" Style="{StaticResource TextBoxStyle}" 
+                             TextChanged="TextChanged" ToolTip="Output directory for downloads"/>
+                    <Button Grid.Column="2" Content="Browse" Style="{StaticResource SecondaryButtonStyle}"
+                            Click="Button_SelectDir_Click" Margin="6,0,0,0"/>
+
+                    <TextBlock Grid.Column="4" Text="Save Name" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Column="5" x:Name="TextBox_Title" Style="{StaticResource TextBoxStyle}" 
+                             TextChanged="TextChanged"
+                             PreviewKeyDown="TextBox_Title_PreviewKeyDown"
+                             MouseDoubleClick="TextBox_Title_MouseDoubleClick"
+                             ToolTip="Output filename. Double-click to auto-detect from URL"/>
                 </Grid>
-            </GroupBox>
-            
-        </StackPanel>
-    </ScrollViewer>
+            </StackPanel>
+        </Border>
+
+        <!-- ================== ZONE B & C: LEFT NAV SIDEBAR + MAIN CONTENT ================== -->
+        <TabControl Grid.Row="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrushCustom}" BorderThickness="1" TabStripPlacement="Left" MinWidth="160">
+            <TabControl.Resources>
+                <Style TargetType="TabItem" BasedOn="{StaticResource LeftTabItemStyle}"/>
+            </TabControl.Resources>
+
+            <!-- TAB 1: DOWNLOAD & BASIC -->
+            <TabItem Header="📦 Download">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <GroupBox Header="Basic Paths" Style="{StaticResource GroupBoxStyle}">
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Executable" Style="{StaticResource LabelStyle}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="TextBox_EXE" Text="N_m3u8DL-RE.exe" 
+                                         Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"
+                                         ToolTip="Path to N_m3u8DL-RE executable">
+                                    <TextBox.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Cut" Command="Cut"/>
+                                            <MenuItem Header="Copy" Command="Copy"/>
+                                            <MenuItem Header="Paste" Command="Paste"/>
+                                            <Separator/>
+                                            <MenuItem Header="Get Downloader" Click="Menu_GetDownloader"/>
+                                        </ContextMenu>
+                                    </TextBox.ContextMenu>
+                                </TextBox>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Temp Dir" Style="{StaticResource LabelStyle}" Margin="0,8,8,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="TextBox_TmpDir" Style="{StaticResource TextBoxStyle}"
+                                         TextChanged="TextChanged" Margin="0,8,0,0"
+                                         ToolTip="Temporary directory for segment files"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Download Flags" Style="{StaticResource GroupBoxStyle}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <CheckBox Grid.Row="0" Grid.Column="0" x:Name="CheckBox_Del" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Delete After Done" ToolTip="Delete temporary files after merge"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="0" Grid.Column="1" x:Name="CheckBox_DisableDate" Style="{StaticResource CheckBoxStyle}"
+                                              Content="No Date Info" ToolTip="Don't write date info during muxing"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="0" Grid.Column="2" x:Name="CheckBox_DisableProxy" Style="{StaticResource CheckBoxStyle}"
+                                              Content="No System Proxy" ToolTip="Disable system proxy"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    
+                                    <CheckBox Grid.Row="1" Grid.Column="0" x:Name="CheckBox_ParserOnly" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Skip Download" ToolTip="Parse only, don't download"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="CheckBox_Concurrent" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Concurrent DL" ToolTip="Download audio/video/subtitle concurrently"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="1" Grid.Column="2" x:Name="CheckBox_DisableMerge" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Skip Merge" ToolTip="Don't merge segments after download"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    
+                                    <CheckBox Grid.Row="2" Grid.Column="0" x:Name="CheckBox_BinaryMerge" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Binary Merge" ToolTip="Use binary concatenation instead of ffmpeg"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="2" Grid.Column="1" x:Name="CheckBox_AudioOnly" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Audio Only" ToolTip="Download only audio tracks"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="2" Grid.Column="2" x:Name="CheckBox_DisableCheck" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Skip Check" ToolTip="Don't verify segment count"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    
+                                    <CheckBox Grid.Row="3" Grid.Column="0" x:Name="CheckBox_SubOnly" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Subtitle Only" ToolTip="Download only subtitles"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="3" Grid.Column="1" x:Name="CheckBox_AutoSubFix" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Auto Sub Fix" ToolTip="Automatically fix subtitle timing"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="3" Grid.Column="2" x:Name="CheckBox_AutoSelect" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Auto Select" ToolTip="Automatically select best quality"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <TextBlock Text="Subtitle Format:" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox x:Name="Combo_SubFormat" SelectedIndex="0" Width="100"
+                                              SelectionChanged="Combo_SubFormat_SelectionChanged">
+                                        <ComboBoxItem Content="SRT"/>
+                                        <ComboBoxItem Content="VTT"/>
+                                    </ComboBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 2: NETWORK & SPEED -->
+            <TabItem Header="🌐 Network">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <GroupBox Header="Request &amp; Proxy" Style="{StaticResource GroupBoxStyle}">
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Headers" Style="{StaticResource LabelStyle}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="TextBox_Headers" Style="{StaticResource TextBoxStyle}" 
+                                         TextChanged="TextChanged" ToolTip="HTTP headers separated by | (e.g., Cookie:xxx|User-Agent:yyy)"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Base URL" Style="{StaticResource LabelStyle}" Margin="0,8,8,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="TextBox_Baseurl" Style="{StaticResource TextBoxStyle}" 
+                                         TextChanged="TextChanged" Margin="0,8,0,0" ToolTip="Override base URL for relative paths"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Proxy" Style="{StaticResource LabelStyle}" Margin="0,8,8,0"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="TextBox_Proxy" Style="{StaticResource TextBoxStyle}" 
+                                         TextChanged="TextChanged" Margin="0,8,0,0" ToolTip="HTTP/SOCKS5 proxy (e.g., http://127.0.0.1:8080)"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Performance &amp; Limits" Style="{StaticResource GroupBoxStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="3">
+                                    <TextBlock Text="Threads" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="TextBox_Max" Text="12" Width="45" Style="{StaticResource TextBoxStyle}"
+                                             TextChanged="TextChanged" HorizontalContentAlignment="Center" ToolTip="Maximum download threads"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="3">
+                                    <TextBlock Text="Retry" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="TextBox_Retry" Text="3" Width="45" Style="{StaticResource TextBoxStyle}"
+                                             TextChanged="TextChanged" HorizontalContentAlignment="Center" ToolTip="Retry count on failure"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="3">
+                                    <TextBlock Text="Timeout" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="TextBox_Timeout" Text="100" Width="45" Style="{StaticResource TextBoxStyle}"
+                                             TextChanged="TextChanged" HorizontalContentAlignment="Center" ToolTip="HTTP timeout in seconds"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="3">
+                                    <TextBlock Text="Speed Limit" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="TextBox_MaxSpeed" Text="" Width="60" Style="{StaticResource TextBoxStyle}"
+                                             TextChanged="TextChanged" HorizontalContentAlignment="Center" ToolTip="Speed limit (e.g., 15M or 500K)"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Cloudflare Bypass Section -->
+                        <GroupBox Header="⚡ Cloudflare Bypass (curl_cffi)" Style="{StaticResource GroupBoxStyle}" Foreground="{StaticResource CfAmberBrush}">
+                            <StackPanel>
+                                <CheckBox x:Name="CheckBox_BypassCF" Content="Enable Cloudflare Bypass"
+                                          Foreground="{StaticResource CfAmberBrush}" FontWeight="SemiBold" Margin="0,0,0,6"
+                                          Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Fingerprint" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox Grid.Column="1" x:Name="Combo_CFImpersonate" SelectedIndex="0"
+                                              SelectionChanged="Combo_CFImpersonate_SelectionChanged">
+                                        <ComboBoxItem Content="chrome" Tag="chrome"/>
+                                        <ComboBoxItem Content="chrome120" Tag="chrome120"/>
+                                        <ComboBoxItem Content="chrome131" Tag="chrome131"/>
+                                        <ComboBoxItem Content="edge101" Tag="edge101"/>
+                                        <ComboBoxItem Content="safari17_0" Tag="safari17_0"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Referer" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Grid.Column="1" x:Name="TextBox_CFReferer" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"/>
+                                </Grid>
+
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="CF Cookie" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Grid.Column="1" x:Name="TextBox_CFCookie" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"/>
+                                </Grid>
+
+                                <CheckBox x:Name="CheckBox_CFKeepSegs" Content="Keep segment files after merge"
+                                          Style="{StaticResource CheckBoxStyle}" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 3: SECURITY & ENCRYPTION -->
+            <TabItem Header="🔒 Security">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <GroupBox Header="Keys &amp; Vectors" Style="{StaticResource GroupBoxStyle}">
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Key" Style="{StaticResource LabelStyle}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="TextBox_Key" Style="{StaticResource TextBoxStyle}" 
+                                         TextChanged="TextChanged" AllowDrop="True"
+                                         PreviewDragEnter="TextBox_Key_PreviewDragEnter" PreviewDragOver="TextBox_Key_PreviewDragOver" PreviewDrop="TextBox_Key_PreviewDrop"
+                                         ToolTip="Decryption key (HEX/Base64) or path to key file. Supports KID:KEY format"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="HLS Key" Style="{StaticResource LabelStyle}" Margin="0,8,8,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="TextBox_CustomHLSKey" Style="{StaticResource TextBoxStyle}"
+                                         TextChanged="TextChanged" Margin="0,8,0,0" ToolTip="Custom HLS key (HEX/Base64)"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="IV" Style="{StaticResource LabelStyle}" Margin="0,8,8,0"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="TextBox_IV" Style="{StaticResource TextBoxStyle}" 
+                                         TextChanged="TextChanged" Margin="0,8,0,0" ToolTip="Custom HLS initialization vector (HEX/Base64)"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Key File" Style="{StaticResource LabelStyle}" Margin="0,8,8,0"/>
+                                <TextBox Grid.Row="3" Grid.Column="1" x:Name="TextBox_KeyTextFile" Style="{StaticResource TextBoxStyle}" 
+                                         TextChanged="TextChanged" AllowDrop="True" Margin="0,8,0,0" ToolTip="Path to key text file for decryption"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Decryption Engine" Style="{StaticResource GroupBoxStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Engine" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox Grid.Column="1" x:Name="Combo_DecryptionEngine" SelectedIndex="0" SelectionChanged="Combo_DecryptionEngine_SelectionChanged">
+                                        <ComboBoxItem Content="MP4DECRYPT"/>
+                                        <ComboBoxItem Content="SHAKA_PACKAGER"/>
+                                        <ComboBoxItem Content="FFMPEG"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Column="3" Text="HLS Method" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox Grid.Column="4" x:Name="Combo_CustomHLSMethod" SelectedIndex="0" SelectionChanged="Combo_HLSMethod_SelectionChanged">
+                                        <ComboBoxItem Content="(Default)"/>
+                                        <ComboBoxItem Content="AES_128"/>
+                                        <ComboBoxItem Content="AES_128_ECB"/>
+                                        <ComboBoxItem Content="CENC"/>
+                                        <ComboBoxItem Content="CHACHA20"/>
+                                        <ComboBoxItem Content="NONE"/>
+                                        <ComboBoxItem Content="SAMPLE_AES"/>
+                                        <ComboBoxItem Content="SAMPLE_AES_CTR"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Bin Path" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Grid.Column="1" x:Name="TextBox_DecryptionBinPath" Style="{StaticResource TextBoxStyle}" 
+                                             TextChanged="TextChanged" ToolTip="Path to decryption binary (mp4decrypt/shaka-packager)"/>
+                                </Grid>
+
+                                <CheckBox x:Name="CheckBox_MP4RealTimeDecryption" Style="{StaticResource CheckBoxStyle}"
+                                          Content="MP4 Real-Time Decryption" Margin="0,10,0,0" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 4: MEDIA & STREAMS -->
+            <TabItem Header="🎬 Media">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <GroupBox Header="Stream Selection (Regex Filters)" Style="{StaticResource GroupBoxStyle}">
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Select Video" Style="{StaticResource LabelStyle}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="TextBox_SelectVideo" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Select Audio" Style="{StaticResource LabelStyle}" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="TextBox_SelectAudio" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Select Sub" Style="{StaticResource LabelStyle}" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="TextBox_SelectSubtitle" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Drop Video" Style="{StaticResource LabelStyle}" Foreground="#E74C3C" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="3" Grid.Column="1" x:Name="TextBox_DropVideo" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Drop Audio" Style="{StaticResource LabelStyle}" Foreground="#E74C3C" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="4" Grid.Column="1" x:Name="TextBox_DropAudio" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Drop Sub" Style="{StaticResource LabelStyle}" Foreground="#E74C3C" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="5" Grid.Column="1" x:Name="TextBox_DropSubtitle" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Time Range &amp; Muxing" Style="{StaticResource GroupBoxStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="30"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Range" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Grid.Column="1" x:Name="TextBox_RangeStart" Text="00:00:00" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"/>
+                                    <TextBlock Grid.Column="2" Text="—" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <TextBox Grid.Column="3" x:Name="TextBox_RangeEnd" Text="00:00:00" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"/>
+                                </Grid>
+
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Mux Import" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Grid.Column="1" x:Name="TextBox_MuxJson" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" AllowDrop="True"
+                                             PreviewDragEnter="TextBox_MuxJson_PreviewDragEnter" PreviewDragOver="TextBox_MuxJson_PreviewDragOver" PreviewDrop="TextBox_MuxJson_PreviewDrop"/>
+                                </Grid>
+
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" x:Name="CheckBox_MuxAfterDone" Style="{StaticResource CheckBoxStyle}" Content="Enable Mux" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Column="1" x:Name="CheckBox_MuxKeepFiles" Style="{StaticResource CheckBoxStyle}" Content="Keep Files" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Column="2" x:Name="CheckBox_MuxSkipSub" Style="{StaticResource CheckBoxStyle}" Content="Skip Subtitles" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                </Grid>
+
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="15"/>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="15"/>
+                                        <ColumnDefinition Width="60"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Format" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox Grid.Column="1" x:Name="Combo_MuxFormat" SelectedIndex="0" SelectionChanged="Combo_MuxFormat_SelectionChanged">
+                                        <ComboBoxItem Content="mp4"/>
+                                        <ComboBoxItem Content="mkv"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Column="3" Text="Muxer" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox Grid.Column="4" x:Name="Combo_Muxer" SelectedIndex="0" SelectionChanged="Combo_Muxer_SelectionChanged">
+                                        <ComboBoxItem Content="ffmpeg"/>
+                                        <ComboBoxItem Content="mkvmerge"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Column="6" Text="Bin Path" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox Grid.Column="7" x:Name="TextBox_MuxBinPath" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"/>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 5: LIVE RECORDING -->
+            <TabItem Header="📡 Live">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <GroupBox Header="Live Recording Options" Style="{StaticResource GroupBoxStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <CheckBox Grid.Row="0" Grid.Column="0" x:Name="CheckBox_LivePerformAsVod" Style="{StaticResource CheckBoxStyle}" Content="Perform as VOD" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="0" Grid.Column="1" x:Name="CheckBox_LiveRealTimeMerge" Style="{StaticResource CheckBoxStyle}" Content="Realtime Merge" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="0" Grid.Column="2" x:Name="CheckBox_LiveKeepSegments" Style="{StaticResource CheckBoxStyle}" Content="Keep Segments" IsChecked="True" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+
+                                    <CheckBox Grid.Row="1" Grid.Column="0" x:Name="CheckBox_LivePipeMux" Style="{StaticResource CheckBoxStyle}" Content="Pipe Mux" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="CheckBox_LiveFixVttByAudio" Style="{StaticResource CheckBoxStyle}" Content="Fix VTT by Audio" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                </Grid>
+
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                        <TextBlock Text="Rec Limit" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TextBox_LiveRecordLimit" Width="70" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" HorizontalContentAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <TextBlock Text="Wait (s)" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TextBox_LiveWaitTime" Width="50" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" HorizontalContentAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                        <TextBlock Text="Take" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="TextBox_LiveTakeCount" Text="16" Width="50" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" HorizontalContentAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 6: ADVANCED & LOGS -->
+            <TabItem Header="⚙️ Advanced">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12">
+                    <StackPanel>
+                        <GroupBox Header="Custom Paths &amp; Variables" Style="{StaticResource GroupBoxStyle}">
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Save Pattern" Style="{StaticResource LabelStyle}"/>
+                                <TextBox Grid.Row="0" Grid.Column="1" x:Name="TextBox_SavePattern" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Log File" Style="{StaticResource LabelStyle}" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" x:Name="TextBox_LogFilePath" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="FFmpeg Path" Style="{StaticResource LabelStyle}" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="2" Grid.Column="1" x:Name="TextBox_FFmpegPath" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Ad Keyword" Style="{StaticResource LabelStyle}" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="3" Grid.Column="1" x:Name="TextBox_AdKeyword" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="URL Args" Style="{StaticResource LabelStyle}" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="4" Grid.Column="1" x:Name="TextBox_UrlProcessorArgs" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Start At" Style="{StaticResource LabelStyle}" Margin="0,6,8,0"/>
+                                <TextBox Grid.Row="5" Grid.Column="1" x:Name="TextBox_TaskStartAt" Style="{StaticResource TextBoxStyle}" TextChanged="TextChanged" Margin="0,6,0,0"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Environment &amp; System Flags" Style="{StaticResource GroupBoxStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="100"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Log Level" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox Grid.Column="1" x:Name="Combo_LogLevel" SelectedIndex="2" SelectionChanged="Combo_LogLevel_SelectionChanged">
+                                        <ComboBoxItem Content="DEBUG"/>
+                                        <ComboBoxItem Content="ERROR"/>
+                                        <ComboBoxItem Content="INFO"/>
+                                        <ComboBoxItem Content="WARN"/>
+                                        <ComboBoxItem Content="OFF"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Column="3" Text="UI Language" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox Grid.Column="4" x:Name="Combo_UILanguage" SelectedIndex="0" SelectionChanged="Combo_UILanguage_SelectionChanged">
+                                        <ComboBoxItem Content="(Default)"/>
+                                        <ComboBoxItem Content="en-US"/>
+                                        <ComboBoxItem Content="zh-CN"/>
+                                        <ComboBoxItem Content="zh-TW"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <CheckBox Grid.Row="0" Grid.Column="0" x:Name="CheckBox_AppendUrlParams" Style="{StaticResource CheckBoxStyle}" Content="Append URL Params" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="0" Grid.Column="1" x:Name="CheckBox_NoLog" Style="{StaticResource CheckBoxStyle}" Content="No Log" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="0" Grid.Column="2" x:Name="CheckBox_WriteMetaJson" Style="{StaticResource CheckBoxStyle}" Content="Write Meta JSON" IsChecked="True" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+
+                                    <CheckBox Grid.Row="1" Grid.Column="0" x:Name="CheckBox_UseFFmpegConcat" Style="{StaticResource CheckBoxStyle}" Content="FFmpeg Concat" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="CheckBox_AllowHlsMultiExtMap" Style="{StaticResource CheckBoxStyle}" Content="Multi EXT-MAP" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="1" Grid.Column="2" x:Name="CheckBox_DisableUpdateCheck" Style="{StaticResource CheckBoxStyle}" Content="No Update Check" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+
+                                    <CheckBox Grid.Row="2" Grid.Column="0" x:Name="CheckBox_ForceAnsiConsole" Style="{StaticResource CheckBoxStyle}" Content="Force ANSI Console" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <CheckBox Grid.Row="2" Grid.Column="1" x:Name="CheckBox_NoAnsiColor" Style="{StaticResource CheckBoxStyle}" Content="No ANSI Color" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- ================== ZONE D: BOTTOM COMMAND BAR ================== -->
+        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}" 
+                BorderBrush="{StaticResource BorderBrushCustom}" BorderThickness="1"
+                Padding="8" Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Command:" Style="{StaticResource LabelStyle}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="1" x:Name="TextBox_Parameter" Style="{StaticResource TextBoxStyle}" 
+                         IsReadOnly="True" ToolTip="Generated command-line arguments"
+                         Background="{StaticResource CommandBarBrush}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource CommandTextBrush}"/>
+            </Grid>
+        </Border>
+    </Grid>
 </Window>

@@ -7,12 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.3] - 2026-08-06
+
+### Added
+
+- **3-Zone Modern UX/UI Architecture Redesign**:
+  - **Zone A (Top Dock)**: Prominent Hero Input URL box, Quick Save Directory / Save Name controls, and Always-on-Top toggle.
+  - **Zone B & C (Left Nav Sidebar & Content)**: Replaced monolithic vertical scrolling with clean 6-Tab sidebar navigation (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`).
+  - **Zone D (Bottom Command Bar)**: Fixed-bottom command line preview bar with monospace code font and copyable argument string.
+
+### Changed
+
+- **Unified Premium Dark Theme**:
+  - Applied cohesive dark color tokens (`#0D0D0F` dark canvas, `#141418` surface container, `#1C1C22` card containers, `#5865F2` Discord/Indigo accent, `#8888A8` muted text).
+  - Updated Window Title to `N_m3u8DL-RE GUI v2.1.3`.
+  - Updated `AssemblyVersion` and `AssemblyFileVersion` to `2.1.3.0`.
+
+### Fixed
+
+- **ComboBox Dark Mode & Dropdown Text Visibility**:
+  - Implemented custom `ComboBoxToggleButtonTemplate` and `ComboBoxItemStyle` to eliminate WPF system-default white backgrounds and invisible text.
+  - Applied custom `ControlTemplate` for `GroupBox` headers and content borders to prevent Windows standard background leaks.
+  - Styled `ContextMenu`, `MenuItem`, `Separator`, and `ScrollBar` components for dark theme consistency.
+
+### Verification
+
+- `dotnet build N_m3u8DL_RE_GUI.sln` passes cleanly (0 Error, 0 Warning).
+- `dotnet test N_m3u8DL_RE_GUI.sln` passes cleanly (104/104 tests passed).
+
+---
+
 ## [2.1.2] - 2026-08-06
 
 ### Added
 
 - **Dedicated Cloudflare Bypass UX/UI Expander**:
-  - Dedicated `<Expander>` section styled with amber accent (`#F39C12`) matching VS Code theme.
+  - Dedicated Cloudflare section styled with amber accent (`#F39C12`) matching VS Code dark theme.
   - TLS Fingerprint impersonation selector dropdown (`chrome`, `chrome120`, `chrome131`, `edge101`, `safari17_0`).
   - Dedicated **Referer** input with dynamic origin auto-derivation from input M3U8 URL.
   - Dedicated **CF Cookie** input for `cf_clearance` / `__cf_bm` headers.
@@ -206,7 +236,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
-| 2.1.2   | 2026-08-05 | Dedicated CF Bypass Expander UX/UI, TLS fingerprinting, Referer/Cookie inputs |
+| 2.1.3   | 2026-08-06 | 3-Zone Modern UX/UI Architecture, Dark Mode ComboBox fixes|
+| 2.1.2   | 2026-08-06 | Dedicated CF Bypass Expander UX/UI, TLS fingerprinting    |
 | 2.1.1   | 2026-08-01 | Cloudflare bypass hardening, AudioOnly regex fix, UX hints |
 | 2.1.0   | 2026-03-03 | 5 new settings sections, Expander UI, stability hardening |
 | 2.0.0   | 2026-01-23 | Code refactoring, English codebase, UTF-8 encoding        |
