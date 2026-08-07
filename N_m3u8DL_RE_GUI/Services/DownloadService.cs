@@ -64,12 +64,7 @@ public class DownloadService : IDownloadService
             {
                 FileName = exePath,
                 Arguments = args,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8,
-                StandardErrorEncoding = System.Text.Encoding.UTF8
+                UseShellExecute = true // Launch visible console window showing N_m3u8DL-RE interactive progress UI
             };
 
             lock (_lockObject)
@@ -77,40 +72,11 @@ public class DownloadService : IDownloadService
                 _currentProcess = new Process { StartInfo = startInfo };
             }
 
-            _currentProcess.OutputDataReceived += (sender, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                {
-                    logCallback?.Invoke(e.Data);
-
-                    // Parse progress from output
-                    if (e.Data.Contains("%"))
-                    {
-                        var progressMatch = System.Text.RegularExpressions.Regex.Match(e.Data, @"(\d+(?:\.\d+)?)%");
-                        if (progressMatch.Success && float.TryParse(progressMatch.Groups[1].Value, out float progress))
-                        {
-                            progressCallback?.Report((int)progress);
-                        }
-                    }
-                }
-            };
-
-            _currentProcess.ErrorDataReceived += (sender, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                {
-                    logCallback?.Invoke($"ERROR: {e.Data}");
-                }
-            };
-
             if (!_currentProcess.Start())
             {
                 logCallback?.Invoke("Failed to start the program.");
                 return false;
             }
-
-            _currentProcess.BeginOutputReadLine();
-            _currentProcess.BeginErrorReadLine();
 
             try
             {
