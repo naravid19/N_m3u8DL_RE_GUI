@@ -24,7 +24,7 @@ namespace N_m3u8DL_RE_GUI.Core.Services
             {
                 string requestUrl = $"https://github.com/{owner}/{repo}/releases/latest";
                 using var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
-                request.Headers.UserAgent.ParseAdd($"N_m3u8DL-RE-GUI-UpdateChecker/{currentVersion?.ToString(3) ?? "2.1.3"}");
+                request.Headers.UserAgent.ParseAdd($"N_m3u8DL-RE-GUI-UpdateChecker/{currentVersion?.ToString(3) ?? "2.1.4"}");
 
                 using var response = await _httpClient.SendAsync(request);
 
