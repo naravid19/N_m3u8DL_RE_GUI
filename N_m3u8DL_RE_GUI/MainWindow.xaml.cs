@@ -554,9 +554,21 @@ namespace N_m3u8DL_RE_GUI
                 RefreshValidationState();
                 GetParameter();
 
+                CleanStaleTempBatchFiles();
+
                 if (CheckBox_AutoCheckGuiUpdate?.IsChecked == true)
                 {
-                    _ = CheckGuiUpdateAsync(isManual: false);
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await CheckGuiUpdateAsync(isManual: false);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Startup GUI update check error: {ex.Message}");
+                        }
+                    });
                 }
             }
         }
@@ -649,7 +661,7 @@ namespace N_m3u8DL_RE_GUI
                 {
                     if (CheckBox_BypassCF?.IsChecked == true)
                     {
-                        StartCloudflareDownload();
+                        await StartCloudflareDownloadAsync();
                     }
                     else
                     {
@@ -908,11 +920,34 @@ namespace N_m3u8DL_RE_GUI
         }
 
         /// <summary>
+        /// Clean up stale Cloudflare batch files from %TEMP% directory created in previous runs.
+        /// </summary>
+        private static void CleanStaleTempBatchFiles()
+        {
+            try
+            {
+                var tempDir = Path.GetTempPath();
+                var dirInfo = new DirectoryInfo(tempDir);
+                var staleFiles = dirInfo.GetFiles("cf_dl_*.bat")
+                    .Where(f => (DateTime.Now - f.LastWriteTime).TotalHours > 1);
+
+                foreach (var file in staleFiles)
+                {
+                    try { file.Delete(); } catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to clean stale temp files: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// Launch m3u8_cf_bypass.py via a temp .bat so the console window stays open
         /// and the user can see download progress / errors.
-        /// Resolves a Python that has curl_cffi installed so the download actually runs.
+        /// Tracked by IDownloadService so Button_Stop can kill the process tree if cancelled.
         /// </summary>
-        private void StartCloudflareDownload()
+        private async Task StartCloudflareDownloadAsync()
         {
             string scriptPath = Path.Combine(AppContext.BaseDirectory, "m3u8_cf_bypass.py");
             if (!File.Exists(scriptPath))
@@ -954,7 +989,10 @@ namespace N_m3u8DL_RE_GUI
             string bat = Path.Combine(Path.GetTempPath(), "cf_dl_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".bat");
             // UTF-8 without BOM + chcp 65001 + PYTHONUTF8=1 avoids the '∩╗┐@echo' warning in CMD
             File.WriteAllText(bat, sb.ToString(), new UTF8Encoding(false));
-            StartShellTarget(bat);
+
+            // Use IDownloadService so _currentProcess tracks the cmd.exe process handle,
+            // allowing Button_Stop to kill the process tree if the user cancels.
+            await _downloadService.StartProcessAsync(bat, "");
         }
 
         private static string SafeGetClipboardText()

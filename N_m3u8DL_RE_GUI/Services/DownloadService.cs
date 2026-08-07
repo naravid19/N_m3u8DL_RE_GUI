@@ -149,6 +149,83 @@ public class DownloadService : IDownloadService
         }
     }
 
+    public async Task<bool> StartProcessAsync(
+        string fileName,
+        string arguments,
+        Action<string>? logCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (IsDownloading)
+        {
+            logCallback?.Invoke("A process is already in progress. Please wait for it to complete.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            logCallback?.Invoke("Process target file path is required.");
+            return false;
+        }
+
+        try
+        {
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                UseShellExecute = true // Ensures terminal windows or batch scripts render properly
+            };
+
+            lock (_lockObject)
+            {
+                _currentProcess = new Process { StartInfo = startInfo };
+            }
+
+            if (!_currentProcess.Start())
+            {
+                logCallback?.Invoke($"Failed to start process: {fileName}");
+                return false;
+            }
+
+            try
+            {
+                await _currentProcess.WaitForExitAsync(_cancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                logCallback?.Invoke("Process execution was cancelled.");
+                return false;
+            }
+
+            var success = _currentProcess.ExitCode == 0;
+            logCallback?.Invoke(success ? "Process finished successfully!" : $"Process exited with code: {_currentProcess.ExitCode}");
+
+            return success;
+        }
+        catch (OperationCanceledException)
+        {
+            logCallback?.Invoke("Process execution was cancelled.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            logCallback?.Invoke($"Process execution error: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            lock (_lockObject)
+            {
+                _currentProcess?.Dispose();
+                _currentProcess = null;
+            }
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
+        }
+    }
+
     public void StopDownload()
     {
         lock (_lockObject)

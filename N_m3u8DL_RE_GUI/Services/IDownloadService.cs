@@ -23,6 +23,15 @@ public interface IDownloadService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Start an arbitrary process (e.g. batch script or Python script) with process tree tracking.
+    /// </summary>
+    Task<bool> StartProcessAsync(
+        string fileName,
+        string arguments,
+        Action<string>? logCallback = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Stop current download process.
     /// </summary>
     void StopDownload();
