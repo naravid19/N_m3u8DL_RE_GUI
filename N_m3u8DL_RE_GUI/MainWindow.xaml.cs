@@ -685,6 +685,15 @@ namespace N_m3u8DL_RE_GUI
                     {
                         Button_GO.IsEnabled = true;
                         Button_Stop.Visibility = Visibility.Collapsed;
+                        try
+                        {
+                            if (File.Exists(result.FilePath))
+                                File.Delete(result.FilePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to delete temp batch file '{result.FilePath}': {ex.Message}");
+                        }
                     }
                 }
             }

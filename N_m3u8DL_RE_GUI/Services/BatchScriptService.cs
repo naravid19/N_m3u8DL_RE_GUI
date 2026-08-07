@@ -43,7 +43,7 @@ public class BatchScriptService : IBatchScriptService
             ? BuildFromDirectory(inputPath, exePath, buildArgsForInput, onTitleResolved, cancellationToken)
             : await BuildFromTextFileAsync(inputPath, exePath, resolveTitleAsync, buildArgsForInput, onTitleResolved, cancellationToken);
 
-        var filePath = "Batch-" + DateTime.Now.ToString("yyyy.MM.dd-HH.mm.ss") + ".bat";
+        var filePath = Path.Combine(Path.GetTempPath(), $"batch_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}.bat");
         return new BatchScriptBuildResult(filePath, lines);
     }
 
@@ -99,17 +99,23 @@ public class BatchScriptService : IBatchScriptService
         Action<string>? onTitleResolved,
         CancellationToken cancellationToken)
     {
-        var rawLines = File.ReadAllLines(inputPath, TextEncodingDetector.DetectFromFile(inputPath)).ToList();
+        var rawLines = File.ReadAllLines(inputPath, TextEncodingDetector.DetectFromFile(inputPath));
+        var validItems = new List<BatchInputEntry>();
+        foreach (var line in rawLines)
+        {
+            if (BatchInputParser.TryParse(line, out var parsed) && parsed != null)
+            {
+                validItems.Add(parsed);
+            }
+        }
 
         var builder = new StringBuilder();
         builder.AppendLine("@echo off");
         builder.AppendLine("::Created by N_m3u8DL_RE_GUI");
         var index = 0;
-        foreach (var line in rawLines)
+        foreach (var parsed in validItems)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!BatchInputParser.TryParse(line, out var parsed) || parsed == null)
-                continue;
 
             var title = parsed.HasCustomTitle
                 ? parsed.Title
@@ -123,7 +129,7 @@ public class BatchScriptService : IBatchScriptService
             }
 
             onTitleResolved?.Invoke(title);
-            builder.AppendLine($"TITLE \"[{++index}/{rawLines.Count}] - {EscapeBatchTitle(title)}\"");
+            builder.AppendLine($"TITLE \"[{++index}/{validItems.Count}] - {EscapeBatchTitle(title)}\"");
 
             var argsPerItem = buildArgsForInput(parsed.Url).Replace("%", "%%");
             builder.AppendLine($"\"{exePath}\" {argsPerItem}");
