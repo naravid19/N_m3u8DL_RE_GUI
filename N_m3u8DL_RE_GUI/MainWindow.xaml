@@ -386,7 +386,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="80"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="105"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Input URL" Style="{StaticResource LabelStyle}" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
                     <TextBox Grid.Column="1" x:Name="TextBox_URL" Style="{StaticResource TextBoxStyle}" 
@@ -397,10 +397,18 @@
                              PreviewDrop="TextBox_URL_PreviewDrop"
                              PreviewDragEnter="TextBox_URL_PreviewDragEnter"
                              ToolTip="M3U8/MPD/ISM URL or local file path. Double-click to paste from clipboard"/>
-                    <Button Grid.Column="2" x:Name="Button_GO" Content="▶ Download" 
-                            Style="{StaticResource ButtonStyle}"
-                            Click="Button_GO_Click" Margin="8,0,0,0"
-                            ToolTip="Start download (Alt+S)"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                        <Button x:Name="Button_GO" Content="▶ Download" 
+                                Style="{StaticResource ButtonStyle}"
+                                Click="Button_GO_Click"
+                                ToolTip="Start download (Alt+S)"/>
+                        <Button x:Name="Button_Stop" Content="⏹ Stop" 
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Background="#E74C3C" Foreground="#FFFFFF" BorderThickness="0"
+                                Click="Button_Stop_Click" Margin="6,0,0,0" Padding="12,6"
+                                Visibility="Collapsed"
+                                ToolTip="Cancel current download"/>
+                    </StackPanel>
                 </Grid>
 
                 <!-- Quick Path Sub-row -->
@@ -1027,11 +1035,16 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Command:" Style="{StaticResource LabelStyle}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" x:Name="TextBox_Parameter" Style="{StaticResource TextBoxStyle}" 
                          IsReadOnly="True" ToolTip="Generated command-line arguments"
                          Background="{StaticResource CommandBarBrush}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource CommandTextBrush}"/>
+                <Button Grid.Column="2" x:Name="Button_CopyCommand" Content="📋 Copy"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Click="Button_CopyCommand_Click" Margin="6,0,0,0" Padding="8,2" FontSize="11"
+                        ToolTip="Copy generated command to clipboard"/>
             </Grid>
         </Border>
     </Grid>

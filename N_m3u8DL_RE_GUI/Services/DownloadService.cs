@@ -157,7 +157,7 @@ public class DownloadService : IDownloadService
             {
                 try
                 {
-                    _currentProcess.Kill();
+                    _currentProcess.Kill(entireProcessTree: true);
                 }
                 catch (Exception ex)
                 {

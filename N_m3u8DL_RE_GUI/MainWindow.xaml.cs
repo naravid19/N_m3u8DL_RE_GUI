@@ -57,6 +57,7 @@ namespace N_m3u8DL_RE_GUI
         private readonly Services.IConfigService _configService;
         private readonly Services.IBatchScriptService _batchScriptService;
         private readonly Services.IDragDropService _dragDropService;
+        private readonly Services.IDownloadService _downloadService;
         private bool _suspendParameterRefresh;
         private bool _isCheckingUpdate;
         private static readonly Media.SolidColorBrush ErrorBorderBrush = new(MediaColor.FromRgb(231, 76, 60));
@@ -71,6 +72,7 @@ namespace N_m3u8DL_RE_GUI
             _configService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IConfigService>(serviceProvider);
             _batchScriptService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IBatchScriptService>(serviceProvider);
             _dragDropService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IDragDropService>(serviceProvider);
+            _downloadService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IDownloadService>(serviceProvider);
         }
 
         private void Button_SelectDir_Click(object sender, RoutedEventArgs e)
@@ -532,6 +534,7 @@ namespace N_m3u8DL_RE_GUI
             else
             {
                 Button_GO.IsEnabled = false;
+                Button_Stop.Visibility = Visibility.Visible;
                 try
                 {
                     if (CheckBox_BypassCF?.IsChecked == true)
@@ -551,6 +554,29 @@ namespace N_m3u8DL_RE_GUI
                 finally
                 {
                     Button_GO.IsEnabled = true;
+                    Button_Stop.Visibility = Visibility.Collapsed;
+                }
+            }
+        }
+
+        private void Button_Stop_Click(object sender, RoutedEventArgs e)
+        {
+            _downloadService.StopDownload();
+            Button_Stop.Visibility = Visibility.Collapsed;
+        }
+
+        private void Button_CopyCommand_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(TextBox_Parameter?.Text))
+            {
+                try
+                {
+                    Clipboard.SetText(TextBox_Parameter.Text);
+                    FlashTextBox(TextBox_Parameter);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Failed to copy command: {ex.Message}");
                 }
             }
         }
