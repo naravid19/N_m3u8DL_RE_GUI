@@ -558,17 +558,7 @@ namespace N_m3u8DL_RE_GUI
 
                 if (CheckBox_AutoCheckGuiUpdate?.IsChecked == true)
                 {
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await CheckGuiUpdateAsync(isManual: false);
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"Startup GUI update check error: {ex.Message}");
-                        }
-                    });
+                    _ = CheckGuiUpdateAsync(isManual: false);
                 }
             }
         }
