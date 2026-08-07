@@ -3,14 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace N_m3u8DL_RE_GUI.Services;
 
 /// <summary>
-/// JSON-based config service with automatic migration from legacy config.txt.
-/// Implements the same <see cref="IConfigService"/> interface for backward compatibility
-/// while storing data in a human-readable JSON format.
+/// JSON-based config service with automatic migration from legacy config.txt
+/// and Windows DPAPI protection for sensitive configuration fields.
 /// </summary>
 public sealed class JsonConfigService : IConfigService
 {
@@ -24,6 +26,15 @@ public sealed class JsonConfigService : IConfigService
 
     private const string JsonConfigFileName = "config.json";
     private const string LegacyConfigFileName = "config.txt";
+
+    private static readonly HashSet<string> SecretKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Headers",
+        "Proxy",
+        "CustomHLSKey",
+        "CustomHLSIv",
+        "Key"
+    };
 
     /// <summary>
     /// Loads config from JSON. If the JSON file doesn't exist but a legacy
@@ -60,7 +71,7 @@ public sealed class JsonConfigService : IConfigService
 
     /// <summary>
     /// Saves config state as a JSON file alongside the legacy path.
-    /// Also writes legacy config.txt for backward compatibility.
+    /// Also writes sanitized legacy config.txt for backward compatibility.
     /// </summary>
     public void Save(string path, AppConfigState state)
     {
@@ -72,9 +83,17 @@ public sealed class JsonConfigService : IConfigService
 
         SaveToJson(jsonPath, state);
 
-        // Also save legacy format for backward compatibility
+        // Save sanitized legacy format (excluding secrets) for backward compatibility
+        var sanitizedState = new AppConfigState();
+        foreach (var entry in state.Entries)
+        {
+            if (!SecretKeys.Contains(entry.Key))
+            {
+                sanitizedState.Set(entry.Key, entry.Value);
+            }
+        }
         var legacyService = new ConfigService();
-        legacyService.Save(path, state);
+        legacyService.Save(path, sanitizedState);
     }
 
     private static AppConfigState LoadFromJson(string jsonPath)
@@ -89,7 +108,14 @@ public sealed class JsonConfigService : IConfigService
             if (dict != null)
             {
                 foreach (var kvp in dict)
-                    state.Set(kvp.Key, kvp.Value);
+                {
+                    string value = kvp.Value;
+                    if (SecretKeys.Contains(kvp.Key))
+                    {
+                        value = UnprotectSecret(value);
+                    }
+                    state.Set(kvp.Key, value);
+                }
             }
         }
         catch (JsonException ex)
@@ -108,7 +134,17 @@ public sealed class JsonConfigService : IConfigService
     {
         try
         {
-            var dict = new Dictionary<string, string>(state.Entries);
+            var dict = new Dictionary<string, string>();
+            foreach (var entry in state.Entries)
+            {
+                string value = entry.Value;
+                if (SecretKeys.Contains(entry.Key) && !string.IsNullOrEmpty(value))
+                {
+                    value = ProtectSecret(value);
+                }
+                dict[entry.Key] = value;
+            }
+
             var json = JsonSerializer.Serialize(dict, JsonOptions);
             File.WriteAllText(jsonPath, json);
         }
@@ -119,6 +155,49 @@ public sealed class JsonConfigService : IConfigService
         catch (IOException ex)
         {
             Debug.WriteLine($"JSON config save IO error: {ex.Message}");
+        }
+    }
+
+    private static string ProtectSecret(string value)
+    {
+        if (string.IsNullOrEmpty(value) || value.StartsWith("dpapi:", StringComparison.Ordinal))
+            return value;
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return value;
+
+        try
+        {
+            byte[] plaintextBytes = Encoding.UTF8.GetBytes(value);
+            byte[] protectedBytes = ProtectedData.Protect(plaintextBytes, null, DataProtectionScope.CurrentUser);
+            return "dpapi:" + Convert.ToBase64String(protectedBytes);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"DPAPI protect failed: {ex.Message}");
+            return value;
+        }
+    }
+
+    private static string UnprotectSecret(string value)
+    {
+        if (string.IsNullOrEmpty(value) || !value.StartsWith("dpapi:", StringComparison.Ordinal))
+            return value;
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return string.Empty;
+
+        try
+        {
+            string base64 = value.Substring(6);
+            byte[] protectedBytes = Convert.FromBase64String(base64);
+            byte[] plaintextBytes = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(plaintextBytes);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"DPAPI unprotect failed: {ex.Message}");
+            return string.Empty;
         }
     }
 }
