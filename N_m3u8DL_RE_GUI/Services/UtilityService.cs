@@ -10,7 +10,7 @@ namespace N_m3u8DL_RE_GUI.Services;
 /// <summary>
 /// Implementation of utility service.
 /// </summary>
-public class UtilityService : IUtilityService
+public class UtilityService : IUtilityService, IDisposable
 {
     private readonly HttpClient _httpClient;
 
