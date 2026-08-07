@@ -1169,7 +1169,7 @@ namespace N_m3u8DL_RE_GUI
                 if (TextBlock_UpdateStatus != null) TextBlock_UpdateStatus.Text = "Checking...";
 
                 var service = new N_m3u8DL_RE_GUI.Core.Services.GitHubUpdateCheckService();
-                var currentVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 1, 3);
+                var currentVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 1, 4);
                 var result = await service.CheckForUpdateAsync("naravid19", "N_m3u8DL_RE_GUI", currentVer);
 
                 if (result.HasUpdate)
