@@ -17,10 +17,10 @@ public class UtilityService : IUtilityService, IDisposable
     public UtilityService()
     {
         _httpClient = new HttpClient();
-        _httpClient.Timeout = TimeSpan.FromMinutes(2);
+        _httpClient.Timeout = TimeSpan.FromSeconds(15);
     }
 
-    public async Task<string> GetTitleFromUrlAsync(string url)
+    public async Task<string> GetTitleFromUrlAsync(string url, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(url))
             return string.Empty;
@@ -28,17 +28,25 @@ public class UtilityService : IUtilityService, IDisposable
         if (!InputValidation.IsHttpUrl(url))
             return string.Empty;
 
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(15));
+        var token = timeoutCts.Token;
+
         try
         {
             // Handle different URL patterns
             if (url.Contains("iqiyi.com"))
-                return await GetIqiyiTitleAsync(url);
+                return await GetIqiyiTitleAsync(url, token);
             else if (url.Contains("v.qq.com"))
-                return await GetQQTitleAsync(url);
+                return await GetQQTitleAsync(url, token);
             else if (url.Contains("wetv.vip"))
-                return await GetWeTVTitleAsync(url);
+                return await GetWeTVTitleAsync(url, token);
             else
-                return await GetGenericTitleAsync(url);
+                return await GetGenericTitleAsync(url, token);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -47,17 +55,21 @@ public class UtilityService : IUtilityService, IDisposable
         }
     }
 
-    private async Task<string> GetIqiyiTitleAsync(string url)
+    private async Task<string> GetIqiyiTitleAsync(string url, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _httpClient.GetStringAsync(url);
+            var response = await _httpClient.GetStringAsync(url, cancellationToken);
             var titleMatch = Regex.Match(response, @"<title[^>]*>([^<]+)</title>", RegexOptions.IgnoreCase);
             if (titleMatch.Success)
             {
                 var title = titleMatch.Groups[1].Value.Trim();
                 return CleanTitle(title);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -66,7 +78,7 @@ public class UtilityService : IUtilityService, IDisposable
         return string.Empty;
     }
 
-    private async Task<string> GetQQTitleAsync(string url)
+    private async Task<string> GetQQTitleAsync(string url, CancellationToken cancellationToken)
     {
         try
         {
@@ -75,7 +87,7 @@ public class UtilityService : IUtilityService, IDisposable
             {
                 var vid = vidMatch.Groups[1].Value;
                 var apiUrl = $"https://vv.video.qq.com/getinfo?vids={vid}&platform=101001&charge=0&otype=json";
-                var response = await _httpClient.GetStringAsync(apiUrl);
+                var response = await _httpClient.GetStringAsync(apiUrl, cancellationToken);
                 
                 // Extract title from JSON response
                 var titleMatch = Regex.Match(response, @"""title"":""([^""]+)""");
@@ -85,6 +97,10 @@ public class UtilityService : IUtilityService, IDisposable
                 }
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             Debug.WriteLine($"Failed to get QQ title: {ex.Message}");
@@ -92,17 +108,21 @@ public class UtilityService : IUtilityService, IDisposable
         return string.Empty;
     }
 
-    private async Task<string> GetWeTVTitleAsync(string url)
+    private async Task<string> GetWeTVTitleAsync(string url, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _httpClient.GetStringAsync(url);
+            var response = await _httpClient.GetStringAsync(url, cancellationToken);
             var titleMatch = Regex.Match(response, @"<title[^>]*>([^<]+)</title>", RegexOptions.IgnoreCase);
             if (titleMatch.Success)
             {
                 var title = titleMatch.Groups[1].Value.Trim();
                 return CleanTitle(title);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -111,17 +131,21 @@ public class UtilityService : IUtilityService, IDisposable
         return string.Empty;
     }
 
-    private async Task<string> GetGenericTitleAsync(string url)
+    private async Task<string> GetGenericTitleAsync(string url, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _httpClient.GetStringAsync(url);
+            var response = await _httpClient.GetStringAsync(url, cancellationToken);
             var titleMatch = Regex.Match(response, @"<title[^>]*>([^<]+)</title>", RegexOptions.IgnoreCase);
             if (titleMatch.Success)
             {
                 var title = titleMatch.Groups[1].Value.Trim();
                 return CleanTitle(title);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -215,4 +239,4 @@ public class UtilityService : IUtilityService, IDisposable
     {
         _httpClient?.Dispose();
     }
-} 
+}

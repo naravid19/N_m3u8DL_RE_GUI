@@ -28,8 +28,9 @@ public static class InputValidation
         if (string.IsNullOrWhiteSpace(input))
             return false;
 
-        return input.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-               input.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+        return Uri.TryCreate(input, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            && !string.IsNullOrWhiteSpace(uri.Host);
     }
 
     public static bool IsValidProxy(string? proxy)

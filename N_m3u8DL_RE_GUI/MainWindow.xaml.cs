@@ -61,6 +61,7 @@ namespace N_m3u8DL_RE_GUI
         private bool _suspendParameterRefresh;
         private bool _isCheckingUpdate;
         private System.Threading.CancellationTokenSource? _cfPrepCts;
+        private System.Threading.CancellationTokenSource? _titleLookupCts;
         private static readonly Media.SolidColorBrush ErrorBorderBrush = new(MediaColor.FromRgb(231, 76, 60));
         private static readonly Media.SolidColorBrush DefaultBorderBrush = new(MediaColor.FromRgb(63, 63, 70));
 
@@ -415,7 +416,20 @@ namespace N_m3u8DL_RE_GUI
 
             if (InputValidation.IsHttpUrl(input))
             {
-                TextBox_Title.Text = await _utilityService.GetTitleFromUrlAsync(input);
+                _titleLookupCts?.Dispose();
+                _titleLookupCts = new System.Threading.CancellationTokenSource();
+                try
+                {
+                    TextBox_Title.Text = await _utilityService.GetTitleFromUrlAsync(input, _titleLookupCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                finally
+                {
+                    _titleLookupCts?.Dispose();
+                    _titleLookupCts = null;
+                }
                 return;
             }
 
@@ -623,16 +637,24 @@ namespace N_m3u8DL_RE_GUI
                 this.IsEnabled = false;
                 Button_GO.Content = Properties.Resources.String4;
                 Services.BatchScriptBuildResult? result = null;
+                _titleLookupCts?.Dispose();
+                _titleLookupCts = new System.Threading.CancellationTokenSource();
                 try
                 {
+                    var token = _titleLookupCts.Token;
                     result = await _batchScriptService.BuildScriptAsync(
                         inputPath: TextBox_URL.Text,
                         exePath: TextBox_EXE.Text,
-                        resolveTitleAsync: _utilityService.GetTitleFromUrlAsync,
+                        resolveTitleAsync: url => _utilityService.GetTitleFromUrlAsync(url, token),
                         buildArgsForInput: BuildArgsRE,
-                        onTitleResolved: title => TextBox_Title.Text = title);
+                        onTitleResolved: title => TextBox_Title.Text = title,
+                        cancellationToken: token);
 
                     _batchScriptService.SaveScript(result.FilePath, result.Content);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
                 }
                 catch (Exception ex)
                 {
@@ -641,6 +663,8 @@ namespace N_m3u8DL_RE_GUI
                 }
                 finally
                 {
+                    _titleLookupCts?.Dispose();
+                    _titleLookupCts = null;
                     Button_GO.Content = "GO";
                     this.IsEnabled = true;
                 }
@@ -701,6 +725,7 @@ namespace N_m3u8DL_RE_GUI
         private void Button_Stop_Click(object sender, RoutedEventArgs e)
         {
             _cfPrepCts?.Cancel();
+            _titleLookupCts?.Cancel();
             _downloadService.StopDownload();
             Button_Stop.Visibility = Visibility.Collapsed;
         }

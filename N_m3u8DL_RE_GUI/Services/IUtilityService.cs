@@ -10,8 +10,9 @@ public interface IUtilityService
     /// Get title from URL.
     /// </summary>
     /// <param name="url">URL to extract title from</param>
+    /// <param name="cancellationToken">Optional cancellation token</param>
     /// <returns>Extracted title or empty string</returns>
-    Task<string> GetTitleFromUrlAsync(string url);
+    Task<string> GetTitleFromUrlAsync(string url, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Validate and format file path.
