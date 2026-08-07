@@ -1,11 +1,15 @@
 #nullable enable
 using N_m3u8DL_RE_GUI.Core;
+using System;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace N_m3u8DL_RE_GUI.Services;
 
 /// <summary>
-/// Implementation of download service using N_m3u8DL-RE executable.
+/// Implementation of download service using N_m3u8DL-RE executable or arbitrary processes.
+/// Owns process lifecycle and process-tree cancellation safety.
 /// </summary>
 public class DownloadService : IDownloadService
 {
@@ -24,7 +28,7 @@ public class DownloadService : IDownloadService
         }
     }
 
-    public async Task<bool> StartDownloadAsync(
+    public Task<bool> StartDownloadAsync(
         DownloadOptions options,
         IProgress<int>? progressCallback = null,
         Action<string>? logCallback = null,
@@ -33,13 +37,13 @@ public class DownloadService : IDownloadService
         if (IsDownloading)
         {
             logCallback?.Invoke("Download is already in progress. Please wait for it to complete.");
-            return false;
+            return Task.FromResult(false);
         }
 
         if (string.IsNullOrWhiteSpace(options.Input))
         {
             logCallback?.Invoke("Please enter a URL to download.");
-            return false;
+            return Task.FromResult(false);
         }
 
         // Use options.ExePath if specified, otherwise fall back to default in working directory
@@ -48,74 +52,24 @@ public class DownloadService : IDownloadService
         {
             logCallback?.Invoke($"File not found: {exePath}");
             logCallback?.Invoke("Please download N_m3u8DL-RE.exe from: https://github.com/nilaoda/N_m3u8DL-RE/releases");
-            return false;
+            return Task.FromResult(false);
         }
 
-        try
+        logCallback?.Invoke("Starting download...");
+        var args = ArgsBuilder.Build(options);
+        logCallback?.Invoke($"Command: {exePath} {args}");
+
+        var startInfo = new ProcessStartInfo
         {
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            FileName = exePath,
+            Arguments = args,
+            UseShellExecute = true // Launch visible console window showing N_m3u8DL-RE interactive progress UI
+        };
 
-            logCallback?.Invoke("Starting download...");
-
-            var args = ArgsBuilder.Build(options);
-            logCallback?.Invoke($"Command: {exePath} {args}");
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = exePath,
-                Arguments = args,
-                UseShellExecute = true // Launch visible console window showing N_m3u8DL-RE interactive progress UI
-            };
-
-            lock (_lockObject)
-            {
-                _currentProcess = new Process { StartInfo = startInfo };
-            }
-
-            if (!_currentProcess.Start())
-            {
-                logCallback?.Invoke("Failed to start the program.");
-                return false;
-            }
-
-            try
-            {
-                await _currentProcess.WaitForExitAsync(_cancellationTokenSource.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                logCallback?.Invoke("Download was cancelled.");
-                return false;
-            }
-
-            var success = _currentProcess.ExitCode == 0;
-            logCallback?.Invoke(success ? "Download completed!" : $"Download failed (Exit Code: {_currentProcess.ExitCode})");
-
-            return success;
-        }
-        catch (OperationCanceledException)
-        {
-            logCallback?.Invoke("Download was cancelled.");
-            return false;
-        }
-        catch (Exception ex)
-        {
-            logCallback?.Invoke($"Error occurred: {ex.Message}");
-            return false;
-        }
-        finally
-        {
-            lock (_lockObject)
-            {
-                _currentProcess?.Dispose();
-                _currentProcess = null;
-            }
-            _cancellationTokenSource?.Dispose();
-            _cancellationTokenSource = null;
-        }
+        return StartTrackedProcessAsync(startInfo, logCallback, cancellationToken);
     }
 
-    public async Task<bool> StartProcessAsync(
+    public Task<bool> StartProcessAsync(
         string fileName,
         string arguments,
         Action<string>? logCallback = null,
@@ -124,40 +78,63 @@ public class DownloadService : IDownloadService
         if (IsDownloading)
         {
             logCallback?.Invoke("A process is already in progress. Please wait for it to complete.");
-            return false;
+            return Task.FromResult(false);
         }
 
         if (string.IsNullOrWhiteSpace(fileName))
         {
             logCallback?.Invoke("Process target file path is required.");
-            return false;
+            return Task.FromResult(false);
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            UseShellExecute = true // Ensures terminal windows or batch scripts render properly
+        };
+
+        return StartTrackedProcessAsync(startInfo, logCallback, cancellationToken);
+    }
+
+    /// <summary>
+    /// Extract single, synchronized process lifecycle logic for both entry points.
+    /// Manages process tracking, cancellation token lifetime, and cleanup.
+    /// </summary>
+    private async Task<bool> StartTrackedProcessAsync(
+        ProcessStartInfo startInfo,
+        Action<string>? logCallback,
+        CancellationToken cancellationToken)
+    {
+        Process? process = null;
+        CancellationTokenSource? cts = null;
+
+        lock (_lockObject)
+        {
+            if (_currentProcess != null && !_currentProcess.HasExited)
+            {
+                logCallback?.Invoke("A process is already in progress. Please wait for it to complete.");
+                return false;
+            }
+
+            cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _cancellationTokenSource = cts;
+
+            process = new Process { StartInfo = startInfo };
+            _currentProcess = process;
         }
 
         try
         {
-            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-            var startInfo = new ProcessStartInfo
+            if (!process.Start())
             {
-                FileName = fileName,
-                Arguments = arguments,
-                UseShellExecute = true // Ensures terminal windows or batch scripts render properly
-            };
-
-            lock (_lockObject)
-            {
-                _currentProcess = new Process { StartInfo = startInfo };
-            }
-
-            if (!_currentProcess.Start())
-            {
-                logCallback?.Invoke($"Failed to start process: {fileName}");
+                logCallback?.Invoke($"Failed to start process: {startInfo.FileName}");
                 return false;
             }
 
             try
             {
-                await _currentProcess.WaitForExitAsync(_cancellationTokenSource.Token);
+                await process.WaitForExitAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -165,9 +142,8 @@ public class DownloadService : IDownloadService
                 return false;
             }
 
-            var success = _currentProcess.ExitCode == 0;
-            logCallback?.Invoke(success ? "Process finished successfully!" : $"Process exited with code: {_currentProcess.ExitCode}");
-
+            var success = process.ExitCode == 0;
+            logCallback?.Invoke(success ? "Process finished successfully!" : $"Process exited with code: {process.ExitCode}");
             return success;
         }
         catch (OperationCanceledException)
@@ -184,33 +160,61 @@ public class DownloadService : IDownloadService
         {
             lock (_lockObject)
             {
-                _currentProcess?.Dispose();
-                _currentProcess = null;
+                if (_currentProcess == process)
+                {
+                    _currentProcess = null;
+                }
+                if (_cancellationTokenSource == cts)
+                {
+                    _cancellationTokenSource = null;
+                }
             }
-            _cancellationTokenSource?.Dispose();
-            _cancellationTokenSource = null;
+
+            try { process.Dispose(); } catch { }
+            try { cts.Dispose(); } catch { }
         }
     }
 
     public void StopDownload()
     {
+        Process? procToKill = null;
+        CancellationTokenSource? ctsToCancel = null;
+
         lock (_lockObject)
         {
-            if (_currentProcess != null && !_currentProcess.HasExited)
+            procToKill = _currentProcess;
+            ctsToCancel = _cancellationTokenSource;
+        }
+
+        if (ctsToCancel != null)
+        {
+            try
             {
-                try
-                {
-                    // Kill the entire process tree to also terminate child processes
-                    // (ffmpeg, mp4decrypt, etc.) spawned by N_m3u8DL-RE
-                    _currentProcess.Kill(entireProcessTree: true);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Failed to stop download process: {ex.Message}");
-                }
+                ctsToCancel.Cancel();
+            }
+            catch (ObjectDisposedException) { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Token cancel error: {ex.Message}");
             }
         }
 
-        _cancellationTokenSource?.Cancel();
+        if (procToKill != null)
+        {
+            try
+            {
+                if (!procToKill.HasExited)
+                {
+                    // Kill the entire process tree to also terminate child processes
+                    // (ffmpeg, mp4decrypt, python, etc.)
+                    procToKill.Kill(entireProcessTree: true);
+                }
+            }
+            catch (InvalidOperationException) { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to stop process tree: {ex.Message}");
+            }
+        }
     }
 }
