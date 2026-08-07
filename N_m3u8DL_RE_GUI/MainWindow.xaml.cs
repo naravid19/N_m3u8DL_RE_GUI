@@ -216,6 +216,116 @@ namespace N_m3u8DL_RE_GUI
         }
 
         /// <summary>
+        /// Build the full DownloadOptions object from current UI state, including ExePath.
+        /// Used by StartDownloadAsync so IDownloadService manages the process lifecycle.
+        /// </summary>
+        private DownloadOptions BuildDownloadOptions()
+        {
+            return new DownloadOptions
+            {
+                // EXE path — lets DownloadService use the GUI-configured binary
+                ExePath = string.IsNullOrWhiteSpace(TextBox_EXE?.Text) ? null : TextBox_EXE.Text.Trim(),
+
+                // Basic Settings
+                Input = TextBox_URL.Text,
+                SaveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text),
+                TmpDir = TextBox_TmpDir?.Text?.Trim(),
+                SaveName = TextBox_Title.Text,
+                Headers = TextBox_Headers.Text,
+                BaseUrl = TextBox_Baseurl.Text,
+                MuxImport = TextBox_MuxJson.Text?.Trim(),
+
+                // Encryption
+                Key = TextBox_Key.Text?.Trim(),
+                CustomHLSKey = TextBox_CustomHLSKey?.Text?.Trim(),
+                CustomHLSIv = TextBox_IV.Text?.Trim(),
+                KeyTextFile = TextBox_KeyTextFile?.Text?.Trim(),
+                DecryptionEngine = (Combo_DecryptionEngine?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "MP4DECRYPT",
+                DecryptionBinaryPath = TextBox_DecryptionBinPath?.Text?.Trim(),
+                MP4RealTimeDecryption = CheckBox_MP4RealTimeDecryption?.IsChecked == true,
+                CustomHLSMethod = GetComboValue(Combo_CustomHLSMethod),
+
+                // Network
+                Proxy = TextBox_Proxy.Text?.Trim(),
+                UseSystemProxy = CheckBox_DisableProxy?.IsChecked != true,
+
+                // Time Range
+                RangeStart = TextBox_RangeStart.Text,
+                RangeEnd = TextBox_RangeEnd.Text,
+
+                // Thread Settings
+                ThreadCount = int.TryParse(TextBox_Max.Text, out var threadCount) ? threadCount : Environment.ProcessorCount,
+                DownloadRetryCount = int.TryParse(TextBox_Retry.Text, out var retryCount) ? retryCount : 3,
+
+                // Timeout & Speed
+                HttpRequestTimeout = int.TryParse(TextBox_Timeout.Text, out var timeout) ? timeout : 100,
+                MaxSpeed = TextBox_MaxSpeed.Text?.Trim(),
+
+                // Boolean Options
+                DelAfterDone = CheckBox_Del.IsChecked == true,
+                NoDateInfo = CheckBox_DisableDate.IsChecked == true,
+                SkipDownload = CheckBox_ParserOnly.IsChecked == true,
+                SkipMerge = CheckBox_DisableMerge.IsChecked == true,
+                BinaryMerge = CheckBox_BinaryMerge.IsChecked == true,
+                CheckSegmentsCount = CheckBox_DisableCheck?.IsChecked != true,
+                ConcurrentDownload = CheckBox_Concurrent?.IsChecked == true,
+                SubOnly = CheckBox_SubOnly?.IsChecked == true,
+                AutoSubtitleFix = CheckBox_AutoSubFix?.IsChecked == true,
+                AutoSelect = CheckBox_AutoSelect?.IsChecked == true,
+
+                // Subtitle Format
+                SubFormat = (Combo_SubFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "SRT",
+
+                // Mux After Done
+                MuxAfterDone = CheckBox_MuxAfterDone?.IsChecked == true,
+                MuxFormat = (Combo_MuxFormat?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "mp4",
+                Muxer = (Combo_Muxer?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "ffmpeg",
+                MuxBinPath = TextBox_MuxBinPath?.Text?.Trim(),
+                MuxKeepFiles = CheckBox_MuxKeepFiles?.IsChecked == true,
+                MuxSkipSubtitle = CheckBox_MuxSkipSub?.IsChecked == true,
+
+                // Live Recording
+                LivePerformAsVod = CheckBox_LivePerformAsVod?.IsChecked == true,
+                LiveRealTimeMerge = CheckBox_LiveRealTimeMerge?.IsChecked == true,
+                LiveKeepSegments = CheckBox_LiveKeepSegments?.IsChecked != false,
+                LivePipeMux = CheckBox_LivePipeMux?.IsChecked == true,
+                LiveFixVttByAudio = CheckBox_LiveFixVttByAudio?.IsChecked == true,
+                LiveRecordLimit = TextBox_LiveRecordLimit?.Text?.Trim(),
+                LiveWaitTime = int.TryParse(TextBox_LiveWaitTime?.Text, out var waitTime) ? waitTime : null,
+                LiveTakeCount = int.TryParse(TextBox_LiveTakeCount?.Text, out var takeCount) ? takeCount : 16,
+
+                // Stream Selection
+                SelectVideo = TextBox_SelectVideo?.Text?.Trim(),
+                SelectAudio = CheckBox_AudioOnly?.IsChecked == true
+                    ? (string.IsNullOrWhiteSpace(TextBox_SelectAudio?.Text) ? "best" : TextBox_SelectAudio.Text.Trim())
+                    : TextBox_SelectAudio?.Text?.Trim(),
+                SelectSubtitle = TextBox_SelectSubtitle?.Text?.Trim(),
+                DropVideo = CheckBox_AudioOnly?.IsChecked == true ? ".*" : TextBox_DropVideo?.Text?.Trim(),
+                DropAudio = TextBox_DropAudio?.Text?.Trim(),
+                DropSubtitle = TextBox_DropSubtitle?.Text?.Trim(),
+
+                // Advanced Settings
+                SavePattern = TextBox_SavePattern?.Text?.Trim(),
+                LogFilePath = TextBox_LogFilePath?.Text?.Trim(),
+                FFmpegBinaryPath = TextBox_FFmpegPath?.Text?.Trim(),
+                MkvmergeBinaryPath = string.Equals((Combo_Muxer?.SelectedItem as ComboBoxItem)?.Content?.ToString(), "mkvmerge", StringComparison.OrdinalIgnoreCase) ? TextBox_MuxBinPath?.Text?.Trim() : null,
+                AdKeyword = TextBox_AdKeyword?.Text?.Trim(),
+                UrlProcessorArgs = TextBox_UrlProcessorArgs?.Text?.Trim(),
+                TaskStartAt = TextBox_TaskStartAt?.Text?.Trim(),
+                LogLevel = (Combo_LogLevel?.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "INFO",
+                UILanguage = GetComboValue(Combo_UILanguage),
+                AppendUrlParams = CheckBox_AppendUrlParams?.IsChecked == true,
+                NoLog = CheckBox_NoLog?.IsChecked == true,
+                WriteMetaJson = CheckBox_WriteMetaJson?.IsChecked != false,
+                UseFFmpegConcatDemuxer = CheckBox_UseFFmpegConcat?.IsChecked == true,
+                AllowHlsMultiExtMap = CheckBox_AllowHlsMultiExtMap?.IsChecked == true,
+                ForceAnsiConsole = CheckBox_ForceAnsiConsole?.IsChecked == true,
+                NoAnsiColor = CheckBox_NoAnsiColor?.IsChecked == true,
+                DisableUpdateCheck = CheckBox_DisableUpdateCheck?.IsChecked == true,
+            };
+        }
+
+        /// <summary>
         /// Get ComboBox selected value, returning null for "(Default)" or empty selections.
         /// </summary>
         private static string? GetComboValue(WpfComboBox? combo)
@@ -543,8 +653,14 @@ namespace N_m3u8DL_RE_GUI
                     }
                     else
                     {
-                        TextBox_Parameter.Text = BuildArgsRE();
-                        StartExecutableWithArguments(TextBox_EXE.Text, TextBox_Parameter.Text);
+                        // Build options including the user-specified EXE path
+                        var argsForPreview = BuildArgsRE();
+                        TextBox_Parameter.Text = argsForPreview;
+
+                        // Use IDownloadService so Button_Stop can call StopDownload() and
+                        // actually kill the running process (and its children).
+                        var options = BuildDownloadOptions();
+                        await _downloadService.StartDownloadAsync(options);
                     }
                 }
                 catch (Exception ex)

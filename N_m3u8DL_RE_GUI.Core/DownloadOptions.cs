@@ -10,6 +10,8 @@ public class DownloadOptions
     // ============================================
     // Basic Settings
     // ============================================
+    /// <summary>Path to the N_m3u8DL-RE executable. Defaults to "N_m3u8DL-RE.exe" if null.</summary>
+    public string? ExePath { get; set; }
     public string? Input { get; set; }
     public string? SaveDir { get; set; }
     public string? SaveName { get; set; }

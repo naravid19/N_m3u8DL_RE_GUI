@@ -42,8 +42,8 @@ public class DownloadService : IDownloadService
             return false;
         }
 
-        // Check if N_m3u8DL-RE.exe exists
-        var exePath = "N_m3u8DL-RE.exe";
+        // Use options.ExePath if specified, otherwise fall back to default in working directory
+        var exePath = string.IsNullOrWhiteSpace(options.ExePath) ? "N_m3u8DL-RE.exe" : options.ExePath;
         if (!System.IO.File.Exists(exePath))
         {
             logCallback?.Invoke($"File not found: {exePath}");
@@ -54,9 +54,9 @@ public class DownloadService : IDownloadService
         try
         {
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            
+
             logCallback?.Invoke("Starting download...");
-            
+
             var args = ArgsBuilder.Build(options);
             logCallback?.Invoke($"Command: {exePath} {args}");
 
@@ -82,7 +82,7 @@ public class DownloadService : IDownloadService
                 if (!string.IsNullOrEmpty(e.Data))
                 {
                     logCallback?.Invoke(e.Data);
-                    
+
                     // Parse progress from output
                     if (e.Data.Contains("%"))
                     {
@@ -124,7 +124,7 @@ public class DownloadService : IDownloadService
 
             var success = _currentProcess.ExitCode == 0;
             logCallback?.Invoke(success ? "Download completed!" : $"Download failed (Exit Code: {_currentProcess.ExitCode})");
-            
+
             return success;
         }
         catch (OperationCanceledException)
@@ -157,6 +157,8 @@ public class DownloadService : IDownloadService
             {
                 try
                 {
+                    // Kill the entire process tree to also terminate child processes
+                    // (ffmpeg, mp4decrypt, etc.) spawned by N_m3u8DL-RE
                     _currentProcess.Kill(entireProcessTree: true);
                 }
                 catch (Exception ex)
@@ -168,4 +170,4 @@ public class DownloadService : IDownloadService
 
         _cancellationTokenSource?.Cancel();
     }
-} 
+}
