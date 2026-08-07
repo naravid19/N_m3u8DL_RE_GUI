@@ -621,9 +621,10 @@ namespace N_m3u8DL_RE_GUI
             {
                 this.IsEnabled = false;
                 Button_GO.Content = Properties.Resources.String4;
+                Services.BatchScriptBuildResult? result = null;
                 try
                 {
-                    var result = await _batchScriptService.BuildScriptAsync(
+                    result = await _batchScriptService.BuildScriptAsync(
                         inputPath: TextBox_URL.Text,
                         exePath: TextBox_EXE.Text,
                         resolveTitleAsync: _utilityService.GetTitleFromUrlAsync,
@@ -631,16 +632,35 @@ namespace N_m3u8DL_RE_GUI
                         onTitleResolved: title => TextBox_Title.Text = title);
 
                     _batchScriptService.SaveScript(result.FilePath, result.Content);
-                    StartShellTarget(result.FilePath);
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show(ex.Message);
+                    return;
                 }
                 finally
                 {
                     Button_GO.Content = "GO";
                     this.IsEnabled = true;
+                }
+
+                if (result != null)
+                {
+                    Button_GO.IsEnabled = false;
+                    Button_Stop.Visibility = Visibility.Visible;
+                    try
+                    {
+                        await _downloadService.StartProcessAsync(result.FilePath, string.Empty);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }
+                    finally
+                    {
+                        Button_GO.IsEnabled = true;
+                        Button_Stop.Visibility = Visibility.Collapsed;
+                    }
                 }
             }
             else
