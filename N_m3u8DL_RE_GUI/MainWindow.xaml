@@ -396,17 +396,23 @@
                              PreviewDragOver="TextBox_URL_PreviewDragOver"
                              PreviewDrop="TextBox_URL_PreviewDrop"
                              PreviewDragEnter="TextBox_URL_PreviewDragEnter"
+                             AutomationProperties.Name="Input URL or File Path"
+                             AutomationProperties.HelpText="M3U8/MPD URL or local file path"
                              ToolTip="M3U8/MPD/ISM URL or local file path. Double-click to paste from clipboard"/>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
                         <Button x:Name="Button_GO" Content="▶ Download" 
                                 Style="{StaticResource ButtonStyle}"
                                 Click="Button_GO_Click"
+                                AutomationProperties.Name="Start Download"
+                                AutomationProperties.HelpText="Start downloading current stream"
                                 ToolTip="Start download (Alt+S)"/>
                         <Button x:Name="Button_Stop" Content="⏹ Stop" 
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Background="#E74C3C" Foreground="#FFFFFF" BorderThickness="0"
                                 Click="Button_Stop_Click" Margin="6,0,0,0" Padding="12,6"
                                 Visibility="Collapsed"
+                                AutomationProperties.Name="Stop Download"
+                                AutomationProperties.HelpText="Cancel active download process"
                                 ToolTip="Cancel current download"/>
                     </StackPanel>
                 </Grid>
@@ -423,15 +429,19 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Save Dir" Style="{StaticResource LabelStyle}"/>
                     <TextBox Grid.Column="1" x:Name="TextBox_WorkDir" Style="{StaticResource TextBoxStyle}" 
-                             TextChanged="TextChanged" ToolTip="Output directory for downloads"/>
+                             TextChanged="TextChanged"
+                             AutomationProperties.Name="Save Directory Path"
+                             ToolTip="Output directory for downloads"/>
                     <Button Grid.Column="2" Content="Browse" Style="{StaticResource SecondaryButtonStyle}"
-                            Click="Button_SelectDir_Click" Margin="6,0,0,0"/>
+                            Click="Button_SelectDir_Click" Margin="6,0,0,0"
+                            AutomationProperties.Name="Browse Save Directory"/>
 
                     <TextBlock Grid.Column="4" Text="Save Name" Style="{StaticResource LabelStyle}"/>
                     <TextBox Grid.Column="5" x:Name="TextBox_Title" Style="{StaticResource TextBoxStyle}" 
                              TextChanged="TextChanged"
                              PreviewKeyDown="TextBox_Title_PreviewKeyDown"
                              MouseDoubleClick="TextBox_Title_MouseDoubleClick"
+                             AutomationProperties.Name="Save Filename"
                              ToolTip="Output filename. Double-click to auto-detect from URL"/>
                 </Grid>
             </StackPanel>
@@ -1040,10 +1050,12 @@
                 <TextBlock Text="Command:" Style="{StaticResource LabelStyle}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" x:Name="TextBox_Parameter" Style="{StaticResource TextBoxStyle}" 
                          IsReadOnly="True" ToolTip="Generated command-line arguments"
+                         AutomationProperties.Name="Generated Command Preview"
                          Background="{StaticResource CommandBarBrush}" FontFamily="Consolas" FontSize="11" Foreground="{StaticResource CommandTextBrush}"/>
                 <Button Grid.Column="2" x:Name="Button_CopyCommand" Content="📋 Copy"
                         Style="{StaticResource SecondaryButtonStyle}"
                         Click="Button_CopyCommand_Click" Margin="6,0,0,0" Padding="8,2" FontSize="11"
+                        AutomationProperties.Name="Copy Command to Clipboard"
                         ToolTip="Copy generated command to clipboard"/>
             </Grid>
         </Border>
