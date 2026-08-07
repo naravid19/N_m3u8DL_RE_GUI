@@ -171,12 +171,15 @@ For more examples, refer to the [N_m3u8DL-RE Documentation](https://github.com/n
 
 ### Stability and Quality
 
-- **Safe Config Handling** - Backward-compatible `config.txt` parsing with safe fallbacks
+- **Windows DPAPI Secret Protection** - Encrypts headers, proxies, decryption keys, and IVs via Windows DPAPI in `config.json` while scrubbing plaintext secrets from legacy files
+- **Thread-Safe Cancellation Lifecycle** - Responsive process cancellation that terminates child process trees (`Kill(entireProcessTree: true)`) and cancels async tasks
+- **Automated Test Suite (164 Tests)** - Comprehensive unit and integration test suite structured into Core, Services, ViewModels, and Fixtures
+- **Safe Config Handling** - Backward-compatible `config.txt` parsing with safe fallbacks and DPAPI secret protection
 - **Deterministic Tests** - Cross-machine stable unit tests for args/config/parser/batch services
-- **Batch Service Layer** - Batch script generation moved out of heavy UI event code
+- **Batch Service Layer** - Isolated batch script generation in `%TEMP%` with automatic cleanup
 - **Safe Startup Validation** - Null-safe validation refresh at startup
-- **Windows-safe Argument Quoting** - Command arguments now safely handle trailing `\` paths and embedded quotes
-- **Safer Batch Titles** - Batch `TITLE` lines are escaped for CMD context and directory mode uses predictable file-based titles
+- **Windows-safe Argument Quoting** - Command arguments safely handle trailing `\` paths and embedded quotes
+- **Safer Batch Titles** - Batch `TITLE` lines are escaped for CMD context and denominator reflects parsed item count
 - **Safe Clipboard Access** - Clipboard-read failures are handled gracefully without crashing startup/UI flows
 
 ### Download Options

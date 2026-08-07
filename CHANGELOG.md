@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.4] - 2026-08-08
+
+### Added
+
+- **Windows DPAPI Secret Protection**:
+  - Automated encryption for sensitive configuration fields (`Headers`, `Proxy`, `CustomHLSKey`, `CustomHLSIv`, `Key`) using Windows DPAPI (`ProtectedData.Protect` / `DataProtectionScope.CurrentUser`) stored as `dpapi:<base64>` in `config.json`.
+  - Automatic plaintext secret scrubbing when writing legacy `config.txt`.
+- **Download Process & Cancellation Lifecycle Hardening**:
+  - Thread-safe process cancellation in `IDownloadService` with process tree termination (`proc.Kill(entireProcessTree: true)`).
+  - Visible interactive CMD console window support (`UseShellExecute = true`).
+  - Asynchronous and cancellable Python discovery (`FindPythonWithCurlCffiAsync`) using `CancellationTokenSource`.
+- **Fail-Fast Input & Title Resolution**:
+  - Two-stage `InputValidation.IsHttpUrl` using `Uri.TryCreate` enforcing absolute HTTP/HTTPS schemes with a non-empty host.
+  - Title lookup timeout (15s) and `CancellationToken` support in `IUtilityService.GetTitleFromUrlAsync`.
+- **Isolated Batch Execution & Cleanup**:
+  - Unique temp batch file path generation in `%TEMP%` (`batch_{timestamp}_{guid}.bat`).
+  - Automatic `finally` deletion of temporary `.bat` files after process termination or cancellation.
+  - Corrected batch script progress title denominator `[1/N]` based on valid parsed entries.
+- **Desktop Accessibility (a11y)**:
+  - Added `AutomationProperties.Name` and `AutomationProperties.HelpText` across core WPF controls (`TextBox_URL`, `Button_GO`, `Button_Stop`, `TextBox_WorkDir`, `TextBox_Title`, `TextBox_Parameter`, `Button_CopyCommand`).
+- **Comprehensive Unit & Integration Test Suite (164 Tests)**:
+  - Added `NSubstitute` (v6.0.0) package for ViewModel mocking.
+  - Reorganized tests into `Unit/Core`, `Unit/Services`, `Unit/ViewModels`, `Integration`, and `Fixtures`.
+
+### Changed
+
+- Updated Window Title to `N_m3u8DL-RE GUI v2.1.4`.
+- Updated `AssemblyVersion` and `AssemblyFileVersion` to `2.1.4.0`.
+
+### Verification
+
+- `dotnet build N_m3u8DL_RE_GUI.sln /warnaserror` passes cleanly (0 Error, 0 Warning).
+- `dotnet test N_m3u8DL_RE_GUI.Tests/N_m3u8DL_RE_GUI.Tests.csproj` passes cleanly (164/164 tests passed).
+
+---
+
 ## [2.1.3] - 2026-08-06
 
 ### Added
@@ -242,6 +278,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
+| 2.1.4   | 2026-08-08 | Windows DPAPI secret protection, lifecycle hardening, 164 tests |
 | 2.1.3   | 2026-08-06 | 3-Zone Modern UX/UI Architecture, Dark Mode ComboBox fixes|
 | 2.1.2   | 2026-08-06 | Dedicated CF Bypass Expander UX/UI, TLS fingerprinting    |
 | 2.1.1   | 2026-08-01 | Cloudflare bypass hardening, AudioOnly regex fix, UX hints |
