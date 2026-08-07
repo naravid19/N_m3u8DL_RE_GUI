@@ -161,12 +161,13 @@ For more examples, refer to the [N_m3u8DL-RE Documentation](https://github.com/n
 
 ### Core Features
 
+- **3-Zone Modern UX/UI Architecture** - Clean layout with Zone A top URL hero bar, Zone B/C 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and Zone D fixed command preview bar
+- **GUI Auto-Update Engine** - Zero rate-limit HTTP 302 redirect update checker with Zone A notification pill badge (`🎉 v2.1.4 Available!`) and manual trigger controls
 - **Intuitive Interface** - Easy-to-use graphical interface for major options
 - **Full RE Support** - Compatible with N_m3u8DL-RE command-line arguments
 - **Cloudflare WAF Bypass** - Dedicated amber-accented expander with browser TLS fingerprint impersonation (`curl_cffi`), dedicated Referer/Cookie inputs, and dynamic domain auto-derivation
 - **Batch Downloads** - Process multiple URLs from text files or folders
 - **Config Persistence** - Settings saved automatically between sessions
-- **Collapsible Sections** - Reduce clutter while keeping advanced controls available
 
 ### Stability and Quality
 

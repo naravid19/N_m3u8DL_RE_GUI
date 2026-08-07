@@ -58,6 +58,7 @@ namespace N_m3u8DL_RE_GUI
         private readonly Services.IBatchScriptService _batchScriptService;
         private readonly Services.IDragDropService _dragDropService;
         private bool _suspendParameterRefresh;
+        private bool _isCheckingUpdate;
         private static readonly Media.SolidColorBrush ErrorBorderBrush = new(MediaColor.FromRgb(231, 76, 60));
         private static readonly Media.SolidColorBrush DefaultBorderBrush = new(MediaColor.FromRgb(63, 63, 70));
 
@@ -440,6 +441,11 @@ namespace N_m3u8DL_RE_GUI
                 _suspendParameterRefresh = false;
                 RefreshValidationState();
                 GetParameter();
+
+                if (CheckBox_AutoCheckGuiUpdate?.IsChecked == true)
+                {
+                    _ = CheckGuiUpdateAsync(isManual: false);
+                }
             }
         }
 
@@ -880,6 +886,73 @@ namespace N_m3u8DL_RE_GUI
             }
         }
 
+        private async void Button_CheckUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            await CheckGuiUpdateAsync(isManual: true);
+        }
+
+        private void Button_UpdateBadge_Click(object sender, RoutedEventArgs e)
+        {
+            string? url = Button_UpdateBadge.Tag as string;
+            if (string.IsNullOrEmpty(url))
+                url = "https://github.com/naravid19/N_m3u8DL_RE_GUI/releases/latest";
+            StartShellTarget(url);
+        }
+
+        private async System.Threading.Tasks.Task CheckGuiUpdateAsync(bool isManual)
+        {
+            if (_isCheckingUpdate) return;
+            _isCheckingUpdate = true;
+
+            try
+            {
+                if (Button_CheckUpdate != null) Button_CheckUpdate.IsEnabled = false;
+                if (TextBlock_UpdateStatus != null) TextBlock_UpdateStatus.Text = "Checking...";
+
+                var service = new N_m3u8DL_RE_GUI.Core.Services.GitHubUpdateCheckService();
+                var currentVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 1, 3);
+                var result = await service.CheckForUpdateAsync("naravid19", "N_m3u8DL_RE_GUI", currentVer);
+
+                if (result.HasUpdate)
+                {
+                    Button_UpdateBadge.Content = $"🎉 {result.LatestVersion} Available!";
+                    Button_UpdateBadge.Tag = result.ReleaseUrl;
+                    Button_UpdateBadge.Visibility = Visibility.Visible;
+                    if (TextBlock_UpdateStatus != null)
+                        TextBlock_UpdateStatus.Text = $"{result.LatestVersion} available!";
+                }
+                else
+                {
+                    if (TextBlock_UpdateStatus != null)
+                    {
+                        if (isManual)
+                        {
+                            TextBlock_UpdateStatus.Text = "✓ Latest version";
+                            var timer = new System.Windows.Threading.DispatcherTimer
+                            {
+                                Interval = TimeSpan.FromSeconds(3)
+                            };
+                            timer.Tick += (s, e) =>
+                            {
+                                TextBlock_UpdateStatus.Text = "";
+                                ((System.Windows.Threading.DispatcherTimer)s!).Stop();
+                            };
+                            timer.Start();
+                        }
+                        else
+                        {
+                            TextBlock_UpdateStatus.Text = "";
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                _isCheckingUpdate = false;
+                if (Button_CheckUpdate != null) Button_CheckUpdate.IsEnabled = true;
+            }
+        }
     }
 }
+
 

@@ -107,6 +107,25 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Update Pill Button Style -->
+        <Style x:Key="UpdatePillButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#2ECC71"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#27AE60"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1E8449"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         
         <!-- GroupBox Style with full dark-theme template -->
         <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
@@ -351,6 +370,11 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="N_m3u8DL-RE GUI" FontSize="18" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
                         <TextBlock Text="v2.1.3" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="8,0,0,2"/>
+                        <Button x:Name="Button_UpdateBadge" Visibility="Collapsed"
+                                Style="{StaticResource UpdatePillButtonStyle}"
+                                Margin="10,0,0,0"
+                                Click="Button_UpdateBadge_Click"
+                                ToolTip="Click to view and download latest release on GitHub"/>
                     </StackPanel>
                     <CheckBox Grid.Column="1" x:Name="CheckBox_TopMost" Style="{StaticResource CheckBoxStyle}"
                               Content="Always on Top" ToolTip="Keep window on top"
@@ -967,6 +991,26 @@
 
                                     <CheckBox Grid.Row="2" Grid.Column="0" x:Name="CheckBox_ForceAnsiConsole" Style="{StaticResource CheckBoxStyle}" Content="Force ANSI Console" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
                                     <CheckBox Grid.Row="2" Grid.Column="1" x:Name="CheckBox_NoAnsiColor" Style="{StaticResource CheckBoxStyle}" Content="No ANSI Color" Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="🔄 GUI Auto-Update Engine" Style="{StaticResource GroupBoxStyle}">
+                            <StackPanel>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="CheckBox_AutoCheckGuiUpdate" Style="{StaticResource CheckBoxStyle}"
+                                              Content="Auto Check GUI Updates on Startup" IsChecked="True"
+                                              Checked="CheckBoxChanged" Unchecked="CheckBoxChanged"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <TextBlock x:Name="TextBlock_UpdateStatus" Text="" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <Button x:Name="Button_CheckUpdate" Content="Check Now"
+                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                Click="Button_CheckUpdate_Click" Padding="10,3"/>
+                                    </StackPanel>
                                 </Grid>
                             </StackPanel>
                         </GroupBox>

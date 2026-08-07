@@ -76,6 +76,7 @@ internal static class MainWindowConfigMapper
         state.Set("UseFFmpegConcat", Flag(window.CheckBox_UseFFmpegConcat.IsChecked == true));
         state.Set("AllowHlsMultiExtMap", Flag(window.CheckBox_AllowHlsMultiExtMap.IsChecked == true));
         state.Set("DisableUpdateCheck", Flag(window.CheckBox_DisableUpdateCheck.IsChecked == true));
+        state.Set("AutoCheckGuiUpdate", Flag(window.CheckBox_AutoCheckGuiUpdate.IsChecked == true));
 
         state.Set("TmpDir", window.TextBox_TmpDir.Text);
         state.Set("CustomHLSKey", window.TextBox_CustomHLSKey.Text);
@@ -153,6 +154,7 @@ internal static class MainWindowConfigMapper
         RestoreCheckBox(window.CheckBox_UseFFmpegConcat, config.Get("UseFFmpegConcat"));
         RestoreCheckBox(window.CheckBox_AllowHlsMultiExtMap, config.Get("AllowHlsMultiExtMap"));
         RestoreCheckBox(window.CheckBox_DisableUpdateCheck, config.Get("DisableUpdateCheck"));
+        RestoreCheckBox(window.CheckBox_AutoCheckGuiUpdate, config.Get("AutoCheckGuiUpdate"));
 
         RestoreTextBox(window.TextBox_TmpDir, config.Get("TmpDir"));
         RestoreTextBox(window.TextBox_CustomHLSKey, config.Get("CustomHLSKey"));

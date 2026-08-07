@@ -12,14 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **3-Zone Modern UX/UI Architecture Redesign**:
-  - **Zone A (Top Dock)**: Prominent Hero Input URL box, Quick Save Directory / Save Name controls, and Always-on-Top toggle.
+  - **Zone A (Top Dock)**: Prominent Hero Input URL box, Quick Save Directory / Save Name controls, Always-on-Top toggle, and interactive **🎉 GUI Update Pill Badge** (`#2ECC71` -> `#27AE60` hover).
   - **Zone B & C (Left Nav Sidebar & Content)**: Replaced monolithic vertical scrolling with clean 6-Tab sidebar navigation (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`).
   - **Zone D (Bottom Command Bar)**: Fixed-bottom command line preview bar with monospace code font and copyable argument string.
+- **GUI Auto-Update Engine (`IUpdateCheckService`)**:
+  - Parity HTTP 302 Redirect resolution parsing GitHub `Location` header without hitting REST API rate limits.
+  - Background async auto-check on startup + `Check Now` manual trigger in Tab 6 (⚙️ Advanced).
+  - Concurrency lock (`_isCheckingUpdate`), button loading state, and 3-second auto-clear micro-interaction for `✓ Latest version` confirmation.
+  - Config persistence (`AutoCheckGuiUpdate` in `config.txt`).
 
 ### Changed
 
 - **Unified Premium Dark Theme**:
   - Applied cohesive dark color tokens (`#0D0D0F` dark canvas, `#141418` surface container, `#1C1C22` card containers, `#5865F2` Discord/Indigo accent, `#8888A8` muted text).
+  - Dynamic UserAgent version header formatting in `GitHubUpdateCheckService`.
   - Updated Window Title to `N_m3u8DL-RE GUI v2.1.3`.
   - Updated `AssemblyVersion` and `AssemblyFileVersion` to `2.1.3.0`.
 
@@ -33,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Verification
 
 - `dotnet build N_m3u8DL_RE_GUI.sln` passes cleanly (0 Error, 0 Warning).
-- `dotnet test N_m3u8DL_RE_GUI.sln` passes cleanly (104/104 tests passed).
+- `dotnet test N_m3u8DL_RE_GUI.sln` passes cleanly (112/112 tests passed).
 
 ---
 
