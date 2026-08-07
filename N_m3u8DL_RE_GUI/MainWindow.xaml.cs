@@ -60,6 +60,7 @@ namespace N_m3u8DL_RE_GUI
         private readonly Services.IDownloadService _downloadService;
         private bool _suspendParameterRefresh;
         private bool _isCheckingUpdate;
+        private System.Threading.CancellationTokenSource? _cfPrepCts;
         private static readonly Media.SolidColorBrush ErrorBorderBrush = new(MediaColor.FromRgb(231, 76, 60));
         private static readonly Media.SolidColorBrush DefaultBorderBrush = new(MediaColor.FromRgb(63, 63, 70));
 
@@ -699,6 +700,7 @@ namespace N_m3u8DL_RE_GUI
 
         private void Button_Stop_Click(object sender, RoutedEventArgs e)
         {
+            _cfPrepCts?.Cancel();
             _downloadService.StopDownload();
             Button_Stop.Visibility = Visibility.Collapsed;
         }
@@ -840,7 +842,7 @@ namespace N_m3u8DL_RE_GUI
         ///   2. `py` launcher (reliable on Windows)
         ///   3. Bare `python` / `python3` (PATH-resolved; last resort)
         /// </summary>
-        private static string? FindPythonWithCurlCffi()
+        private static async System.Threading.Tasks.Task<string?> FindPythonWithCurlCffiAsync(System.Threading.CancellationToken cancellationToken = default)
         {
             var candidates = new List<string>();
 
@@ -896,6 +898,7 @@ namespace N_m3u8DL_RE_GUI
 
             foreach (var c in candidates)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     // Skip full paths that don't exist on disk.
@@ -909,20 +912,36 @@ namespace N_m3u8DL_RE_GUI
                         UseShellExecute = false,
                         CreateNoWindow = true,
                     };
+
                     using (var p = Process.Start(psi))
                     {
                         if (p == null) continue;
-                        // Read both streams to avoid deadlock, wait up to 10 s.
-                        p.StandardOutput.ReadToEnd();
-                        p.StandardError.ReadToEnd();
-                        if (!p.WaitForExit(10000))
+                        using var timeoutCts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
+
+                        var outTask = p.StandardOutput.ReadToEndAsync(timeoutCts.Token);
+                        var errTask = p.StandardError.ReadToEndAsync(timeoutCts.Token);
+
+                        try
                         {
-                            try { p.Kill(); } catch { }
+                            await p.WaitForExitAsync(timeoutCts.Token);
+                            await System.Threading.Tasks.Task.WhenAll(outTask, errTask);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            try { p.Kill(entireProcessTree: true); } catch { }
+                            if (cancellationToken.IsCancellationRequested)
+                                throw;
                             continue;
                         }
+
                         if (p.ExitCode == 0)
                             return c;
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch { }
             }
@@ -957,7 +976,7 @@ namespace N_m3u8DL_RE_GUI
         /// and the user can see download progress / errors.
         /// Tracked by IDownloadService so Button_Stop can kill the process tree if cancelled.
         /// </summary>
-        private async Task StartCloudflareDownloadAsync()
+        private async System.Threading.Tasks.Task StartCloudflareDownloadAsync()
         {
             string scriptPath = Path.Combine(AppContext.BaseDirectory, "m3u8_cf_bypass.py");
             if (!File.Exists(scriptPath))
@@ -970,8 +989,24 @@ namespace N_m3u8DL_RE_GUI
                 return;
             }
 
-            // Resolve a Python that actually has curl_cffi installed.
-            string? pythonExe = FindPythonWithCurlCffi();
+            _cfPrepCts?.Dispose();
+            _cfPrepCts = new System.Threading.CancellationTokenSource();
+
+            string? pythonExe = null;
+            try
+            {
+                pythonExe = await FindPythonWithCurlCffiAsync(_cfPrepCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            finally
+            {
+                _cfPrepCts?.Dispose();
+                _cfPrepCts = null;
+            }
+
             if (string.IsNullOrEmpty(pythonExe))
             {
                 MessageBox.Show(
