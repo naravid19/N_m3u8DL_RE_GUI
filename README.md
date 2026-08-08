@@ -24,40 +24,13 @@
     <a href="https://github.com/nilaoda/N_m3u8DL-RE"><strong>View Original CLI Tool</strong></a>
     <br />
     <br />
-    <a href="#usage">View Demo</a>
-    |
+    <a href="#getting-started">Getting Started</a>
+    ·
     <a href="https://github.com/naravid19/N_m3u8DL_RE_GUI/issues/new?labels=bug">Report Bug</a>
-    |
+    ·
     <a href="https://github.com/naravid19/N_m3u8DL_RE_GUI/issues/new?labels=enhancement">Request Feature</a>
   </p>
 </div>
-
-<!-- TABLE OF CONTENTS -->
-<details>
-  <summary>Table of Contents</summary>
-  <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#features">Features</a></li>
-    <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#license">License</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
-  </ol>
-</details>
 
 <!-- ABOUT THE PROJECT -->
 
@@ -67,161 +40,134 @@
   <img src="images/screenshot.png" alt="Product Screenshot" width="80%">
 </div>
 
-**N_m3u8DL-RE GUI** provides a graphical interface for the [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) command-line tool, making it easier to download DASH, HLS, and MSS streams without memorizing complex command-line arguments.
+**N_m3u8DL-RE GUI** provides a graphical interface for the [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) command-line tool. It makes downloading DASH, HLS, and MSS streams incredibly easy—no need to memorize complex command-line arguments anymore!
 
-Main benefits:
+### Main Benefits:
 
-- **No command-line memorization** - Common options are available through UI controls
-- **Batch processing** - Download multiple streams from text files or folders with one click
-- **Configuration persistence** - Your settings are automatically saved between sessions
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-### Built With
-
-- [![.NET][dotnet-shield]][dotnet-url]
-- [![WPF][wpf-shield]][wpf-url]
-- [![C#][csharp-shield]][csharp-url]
+- 🚀 **No command-line memorization** - Common options are available through simple UI controls.
+- 📦 **Batch processing** - Download multiple streams from text files or folders with one click.
+- 🔒 **Privacy First** - Your settings and headers are automatically saved between sessions and heavily encrypted using Windows DPAPI.
+- 🛡️ **Cloudflare WAF Bypass** - Built-in TLS fingerprint impersonation to bypass Cloudflare security seamlessly.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
 
 <!-- GETTING STARTED -->
 
-## Getting Started
+## Getting Started (Installation)
 
-This section explains how to set up and run the application locally as an end user.
+We have intentionally kept the installation process as simple as possible. No installers, no complicated setups.
 
-### Prerequisites
+### 1. Download
 
-Before using this application, ensure you have the following:
+Download the latest release (`N_m3u8DL_RE_GUI_v2.1.4.zip`) from our [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) page.
 
-- **N_m3u8DL-RE (v0.6.0-beta+)** - The core download engine (bundled version: v0.6.0-beta, git master 2026-07-30)
-  ```sh
-  # Download from: https://github.com/nilaoda/N_m3u8DL-RE/releases
-  ```
-- **FFmpeg** - Required for muxing and processing
-  ```sh
-  # Download from: https://ffmpeg.org/download.html
-  ```
-- **Python + curl_cffi** - Optional, required for Cloudflare WAF bypass mode
-  ```sh
-  pip install curl_cffi
-  ```
+### 2. Extract
 
-### Installation
+Extract the `.zip` file anywhere on your computer. Inside the folder, you will find exactly **4 core files** that power everything:
 
-1. Download the latest release of N_m3u8DL-RE GUI.
-2. Extract the archive to your preferred location.
-3. Place required executables in the same directory:
-   ```text
-   N_m3u8DL_RE_GUI/
-   |- N_m3u8DL_RE_GUI.exe
-   |- N_m3u8DL-RE.exe      <- Required
-   |- ffmpeg.exe           <- Optional, for muxing
-   |- m3u8_cf_bypass.py    <- Optional, for Cloudflare bypass
-   ```
-4. Launch `N_m3u8DL_RE_GUI.exe`.
+```text
+N_m3u8DL_RE_GUI_v2.1.4/
+├── N_m3u8DL_RE_GUI.exe    <-- The main application (Double click this!)
+├── N_m3u8DL-RE.exe        <-- The core download engine
+├── ffmpeg.exe             <-- The video/audio muxing engine
+└── m3u8_cf_bypass.py      <-- The Cloudflare TLS bypass script
+```
+
+### 3. Run
+
+Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
+
+> [!NOTE]
+> **Python Requirement:** If you plan to use the **Cloudflare Bypass** feature, make sure you have Python installed on your Windows machine, and run `pip install curl_cffi` in your command prompt.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- USAGE EXAMPLES -->
+---
 
-## Usage
+<!-- USAGE -->
+
+## Usage Guide
 
 ### Quick Start
 
-1. **Enter URL** - Paste your `.m3u8`, `.mpd`, or stream URL in the URL field
-2. **Configure Options** - Select desired options (Audio Only, Sub Only, Bypass CF, etc.)
-3. **Click GO** - The application generates and executes the command
+1. **Enter URL** - Paste your `.m3u8`, `.mpd`, or stream URL in the top URL field.
+2. **Configure Options** - Select desired options from the sidebar tabs (e.g., Audio Only, Sub Only).
+3. **Click GO** - The application will automatically generate the CLI command and start downloading.
 
-### Input Methods
+### Input Methods Supported
 
-| Method      | Description                           |
+| Method      | How to use                            |
 | ----------- | ------------------------------------- |
-| Direct URL  | Paste a stream URL directly           |
-| Drag & Drop | Drag `.m3u8`, `.mpd`, or `.txt` files |
-| Batch File  | Use a `.txt` file with multiple URLs  |
-| Folder      | Drop a folder containing stream files |
+| Direct URL  | Paste a stream URL directly into the top bar. |
+| Drag & Drop | Drag `.m3u8`, `.mpd`, or `.txt` files directly into the window. |
+| Batch File  | Drop a `.txt` file containing multiple URLs (one per line). |
+| Folder      | Drop a folder containing stream files to batch process them all. |
 
-### Custom Headers
+### How to use Cloudflare Bypass
 
-Add custom headers in the Headers field using this format:
-
-```
-Cookie: your_cookie_value|User-Agent: Mozilla/5.0
-```
-
-For more examples, refer to the [N_m3u8DL-RE Documentation](https://github.com/nilaoda/N_m3u8DL-RE).
+If a website is blocking you with Cloudflare, open the **Security Tab (🔒)** and expand the **Cloudflare Bypass** section:
+1. Select a browser fingerprint (e.g., `chrome120`).
+2. Enter the website's `Referer` URL if required.
+3. Check the "Bypass CF" option.
+4. Click GO. The Python script (`m3u8_cf_bypass.py`) will automatically spoof the browser and grab the clearance cookies for you.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
 
 <!-- FEATURES -->
 
-## Features
+## Detailed Features
 
 ### Core Features
+- **3-Zone Modern UX/UI Architecture** - Clean layout with a top URL hero bar, a 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and a fixed command preview bar at the bottom.
+- **GUI Auto-Update Engine** - Zero rate-limit HTTP update checker. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top.
+- **Full RE Support** - Compatible with all major N_m3u8DL-RE command-line arguments.
+- **Cloudflare WAF Bypass** - Dedicated amber-accented expander with browser TLS fingerprint impersonation (`curl_cffi`), dynamic domain auto-derivation, and Referer/Cookie inputs.
+- **Batch Downloads** - Process multiple URLs from text files or drop entire folders of streams.
+- **Config Persistence** - Settings are saved automatically between sessions.
 
-- **3-Zone Modern UX/UI Architecture** - Clean layout with Zone A top URL hero bar, Zone B/C 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and Zone D fixed command preview bar
-- **GUI Auto-Update Engine** - Zero rate-limit HTTP 302 redirect update checker with Zone A notification pill badge (`🎉 v2.1.4 Available!`) and manual trigger controls
-- **Intuitive Interface** - Easy-to-use graphical interface for major options
-- **Full RE Support** - Compatible with N_m3u8DL-RE command-line arguments
-- **Cloudflare WAF Bypass** - Dedicated amber-accented expander with browser TLS fingerprint impersonation (`curl_cffi`), dedicated Referer/Cookie inputs, and dynamic domain auto-derivation
-- **Batch Downloads** - Process multiple URLs from text files or folders
-- **Config Persistence** - Settings saved automatically between sessions
-
-### Stability and Quality
-
-- **Windows DPAPI Secret Protection** - Encrypts headers, proxies, decryption keys, and IVs via Windows DPAPI in `config.json` while scrubbing plaintext secrets from legacy files
-- **Thread-Safe Cancellation Lifecycle** - Responsive process cancellation that terminates child process trees (`Kill(entireProcessTree: true)`) and cancels async tasks
-- **Automated Test Suite (164 Tests)** - Comprehensive unit and integration test suite structured into Core, Services, ViewModels, and Fixtures
-- **Safe Config Handling** - Backward-compatible `config.txt` parsing with safe fallbacks and DPAPI secret protection
-- **Deterministic Tests** - Cross-machine stable unit tests for args/config/parser/batch services
-- **Batch Service Layer** - Isolated batch script generation in `%TEMP%` with automatic cleanup
-- **Safe Startup Validation** - Null-safe validation refresh at startup
-- **Windows-safe Argument Quoting** - Command arguments safely handle trailing `\` paths and embedded quotes
-- **Safer Batch Titles** - Batch `TITLE` lines are escaped for CMD context and denominator reflects parsed item count
-- **Safe Clipboard Access** - Clipboard-read failures are handled gracefully without crashing startup/UI flows
+### Security and Stability
+- **Windows DPAPI Secret Protection** - Your custom headers, proxies, decryption keys, and IVs are safely encrypted via Windows DPAPI in your `config.json` file. No plaintext secrets!
+- **Thread-Safe Cancellation** - Responsive process cancellation that safely terminates child process trees.
+- **Automated Test Suite (164 Tests)** - Rock-solid stability backed by comprehensive unit tests.
 
 ### Download Options
-
-- **Cloudflare Bypass** - Impersonate Chrome TLS fingerprint to download Cloudflare-protected m3u8 streams
-- **Concurrent Downloads** - Download multiple streams simultaneously
-- **Audio/Subtitle Selection** - Download audio-only or subtitles-only
-- **Stream Selection (Regex)** - Select/drop video/audio/subtitle streams by regex
-- **Time Range** - Download specific portions of a stream
-- **Speed Limit** - Set maximum download speed
-- **Custom Proxy** - Support for HTTP and SOCKS5 proxies
+- **Concurrent Downloads** - Download multiple streams simultaneously.
+- **Audio/Subtitle Selection** - Download audio-only or subtitles-only easily.
+- **Stream Selection (Regex)** - Select or drop video/audio/subtitle streams by standard regex.
+- **Time Range** - Download specific portions of a stream (e.g., `00:05:00-00:10:00`).
+- **Speed Limit** - Set a maximum download speed to avoid throttling.
+- **Custom Proxy** - Support for HTTP and SOCKS5 proxies.
 
 ### Muxing and Output
-
-- **Mux After Done** - Automatically mux to mp4/mkv with ffmpeg or mkvmerge
-- **Mux Import** - Import external media files during muxing
-- **Subtitle Format** - Choose between SRT and VTT output
+- **Mux After Done** - Automatically mux video and audio to `.mp4` or `.mkv` with `ffmpeg`.
+- **Mux Import** - Import external media files during muxing.
+- **Subtitle Format** - Choose between SRT and VTT output formats.
 
 ### Live Recording
-
-- **Perform as VOD** - Treat live streams as VOD for full download
-- **Realtime Merge** - Merge segments in real time
-- **Pipe Mux** - Direct pipe to muxer
-- **Record Limit** - Set maximum recording duration
+- **Perform as VOD** - Treat live streams as VOD, allowing full download and pausing.
+- **Realtime Merge** - Merge segments in real time without waiting for completion.
+- **Pipe Mux** - Direct pipe to muxer to save disk I/O.
+- **Record Limit** - Set a maximum recording duration.
 
 ### Decryption
+- **Engine Selection** - Choose between MP4DECRYPT, SHAKA_PACKAGER, or FFMPEG for real-time MP4 segment decryption.
+- **HLS Method Override** - Set a custom HLS decryption method.
+- **Key Text File** - Load a massive list of decryption keys directly from a file.
 
-- **Engine Selection** - MP4DECRYPT, SHAKA_PACKAGER, or FFMPEG
-- **HLS Method Override** - Custom HLS decryption method
-- **Real-Time Decryption** - Decrypt MP4 segments on the fly
-- **Key Text File** - Load decryption keys from file
-
-### Advanced Features
-
-- **Custom Headers** - Add HTTP headers (Cookie, User-Agent, etc.)
-- **Thread Control** - Customize thread count, retry count, and timeouts
-- **Auto Subtitle Fix** - Automatically fix subtitle synchronization issues
-- **Save Pattern** - Custom naming pattern for downloaded files
-- **Log Level** - Control output verbosity (OFF/ERROR/WARN/INFO/DEBUG)
-- **Readable Dropdowns** - High-contrast ComboBox dropdown list behavior
+### Advanced Control
+- **Custom Headers** - Add HTTP headers (Cookie, User-Agent, Origin, etc.).
+- **Thread Control** - Customize thread count, retry limits, and timeout parameters.
+- **Auto Subtitle Fix** - Automatically fix subtitle synchronization issues.
+- **Save Pattern** - Custom naming pattern for downloaded files.
+- **Log Level** - Control output verbosity (OFF/ERROR/WARN/INFO/DEBUG).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
 
 <!-- ROADMAP -->
 
@@ -229,74 +175,29 @@ For more examples, refer to the [N_m3u8DL-RE Documentation](https://github.com/n
 
 - [x] Full N_m3u8DL-RE argument support
 - [x] Batch download from text files
-- [x] UTF-8 batch file encoding
 - [x] Multi-language UI (EN/CN/TW)
 - [x] Dark theme with collapsible sections
-- [x] Mux After Done with format/muxer selection
-- [x] Live recording options
 - [x] Stream selection with regex
-- [x] Decryption engine selection
-- [x] Advanced settings (Log Level, Save Pattern, etc.)
-- [x] Safe config parser and backward compatibility hardening
-- [x] Batch generation moved to service layer
-- [x] Encoding detector/parser/core hardening with automated tests
+- [x] Safe config parser and Windows DPAPI secret protection
+- [x] GUI Auto-Update checking system
 - [ ] Download progress visualization
 - [ ] Queue management
-
-See the [open issues](https://github.com/naravid19/N_m3u8DL_RE_GUI/issues) for a full list of proposed features and known issues.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- CONTRIBUTING -->
-
-## Contributing
-
-Contributions are welcome. To contribute:
-
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- LICENSE -->
-
-## License
-
-Distributed under the MIT License. See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- CONTACT -->
-
-## Contact
-
-Project Link: [https://github.com/naravid19/N_m3u8DL_RE_GUI](https://github.com/naravid19/N_m3u8DL_RE_GUI)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- ACKNOWLEDGMENTS -->
-
-## Acknowledgments
-
-- [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) by nilaoda
-- [FFmpeg](https://ffmpeg.org/)
-- [Best-README-Template](https://github.com/othneildrew/Best-README-Template)
-- [Img Shields](https://shields.io)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ---
 
+<!-- LICENSE & DISCLAIMER -->
+
 ## Disclaimer
 
-This application is a **GUI wrapper only**. All downloading and processing is handled by [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) and [FFmpeg](https://ffmpeg.org/). For issues related to downloading or media processing, refer to their respective repositories.
+This application is a **GUI wrapper only**. All downloading and processing is handled by [N_m3u8DL-RE](https://github.com/nilaoda/N_m3u8DL-RE) and [FFmpeg](https://ffmpeg.org/). For issues related to downloading or media processing failures, please refer to their respective repositories.
+
+## License
+
+Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 <!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-
 [dotnet-shield]: https://img.shields.io/badge/.NET-9.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white
 [dotnet-url]: https://dotnet.microsoft.com/
 [wpf-shield]: https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white
