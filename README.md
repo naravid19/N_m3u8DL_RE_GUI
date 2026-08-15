@@ -61,14 +61,14 @@ We have intentionally kept the installation process as simple as possible. No in
 
 ### 1. Download
 
-Download the latest release (`N_m3u8DL_RE_GUI_v2.1.4.zip`) from our [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) page.
+Download the latest release (`N_m3u8DL_RE_GUI_v2.1.5.zip`) from our [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) page.
 
 ### 2. Extract
 
 Extract the `.zip` file anywhere on your computer. Inside the folder, you will find exactly **4 core files** that power everything:
 
 ```text
-N_m3u8DL_RE_GUI_v2.1.4/
+N_m3u8DL_RE_GUI_v2.1.5/
 ├── N_m3u8DL_RE_GUI.exe    <-- The main application (Double click this!)
 ├── N_m3u8DL-RE.exe        <-- The core download engine
 ├── ffmpeg.exe             <-- The video/audio muxing engine
@@ -107,11 +107,13 @@ Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
 
 ### How to use Cloudflare Bypass
 
-If a website is blocking you with Cloudflare, open the **Security Tab (🔒)** and expand the **Cloudflare Bypass** section:
-1. Select a browser fingerprint (e.g., `chrome120`).
-2. Enter the website's `Referer` URL if required.
-3. Check the "Bypass CF" option.
-4. Click GO. The Python script (`m3u8_cf_bypass.py`) will automatically spoof the browser and grab the clearance cookies for you.
+If a website is blocking you with Cloudflare, open the **Network tab (🌐)** and find the **⚡ Cloudflare Bypass (curl_cffi)** section:
+1. Tick **Enable Cloudflare Bypass**.
+2. Select a browser fingerprint (e.g., `chrome120`).
+3. Enter the website's `Referer` URL if required — leave it blank to derive it from the input URL automatically.
+4. Click **▶ GO**. The Python script (`m3u8_cf_bypass.py`) will spoof the browser fingerprint and grab the clearance cookies for you.
+
+> Cloudflare mode uses only the URL, save folder, save name, and the fields in this section. Options set on the other tabs are not passed to the Python script.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -125,14 +127,16 @@ If a website is blocking you with Cloudflare, open the **Security Tab (🔒)** a
 - **3-Zone Modern UX/UI Architecture** - Clean layout with a top URL hero bar, a 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and a fixed command preview bar at the bottom.
 - **GUI Auto-Update Engine** - Zero rate-limit HTTP update checker. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top.
 - **Full RE Support** - Compatible with all major N_m3u8DL-RE command-line arguments.
-- **Cloudflare WAF Bypass** - Dedicated amber-accented expander with browser TLS fingerprint impersonation (`curl_cffi`), dynamic domain auto-derivation, and Referer/Cookie inputs.
+- **Cloudflare WAF Bypass** - Dedicated amber-accented section on the Network tab with browser TLS fingerprint impersonation (`curl_cffi`), dynamic domain auto-derivation, and Referer/Cookie inputs.
 - **Batch Downloads** - Process multiple URLs from text files or drop entire folders of streams.
 - **Config Persistence** - Settings are saved automatically between sessions.
 
 ### Security and Stability
 - **Windows DPAPI Secret Protection** - Your custom headers, proxies, decryption keys, and IVs are safely encrypted via Windows DPAPI in your `config.json` file. No plaintext secrets!
-- **Thread-Safe Cancellation** - Responsive process cancellation that safely terminates child process trees.
-- **Automated Test Suite (164 Tests)** - Rock-solid stability backed by comprehensive unit tests.
+- **Thread-Safe Cancellation** - Responsive process cancellation with clean token lifetime management that safely terminates child process trees.
+- **In-Window Live Feedback & Progress** - Real-time progress bar, live status messages, collapsible diagnostic log, and an "Open Folder" button on completion.
+- **Accessible & Keyboard Ready** - High-contrast focus visual indicators, access keys (`Alt+G` for Go, `Alt+S` / `Escape` for Stop), and full UI automation properties.
+- **Automated Test Suite (542 Tests)** - Rock-solid stability backed by 542 unit, integration, contrast, and accessibility tests covering all core models, services, XAML a11y, and view models.
 
 ### Download Options
 - **Concurrent Downloads** - Download multiple streams simultaneously.
@@ -175,12 +179,15 @@ If a website is blocking you with Cloudflare, open the **Security Tab (🔒)** a
 
 - [x] Full N_m3u8DL-RE argument support
 - [x] Batch download from text files
-- [x] Multi-language UI (EN/CN/TW)
-- [x] Dark theme with collapsible sections
+- [x] English-only standardized UI
+- [x] Dark theme with a Zone D status strip and a collapsible log panel
 - [x] Stream selection with regex
 - [x] Safe config parser and Windows DPAPI secret protection
 - [x] GUI Auto-Update checking system
-- [ ] Download progress visualization
+- [x] Download progress and live status visualization
+- [x] Keyboard shortcuts, visible focus rings, and screen-reader names on every control
+- [x] Full WCAG 2.1 AA contrast compliance and option-conflict dependency visibility
+- [ ] Collapsible option groups and task-oriented grouping
 - [ ] Queue management
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

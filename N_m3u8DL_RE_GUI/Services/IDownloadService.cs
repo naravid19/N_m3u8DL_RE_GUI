@@ -12,7 +12,7 @@ public interface IDownloadService
     /// Start download process with given options.
     /// </summary>
     /// <param name="options">Download configuration</param>
-    /// <param name="progressCallback">Progress callback</param>
+    /// <param name="progressCallback">Receives 0-100 as parsed from the child process output.</param>
     /// <param name="logCallback">Log callback</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Download result</returns>
@@ -29,6 +29,7 @@ public interface IDownloadService
         string fileName,
         string arguments,
         Action<string>? logCallback = null,
+        IProgress<int>? progressCallback = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -40,4 +41,4 @@ public interface IDownloadService
     /// Check if download is currently running.
     /// </summary>
     bool IsDownloading { get; }
-} 
+}

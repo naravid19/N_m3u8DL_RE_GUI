@@ -72,6 +72,7 @@ public class BatchScriptService : IBatchScriptService
 
         var builder = new StringBuilder();
         builder.AppendLine("@echo off");
+        builder.AppendLine("chcp 65001 >nul");
         builder.AppendLine("::Created by N_m3u8DL_RE_GUI\r\n");
         var index = 0;
         foreach (var item in items)
@@ -99,7 +100,7 @@ public class BatchScriptService : IBatchScriptService
         Action<string>? onTitleResolved,
         CancellationToken cancellationToken)
     {
-        var rawLines = File.ReadAllLines(inputPath, TextEncodingDetector.DetectFromFile(inputPath));
+        var rawLines = await File.ReadAllLinesAsync(inputPath, TextEncodingDetector.DetectFromFile(inputPath), cancellationToken);
         var validItems = new List<BatchInputEntry>();
         foreach (var line in rawLines)
         {
@@ -111,22 +112,49 @@ public class BatchScriptService : IBatchScriptService
 
         var builder = new StringBuilder();
         builder.AppendLine("@echo off");
+        builder.AppendLine("chcp 65001 >nul");
         builder.AppendLine("::Created by N_m3u8DL_RE_GUI");
+
+        var titles = new string[validItems.Count];
+        var options = new ParallelOptions 
+        { 
+            MaxDegreeOfParallelism = 4, 
+            CancellationToken = cancellationToken 
+        };
+
+        await Parallel.ForEachAsync(Enumerable.Range(0, validItems.Count), options, async (i, ct) =>
+        {
+            var item = validItems[i];
+            if (item.HasCustomTitle)
+            {
+                titles[i] = item.Title;
+                return;
+            }
+
+            try
+            {
+                var title = await resolveTitleAsync(item.Url);
+                titles[i] = string.IsNullOrWhiteSpace(title) ? item.Url : title;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                titles[i] = item.Url;
+            }
+            catch
+            {
+                titles[i] = item.Url;
+            }
+        });
+
         var index = 0;
-        foreach (var parsed in validItems)
+        for (int i = 0; i < validItems.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var title = parsed.HasCustomTitle
-                ? parsed.Title
-                : await resolveTitleAsync(parsed.Url);
-
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                title = parsed.HasCustomTitle
-                    ? parsed.Title
-                    : parsed.Url;
-            }
+            var parsed = validItems[i];
+            var title = string.IsNullOrWhiteSpace(titles[i])
+                ? (parsed.HasCustomTitle ? parsed.Title : parsed.Url)
+                : titles[i];
 
             onTitleResolved?.Invoke(title);
             builder.AppendLine($"TITLE \"[{++index}/{validItems.Count}] - {EscapeBatchTitle(title)}\"");

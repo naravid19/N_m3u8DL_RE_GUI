@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.5] - 2026-08-15
+
+### Added
+
+- **In-Window Feedback Surface & Progress Reporting (Zone D)**:
+  - Added live progress bar and status strip (`TextBlock_Status`, `ProgressBar_Download`) directly in the main window.
+  - Added collapsible live log viewer (`TextBox_Log`) with `ToggleButton_Log` toggle.
+  - Added "Open Folder" button (`Button_OpenFolder`) upon successful download completion for instant folder access.
+  - Created `ConsoleOutputParser` in `N_m3u8DL_RE_GUI.Core` for pure ANSI sequence stripping and real-time percentage extraction.
+  - Redirected standard output and error streams in `DownloadService` and forwarded clean log lines and progress to GUI.
+- **P0 Hardening & DPAPI Secret Protection Alignment**:
+  - Added legacy secret keys (`请求头`, `代理`, `IV`) to DPAPI protection registry in `JsonConfigService`.
+  - Hardened DPAPI decryption failure handling: preserves raw ciphertext (`dpapi:<blob>`) instead of wiping credentials to empty string.
+  - Stopped writing duplicate plaintext `IV` in `MainWindowConfigMapper` while maintaining backward-compatible read resolution.
+  - Extracted pure `CfCommandBuilder` to `N_m3u8DL_RE_GUI.Core` with cmd.exe `%` doubling and UTF-8 batch header.
+- **P1 Correctness & Non-UTF-8 Encoding Recovery**:
+  - `HtmlTitleExtractor`: Added streaming-safe title extractor respecting server-declared HTTP `Content-Type: charset` (GBK, Big5, Shift-JIS, ISO-8859-1) with `System.Text.Encoding.CodePages`. Replaced O(N²) buffer rescanning with fixed 7-char overlap window (`ContainsClosingTitleTag`).
+  - `TextEncodingDetector`: Real system ANSI fallback on .NET Core (`AnsiFallback`) and sample boundary tolerance for multi-byte UTF-8 sequences straddling the 8 KB boundary.
+  - `LegacyConfigCodec`: Safe escaping/unescaping (`%3B`, `%25`) for `key=value;` legacy `config.txt` format, preventing data loss in raw string fields (`AdKeyword`, `SavePattern`, etc.) while maintaining backward compatibility.
+  - `ArgsBuilder`: Cached static `EscapeChars` set eliminating allocations in fast-path argument quoting; escaped quotes in `MuxBinPath`, `RangeStart`, and `RangeEnd`.
+  - `UtilityService`: DOS reserved device name sanitization matching segments before the first dot (e.g. `CON.txt.bak` -> `_CON.txt.bak`).
+- **WCAG 2.1 AA Contrast Compliance (Part B)**:
+  - Resolved 9 measured contrast failures across dark theme palette tokens:
+    - Replaced `BorderBrushCustom` (`#2A2A38` -> `#66667C`, 3.03:1 on Card).
+    - Introduced `AccentTextBrush` (`#7A87FF`, 5.44:1 on Card) for GroupBox headers, selected tab text, and window title while retaining `AccentBrush` (`#5865F2`) for surfaces.
+    - Adjusted button hover ramps to darken on interaction (`AccentHoverBrush` `#4350D8`, `AccentPressedBrush` `#3E4ACB`) ensuring contrast increases on hover.
+    - Updated Stop button (`#C0392B`, 5.44:1) and Drop labels / validation borders (`DropLabelBrush` `#EC7063`, 5.70:1).
+  - Added automated `XamlContrastTests` to prevent contrast regressions.
+- **Option Conflict & Dependency Visibility (Part C)**:
+  - `SyncDependentControlStates`: Dynamically disables and tooltips overridden fields (`TextBox_SelectAudio`, `TextBox_DropVideo`) when **Audio Only** is active.
+  - Added Cloudflare Mode Scope Warning banner (`Border_CfScopeWarning`) in amber (`#F39C12`) explaining that CF mode ignores non-network tab settings. Enabled/disabled CF fields based on bypass toggle.
+  - Renamed Advanced tab label to "DL Language" with tooltip explaining it configures the downloader's console output rather than the GUI.
+  - Updated `DownloadOptions.AudioOnly` getter to accept both `all` and `.*` drop patterns.
+- **Process & Concurrency Lifetime Safety**:
+  - Implemented `BeginCancellableOperation()` / `EndCancellableOperation()` helper to prevent cross-operation `CancellationTokenSource` disposal in `async void` UI handlers.
+  - Added global crash protection in `App.xaml.cs` (`DispatcherUnhandledException`, `AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`).
+  - Clamped window dimensions to desktop work area on high DPI displays to prevent Zone D from sliding under the taskbar.
+- **Desktop Accessibility (a11y) & Keyboard Navigation**:
+  - Added `AccessibleFocusVisual` high-contrast dashed focus rectangle across all controls.
+  - Added keyboard bindings: `Alt+G` / `Enter` for GO, `Alt+S` / `Escape` for Stop.
+  - Added `AutomationProperties.Name` across all interactive inputs.
+  - Added `XamlAccessibilityTests` headless automated XAML validation suite.
+- **Comprehensive Unit & Integration Test Suite (542 Tests)**:
+  - Expanded test coverage across all layers (`HtmlTitleExtractorTests`, `TextEncodingDetectorEdgeTests`, `ArgsBuilderQuotingTests`, `LegacyConfigCodecTests`, `XamlContrastTests`, `ConsoleOutputParserTests`, `CfCommandBuilderTests`, `XamlAccessibilityTests`, `JsonConfigServiceSecretCoverageTests`, `DownloadServiceTests`), reaching 542/542 passing tests with 0 warnings.
+
+### Changed
+
+- Forced `--no-ansi-color` on GUI download execution paths to ensure clean log parsing.
+- Standardized all application text and messages to clean English.
+- Updated window height default to 660px with work-area clamping.
+
+---
+
 ## [2.1.4] - 2026-08-08
 
 ### Added
@@ -278,6 +331,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
+| 2.1.5   | 2026-08-14 | Parallel batch, socket exhaustion fix, OOM fix, DOS device protection, 245 tests |
 | 2.1.4   | 2026-08-08 | Windows DPAPI secret protection, lifecycle hardening, 164 tests |
 | 2.1.3   | 2026-08-06 | 3-Zone Modern UX/UI Architecture, Dark Mode ComboBox fixes|
 | 2.1.2   | 2026-08-06 | Dedicated CF Bypass Expander UX/UI, TLS fingerprinting    |

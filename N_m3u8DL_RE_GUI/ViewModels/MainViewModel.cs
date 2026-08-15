@@ -4,6 +4,7 @@ using N_m3u8DL_RE_GUI.Core;
 using N_m3u8DL_RE_GUI.Services;
 using System.ComponentModel;
 using System.Windows;
+using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
 namespace N_m3u8DL_RE_GUI.ViewModels;
@@ -16,6 +17,10 @@ public partial class MainViewModel : ObservableObject
     private readonly IDownloadService _downloadService;
     private readonly IUtilityService _utilityService;
     private readonly IDragDropService _dragDropService;
+
+    private readonly System.Text.StringBuilder _logBuilder = new();
+    private bool _isLogUpdatePending = false;
+    private readonly object _logLock = new object();
 
     public MainViewModel(IDownloadService downloadService, IUtilityService utilityService, IDragDropService dragDropService)
     {
@@ -63,7 +68,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(DownloadOptions.Input))
         {
-            MessageBox.Show("กรุณาใส่ URL ที่ต้องการดาวน์โหลด", "ข้อผิดพลาด", 
+            MessageBox.Show("Please enter a URL to download", "Error", 
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -72,10 +77,36 @@ public partial class MainViewModel : ObservableObject
         {
             IsDownloading = true;
             Progress = 0;
-            LogOutput = "เริ่มการดาวน์โหลด...\n";
+            lock (_logLock)
+            {
+                _logBuilder.Clear();
+                _logBuilder.AppendLine("Starting download...");
+            }
+            LogOutput = "Starting download...\n";
 
             var progress = new Progress<int>(value => Progress = value);
-            var logCallback = new Action<string>(message => LogOutput += $"{message}\n");
+            var logCallback = new Action<string>(message => 
+            {
+                lock (_logLock)
+                {
+                    _logBuilder.AppendLine(message);
+                    if (!_isLogUpdatePending)
+                    {
+                        _isLogUpdatePending = true;
+                        Task.Run(async () => 
+                        {
+                            await Task.Delay(100);
+                            string text;
+                            lock (_logLock)
+                            {
+                                text = _logBuilder.ToString();
+                                _isLogUpdatePending = false;
+                            }
+                            UpdateLogOutput(text);
+                        });
+                    }
+                }
+            });
 
             var success = await _downloadService.StartDownloadAsync(
                 DownloadOptions, 
@@ -84,14 +115,15 @@ public partial class MainViewModel : ObservableObject
 
             if (!success)
             {
-                MessageBox.Show("ดาวน์โหลดล้มเหลว", "ข้อผิดพลาด", 
+                MessageBox.Show("Download failed", "Error", 
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         catch (Exception ex)
         {
-            LogOutput += $"เกิดข้อผิดพลาด: {ex.Message}\n";
-            MessageBox.Show($"เกิดข้อผิดพลาด: {ex.Message}", "ข้อผิดพลาด", 
+            lock (_logLock) { _logBuilder.AppendLine($"Error: {ex.Message}"); }
+            UpdateLogOutput(_logBuilder.ToString());
+            MessageBox.Show($"Error: {ex.Message}", "Error",  
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -108,7 +140,8 @@ public partial class MainViewModel : ObservableObject
     {
         _downloadService.StopDownload();
         IsDownloading = false;
-                        LogOutput += "Download stopped.\n";
+        lock (_logLock) { _logBuilder.AppendLine("Download stopped."); }
+        UpdateLogOutput(_logBuilder.ToString());
     }
 
     /// <summary>
@@ -117,6 +150,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ClearLog()
     {
+        lock (_logLock) { _logBuilder.Clear(); }
         LogOutput = string.Empty;
     }
 
@@ -150,7 +184,21 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            LogOutput += $"Failed to get title from URL: {ex.Message}\n";
+            lock (_logLock) { _logBuilder.AppendLine($"Failed to get title from URL: {ex.Message}"); }
+            UpdateLogOutput(_logBuilder.ToString());
+        }
+    }
+
+    private void UpdateLogOutput(string text)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher != null)
+        {
+            dispatcher.InvokeAsync(() => LogOutput = text);
+        }
+        else
+        {
+            LogOutput = text;
         }
     }
 

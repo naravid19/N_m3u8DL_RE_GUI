@@ -81,7 +81,7 @@ internal static class MainWindowConfigMapper
         state.Set("TmpDir", window.TextBox_TmpDir.Text);
         state.Set("CustomHLSKey", window.TextBox_CustomHLSKey.Text);
         state.Set("CustomHLSIv", window.TextBox_IV.Text);
-        state.Set("IV", window.TextBox_IV.Text);
+        // "IV" is no longer written; ResolveCustomHlsIv still reads it for old configs.
         state.Set("UrlProcessorArgs", window.TextBox_UrlProcessorArgs.Text);
         state.Set("TaskStartAt", window.TextBox_TaskStartAt.Text);
         state.Set("ForceAnsiConsole", Flag(window.CheckBox_ForceAnsiConsole.IsChecked == true));

@@ -13,16 +13,20 @@ public static class DropInputRules
     private static readonly HashSet<string> UrlInputExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".m3u8",
+        ".m3u",
         ".txt",
         ".json",
-        ".mpd"
+        ".mpd",
+        ".xml"
     };
 
     private static readonly HashSet<string> AutoTitleExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".m3u8",
+        ".m3u",
         ".json",
-        ".mpd"
+        ".mpd",
+        ".xml"
     };
 
     public static bool IsSupportedUrlInputPath(string? path)
@@ -63,19 +67,7 @@ public static class DropInputRules
         {
             return new FileInfo(path).Length == expectedBytes;
         }
-        catch (IOException)
-        {
-            return false;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return false;
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-        catch (NotSupportedException)
+        catch
         {
             return false;
         }

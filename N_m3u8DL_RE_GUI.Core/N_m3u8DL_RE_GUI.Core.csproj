@@ -4,9 +4,14 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <Version>2.1.4</Version>
-    <AssemblyVersion>2.1.4.0</AssemblyVersion>
-    <FileVersion>2.1.4.0</FileVersion>
+    <Version>2.1.5</Version>
+    <AssemblyVersion>2.1.5.0</AssemblyVersion>
+    <FileVersion>2.1.5.0</FileVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- .NET Core dropped the non-Unicode code pages from the BCL. GBK/Big5/Shift-JIS
+         are required both for HTTP charset handling and for legacy batch .txt files. -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="9.0.0" />
+  </ItemGroup>
 
 </Project>

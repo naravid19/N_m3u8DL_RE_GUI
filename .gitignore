@@ -279,8 +279,12 @@ cf_dl_*.bat
 
 test.txt
 /tools
-/docs
+/docs/*
+!/docs/superpowers/
 /references
 /graphify-out
-/N_m3u8DL_RE_GUI.Tests
 /.impeccable
+
+# Build output under the test project is already covered by [Bb]in/ and [Oo]bj/ above.
+# The test suite itself must be tracked: it is the regression guarantee for this repo.
+/docs

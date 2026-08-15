@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using N_m3u8DL_RE_GUI.Core;
 
 namespace N_m3u8DL_RE_GUI.Services;
 
@@ -60,7 +61,7 @@ public class ConfigService : IConfigService
                 continue;
 
             var key = segment[..separatorIndex].Trim();
-            var value = segment[(separatorIndex + 1)..];
+            var value = LegacyConfigCodec.UnescapeValue(segment[(separatorIndex + 1)..]);
             if (key.Length == 0)
                 continue;
 
@@ -81,7 +82,7 @@ public class ConfigService : IConfigService
             if (builder.Length > 0)
                 builder.Append(';');
 
-            builder.Append(pair.Key).Append('=').Append(pair.Value);
+            builder.Append(pair.Key).Append('=').Append(LegacyConfigCodec.EscapeValue(pair.Value));
         }
 
         try

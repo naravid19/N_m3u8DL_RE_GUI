@@ -168,7 +168,19 @@ public class DownloadOptions
     public bool DisableMerge { get => SkipMerge; set => SkipMerge = value; }
     
     [Obsolete("Use SelectAudio + DropVideo pattern instead")]
-    public bool AudioOnly { get; set; }
+    public bool AudioOnly
+    {
+        // MainWindow writes ".*", the setter below writes "all". Both are "drop all video".
+        get => SelectAudio == "best" && (DropVideo == "all" || DropVideo == ".*");
+        set
+        {
+            if (value)
+            {
+                SelectAudio = "best";
+                DropVideo = "all";
+            }
+        }
+    }
     
     [Obsolete("Use !CheckSegmentsCount instead")]
     public bool DisableCheck { get => !CheckSegmentsCount; set => CheckSegmentsCount = !value; }

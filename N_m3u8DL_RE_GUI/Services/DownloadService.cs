@@ -17,13 +17,26 @@ public class DownloadService : IDownloadService
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly object _lockObject = new();
 
+    private static bool SafeIsRunning(Process? process)
+    {
+        if (process == null) return false;
+        try
+        {
+            return !process.HasExited;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public bool IsDownloading
     {
         get
         {
             lock (_lockObject)
             {
-                return _currentProcess != null && !_currentProcess.HasExited;
+                return SafeIsRunning(_currentProcess);
             }
         }
     }
@@ -46,7 +59,6 @@ public class DownloadService : IDownloadService
             return Task.FromResult(false);
         }
 
-        // Use options.ExePath if specified, otherwise fall back to default in working directory
         var exePath = string.IsNullOrWhiteSpace(options.ExePath) ? "N_m3u8DL-RE.exe" : options.ExePath;
         if (!System.IO.File.Exists(exePath))
         {
@@ -63,16 +75,22 @@ public class DownloadService : IDownloadService
         {
             FileName = exePath,
             Arguments = args,
-            UseShellExecute = true // Launch visible console window showing N_m3u8DL-RE interactive progress UI
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8
         };
 
-        return StartTrackedProcessAsync(startInfo, logCallback, cancellationToken);
+        return StartTrackedProcessAsync(startInfo, logCallback, progressCallback, redirect: true, cancellationToken);
     }
 
     public Task<bool> StartProcessAsync(
         string fileName,
         string arguments,
         Action<string>? logCallback = null,
+        IProgress<int>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         if (IsDownloading)
@@ -91,19 +109,22 @@ public class DownloadService : IDownloadService
         {
             FileName = fileName,
             Arguments = arguments,
-            UseShellExecute = true // Ensures terminal windows or batch scripts render properly
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = System.Text.Encoding.UTF8,
+            StandardErrorEncoding = System.Text.Encoding.UTF8
         };
 
-        return StartTrackedProcessAsync(startInfo, logCallback, cancellationToken);
+        return StartTrackedProcessAsync(startInfo, logCallback, progressCallback, redirect: true, cancellationToken);
     }
 
-    /// <summary>
-    /// Extract single, synchronized process lifecycle logic for both entry points.
-    /// Manages process tracking, cancellation token lifetime, and cleanup.
-    /// </summary>
     private async Task<bool> StartTrackedProcessAsync(
         ProcessStartInfo startInfo,
         Action<string>? logCallback,
+        IProgress<int>? progressCallback,
+        bool redirect,
         CancellationToken cancellationToken)
     {
         Process? process = null;
@@ -111,7 +132,7 @@ public class DownloadService : IDownloadService
 
         lock (_lockObject)
         {
-            if (_currentProcess != null && !_currentProcess.HasExited)
+            if (SafeIsRunning(_currentProcess))
             {
                 logCallback?.Invoke("A process is already in progress. Please wait for it to complete.");
                 return false;
@@ -126,10 +147,22 @@ public class DownloadService : IDownloadService
 
         try
         {
+            if (redirect)
+            {
+                process.OutputDataReceived += (_, e) => Forward(e.Data, logCallback, progressCallback);
+                process.ErrorDataReceived += (_, e) => Forward(e.Data, logCallback, progressCallback);
+            }
+
             if (!process.Start())
             {
                 logCallback?.Invoke($"Failed to start process: {startInfo.FileName}");
                 return false;
+            }
+
+            if (redirect)
+            {
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
             }
 
             try
@@ -143,7 +176,13 @@ public class DownloadService : IDownloadService
             }
 
             var success = process.ExitCode == 0;
-            logCallback?.Invoke(success ? "Process finished successfully!" : $"Process exited with code: {process.ExitCode}");
+            logCallback?.Invoke(success
+                ? "Process finished successfully!"
+                : $"Process exited with code: {process.ExitCode}");
+
+            if (success)
+                progressCallback?.Report(100);
+
             return success;
         }
         catch (OperationCanceledException)
@@ -160,19 +199,36 @@ public class DownloadService : IDownloadService
         {
             lock (_lockObject)
             {
-                if (_currentProcess == process)
-                {
-                    _currentProcess = null;
-                }
-                if (_cancellationTokenSource == cts)
-                {
-                    _cancellationTokenSource = null;
-                }
+                if (_currentProcess == process) _currentProcess = null;
+                if (_cancellationTokenSource == cts) _cancellationTokenSource = null;
             }
 
-            try { process.Dispose(); } catch { }
-            try { cts.Dispose(); } catch { }
+            if (process != null)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                        process.Kill(entireProcessTree: true);
+                }
+                catch { }
+                try { process.Dispose(); } catch { }
+            }
+
+            try { cts?.Dispose(); } catch { }
         }
+    }
+
+    private static void Forward(string? raw, Action<string>? logCallback, IProgress<int>? progressCallback)
+    {
+        if (raw == null) return;   // null marks end of stream
+
+        var percent = ConsoleOutputParser.TryExtractPercent(raw);
+        if (percent.HasValue)
+            progressCallback?.Report(percent.Value);
+
+        var cleaned = ConsoleOutputParser.Clean(raw);
+        if (cleaned.Length > 0)
+            logCallback?.Invoke(cleaned);
     }
 
     public void StopDownload()
@@ -203,14 +259,13 @@ public class DownloadService : IDownloadService
         {
             try
             {
-                if (!procToKill.HasExited)
+                if (SafeIsRunning(procToKill))
                 {
                     // Kill the entire process tree to also terminate child processes
                     // (ffmpeg, mp4decrypt, python, etc.)
                     procToKill.Kill(entireProcessTree: true);
                 }
             }
-            catch (InvalidOperationException) { }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Failed to stop process tree: {ex.Message}");

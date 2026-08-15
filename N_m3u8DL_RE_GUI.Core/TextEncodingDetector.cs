@@ -10,9 +10,30 @@ namespace N_m3u8DL_RE_GUI.Core;
 /// </summary>
 public static class TextEncodingDetector
 {
+    private const int MaxSampleSize = 8192; // 8KB sample is sufficient for BOM & UTF-8 check
+
+    /// <summary>
+    /// The system ANSI code page, or UTF-8 where it is unavailable. Encoding.Default is
+    /// UTF-8 on .NET Core, which made the non-UTF-8 branch a no-op.
+    /// </summary>
+    public static Encoding AnsiFallback { get; } = ResolveAnsiFallback();
+
+    private static Encoding ResolveAnsiFallback()
+    {
+        try
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            return Encoding.GetEncoding(0);   // 0 = the process's ANSI code page
+        }
+        catch (Exception)
+        {
+            return Encoding.UTF8;
+        }
+    }
+
     public static Encoding DetectFromFile(string filePath)
     {
-        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         return DetectFromStream(stream);
     }
 
@@ -26,31 +47,25 @@ public static class TextEncodingDetector
                 if (stream.Length == 0)
                     return Encoding.UTF8;
 
-                // Prevent overflow and excessive memory allocations for unexpected stream sizes.
-                if (stream.Length > int.MaxValue)
-                    return Encoding.Default;
-
                 stream.Position = 0;
             }
 
-            using var reader = new BinaryReader(stream, Encoding.Default, leaveOpen: true);
-            var bytes = stream.CanSeek
-                ? reader.ReadBytes((int)stream.Length)
-                : ReadAllBytes(reader);
+            var buffer = new byte[MaxSampleSize];
+            var bytesRead = ReadSample(stream, buffer);
 
-            if (bytes.Length == 0)
+            if (bytesRead == 0)
                 return Encoding.UTF8;
 
-            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+            if (bytesRead >= 3 && buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
                 return Encoding.UTF8;
 
-            if (bytes.Length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF)
+            if (bytesRead >= 2 && buffer[0] == 0xFE && buffer[1] == 0xFF)
                 return Encoding.BigEndianUnicode;
 
-            if (bytes.Length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE)
+            if (bytesRead >= 2 && buffer[0] == 0xFF && buffer[1] == 0xFE)
                 return Encoding.Unicode;
 
-            return IsUtf8Bytes(bytes) ? Encoding.UTF8 : Encoding.Default;
+            return IsUtf8Bytes(buffer, bytesRead) ? Encoding.UTF8 : AnsiFallback;
         }
         finally
         {
@@ -61,30 +76,31 @@ public static class TextEncodingDetector
         }
     }
 
-    private static byte[] ReadAllBytes(BinaryReader reader)
+    private static int ReadSample(Stream stream, byte[] buffer)
     {
-        using var buffer = new MemoryStream();
-        const int chunkSize = 4096;
-        while (true)
+        var totalRead = 0;
+        while (totalRead < buffer.Length)
         {
-            var chunk = reader.ReadBytes(chunkSize);
-            if (chunk.Length == 0)
+            var read = stream.Read(buffer, totalRead, buffer.Length - totalRead);
+            if (read == 0)
                 break;
-
-            buffer.Write(chunk, 0, chunk.Length);
+            totalRead += read;
         }
-
-        return buffer.ToArray();
+        return totalRead;
     }
 
-    private static bool IsUtf8Bytes(byte[] data)
+    /// <summary>
+    /// Validates UTF-8 structure over a sample. A multi-byte sequence that begins inside
+    /// the sample but finishes past its end is accepted: the sample boundary is arbitrary
+    /// and truncation there says nothing about the file's encoding.
+    /// </summary>
+    private static bool IsUtf8Bytes(byte[] data, int length)
     {
         var charByteCounter = 1;
-        byte currentByte;
 
-        for (var i = 0; i < data.Length; i++)
+        for (var i = 0; i < length; i++)
         {
-            currentByte = data[i];
+            byte currentByte = data[i];
             if (charByteCounter == 1)
             {
                 if (currentByte >= 0x80)
@@ -107,6 +123,8 @@ public static class TextEncodingDetector
             }
         }
 
-        return charByteCounter <= 1;
+        // charByteCounter > 1 means the last sequence is incomplete. That is only a real
+        // failure when we reached the true end of the data, not the end of the sample.
+        return charByteCounter <= 1 || length == MaxSampleSize;
     }
 }

@@ -10,7 +10,7 @@
     <ApplicationIcon>logo_3Iv_icon.ico</ApplicationIcon>
 
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
