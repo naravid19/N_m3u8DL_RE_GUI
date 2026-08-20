@@ -444,6 +444,13 @@
                              AutomationProperties.HelpText="M3U8/MPD URL or local file path"
                              ToolTip="M3U8/MPD/ISM URL or local file path. Double-click to paste from clipboard"/>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                        <Button x:Name="Button_PasteCurl"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Content="📋 Paste from browser"
+                                Click="Button_PasteCurl_Click"
+                                AutomationProperties.Name="Paste stream URL and headers from a copied cURL command"
+                                ToolTip="In your browser press F12 → Network → right-click the stream request → Copy → Copy as cURL, then click here."
+                                Margin="0,0,6,0"/>
                         <Button x:Name="Button_GO" Content="▶ _GO" 
                                 Style="{StaticResource ButtonStyle}"
                                 Click="Button_GO_Click"

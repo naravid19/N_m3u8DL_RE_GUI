@@ -195,4 +195,14 @@ public class XamlAccessibilityTests
 
         Assert.Contains("Property=\"Tag\" Value=\"invalid\"", text);
     }
+
+    [Fact]
+    public void PasteCurlButton_ShouldBeWiredToItsHandler()
+    {
+        var xaml = XamlText();
+
+        Assert.Contains("x:Name=\"Button_PasteCurl\"", xaml);
+        Assert.Contains("Click=\"Button_PasteCurl_Click\"", xaml);
+    }
 }
+

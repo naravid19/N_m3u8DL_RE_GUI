@@ -22,6 +22,7 @@ using Media = System.Windows.Media;
 using MediaColor = System.Windows.Media.Color;
 using Anim = System.Windows.Media.Animation;
 using N_m3u8DL_RE_GUI.Core;
+using N_m3u8DL_RE_GUI.Core.Capture;
 using Services = N_m3u8DL_RE_GUI.Services;
 
 namespace N_m3u8DL_RE_GUI
@@ -131,6 +132,7 @@ namespace N_m3u8DL_RE_GUI
                 (_, e) => e.CanExecute = Button_Stop.Visibility == Visibility.Visible));
 
             TextBox_URL.Focus();
+            System.Windows.DataObject.AddPastingHandler(TextBox_URL, TextBox_URL_Pasting);
             var serviceProvider = ViewModels.ViewModelLocator.ServiceProvider;
             _utilityService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IUtilityService>(serviceProvider);
             _configService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IConfigService>(serviceProvider);
@@ -724,6 +726,62 @@ namespace N_m3u8DL_RE_GUI
 
         private readonly System.Text.StringBuilder _logBuffer = new();
         private string? _lastOutputDirectory;
+
+        private void Button_PasteCurl_Click(object sender, RoutedEventArgs e)
+        {
+            string clipboardText;
+            try
+            {
+                clipboardText = Clipboard.GetText();
+            }
+            catch (Exception ex)
+            {
+                // The clipboard is a shared OS resource; another process can hold it locked.
+                SetStatus($"Could not read the clipboard: {ex.Message}", isError: true);
+                return;
+            }
+
+            if (!TryApplyCapturedRequest(CurlCommandParser.Parse(clipboardText)))
+            {
+                SetStatus("Clipboard does not contain a cURL command with an http(s) URL. " +
+                          "In your browser: F12 → Network → right-click the request → Copy as cURL.", isError: true);
+            }
+        }
+
+        private void TextBox_URL_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (!e.DataObject.GetDataPresent(DataFormats.UnicodeText))
+                return;
+
+            var pasted = e.DataObject.GetData(DataFormats.UnicodeText) as string;
+            if (!CurlCommandParser.LooksLikeCurl(pasted))
+                return;
+
+            if (TryApplyCapturedRequest(CurlCommandParser.Parse(pasted)))
+                e.CancelCommand(); // we already placed the URL; stop the raw command landing in the box
+        }
+
+        /// <summary>
+        /// Fills the URL and header fields from a capture. Returns false when there was
+        /// nothing usable, so callers can report it their own way.
+        /// </summary>
+        private bool TryApplyCapturedRequest(CapturedRequest? captured)
+        {
+            if (captured is null)
+                return false;
+
+            TextBox_URL.Text = captured.Url;
+
+            if (captured.Headers.Count > 0)
+                TextBox_Headers.Text = captured.ToHeaderLines();
+
+            var kind = captured.Kind == CapturedStreamKind.Unknown
+                ? "stream"
+                : captured.Kind.ToString().ToUpperInvariant();
+
+            SetStatus($"Imported {kind} — 1 URL, {captured.Headers.Count} header(s).");
+            return true;
+        }
 
         private void SetStatus(string text, bool isError = false)
         {
