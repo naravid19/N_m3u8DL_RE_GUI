@@ -100,10 +100,20 @@ Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
 
 | Method      | How to use                            |
 | ----------- | ------------------------------------- |
+| 📋 Paste from Browser | Copy a request as cURL from browser DevTools (F12) or click **Copy as cURL** in the Browser Extension, then click **📋 Paste from browser**. |
+| 🗂️ HAR Capture Drop | Drag a `.har` network capture onto the GUI. If multiple streams are found, an interactive picker window lets you select the master stream. |
 | Direct URL  | Paste a stream URL directly into the top bar. |
 | Drag & Drop | Drag `.m3u8`, `.mpd`, or `.txt` files directly into the window. |
 | Batch File  | Drop a `.txt` file containing multiple URLs (one per line). |
 | Folder      | Drop a folder containing stream files to batch process them all. |
+
+### Browser Extension Companion
+
+Use the companion browser extension in `extension/` for 1-click stream capture in Chrome, Edge, and Brave:
+1. Open `chrome://extensions` and enable **Developer mode**.
+2. Click **Load unpacked** and select the `extension/` folder.
+3. Play any video in your browser → click the extension icon → **📋 Copy as cURL**.
+4. In the GUI, click **📋 Paste from browser** → URL and required headers are filled instantly!
 
 ### How to use Cloudflare Bypass
 
@@ -124,6 +134,7 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 ## Detailed Features
 
 ### Core Features
+- **Universal Stream Capture** - Paste browser cURL commands directly, drag-and-drop `.har` captures with automated stream ranking and picking, or use the Chrome/Edge extension companion.
 - **3-Zone Modern UX/UI Architecture** - Clean layout with a top URL hero bar, a 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and a fixed command preview bar at the bottom.
 - **GUI Auto-Update Engine** - Zero rate-limit HTTP update checker. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top.
 - **Full RE Support** - Compatible with all major N_m3u8DL-RE command-line arguments.
@@ -136,7 +147,7 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 - **Thread-Safe Cancellation** - Responsive process cancellation with clean token lifetime management that safely terminates child process trees.
 - **In-Window Live Feedback & Progress** - Real-time progress bar, live status messages, collapsible diagnostic log, and an "Open Folder" button on completion.
 - **Accessible & Keyboard Ready** - High-contrast focus visual indicators, access keys (`Alt+G` for Go, `Alt+S` / `Escape` for Stop), and full UI automation properties.
-- **Automated Test Suite (542 Tests)** - Rock-solid stability backed by 542 unit, integration, contrast, and accessibility tests covering all core models, services, XAML a11y, and view models.
+- **Automated Test Suite (617 Tests)** - Rock-solid stability backed by 617 unit, integration, contrast, and accessibility tests covering all core models, services, XAML a11y, and view models.
 
 ### Download Options
 - **Concurrent Downloads** - Download multiple streams simultaneously.

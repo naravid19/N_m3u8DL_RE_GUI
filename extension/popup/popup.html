@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>N_m3u8DL-RE Companion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="header">
+    <div class="logo">
+      <span class="logo-icon">🎬</span>
+      <span class="logo-text">N_m3u8DL-RE</span>
+    </div>
+    <span id="stream-count" class="badge">0</span>
+  </header>
+
+  <main id="main-content">
+    <div id="empty-state" class="empty-state">
+      <p class="empty-title">No streams detected yet</p>
+      <p class="empty-hint">Start playing a video on the page, and detected streams will appear here automatically.</p>
+    </div>
+
+    <div id="stream-list" class="stream-list"></div>
+  </main>
+
+  <footer class="footer">
+    <span id="toast" class="toast">Copied as cURL! Switch to GUI & click "Paste from browser"</span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
