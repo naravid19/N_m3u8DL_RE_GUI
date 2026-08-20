@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0-windows</TargetFramework>
@@ -25,6 +25,10 @@
   <ItemGroup>
     <ProjectReference Include="..\N_m3u8DL_RE_GUI\N_m3u8DL_RE_GUI.csproj" />
     <ProjectReference Include="..\N_m3u8DL_RE_GUI.Core\N_m3u8DL_RE_GUI.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Fixtures\Har\*.har" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
