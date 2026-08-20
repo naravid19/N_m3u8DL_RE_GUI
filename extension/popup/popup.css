@@ -27,10 +27,14 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-weight: 600;
   font-size: 13px;
   color: #F2F2F8;
+}
+
+.logo-img {
+  border-radius: 4px;
 }
 
 .badge {
