@@ -35,7 +35,11 @@ public static class ArgsBuilder
         // Headers - RE supports multiple -H "key: value"
         if (!string.IsNullOrWhiteSpace(options.Headers))
         {
-            var headers = options.Headers.Split('|');
+            // '|' is the legacy separator kept for existing configs. Newline is the lossless
+            // one — it cannot occur inside an HTTP header value, unlike '|'.
+            var headers = options.Headers.Split(
+                new[] { '|', '\n', '\r' },
+                StringSplitOptions.RemoveEmptyEntries);
             foreach (var header in headers)
             {
                 if (!string.IsNullOrWhiteSpace(header))

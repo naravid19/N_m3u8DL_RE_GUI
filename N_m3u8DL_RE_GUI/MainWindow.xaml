@@ -625,8 +625,12 @@
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Headers" Style="{StaticResource LabelStyle}"/>
                                 <TextBox Grid.Row="0" Grid.Column="1" x:Name="TextBox_Headers" Style="{StaticResource TextBoxStyle}" 
                                          TextChanged="TextChanged"
+                                         AcceptsReturn="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         MinHeight="72"
                                          AutomationProperties.Name="HTTP Headers"
-                                         ToolTip="HTTP headers separated by | (e.g., Cookie:xxx|User-Agent:yyy)"/>
+                                         ToolTip="HTTP headers separated by newlines or | (e.g., Cookie:xxx&#x0a;User-Agent:yyy)"/>
 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Base URL" Style="{StaticResource LabelStyle}" Margin="0,8,8,0"/>
                                 <TextBox Grid.Row="1" Grid.Column="1" x:Name="TextBox_Baseurl" Style="{StaticResource TextBoxStyle}" 

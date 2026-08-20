@@ -506,4 +506,49 @@ public class ArgsBuilderTests
         Assert.Contains("--mkvmerge-binary-path", result);
         Assert.Contains(@"C:\Tools\mkvmerge.exe", result);
     }
+
+    [Fact]
+    public void Build_HeadersSeparatedByNewline_ProducesOneFlagEach()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/a.m3u8",
+            Headers = "Referer: https://example.com/\nUser-Agent: Mozilla/5.0"
+        };
+
+        var args = ArgsBuilder.Build(options);
+
+        Assert.Contains("-H \"Referer: https://example.com/\"", args);
+        Assert.Contains("-H \"User-Agent: Mozilla/5.0\"", args);
+    }
+
+    [Fact]
+    public void Build_HeadersSeparatedByPipe_StillWorkForExistingConfigs()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/a.m3u8",
+            Headers = "Referer: https://example.com/|User-Agent: Mozilla/5.0"
+        };
+
+        var args = ArgsBuilder.Build(options);
+
+        Assert.Contains("-H \"Referer: https://example.com/\"", args);
+        Assert.Contains("-H \"User-Agent: Mozilla/5.0\"", args);
+    }
+
+    [Fact]
+    public void Build_CrLfSeparatedHeaders_DoNotProduceEmptyFlags()
+    {
+        var options = new DownloadOptions
+        {
+            Input = "https://example.com/a.m3u8",
+            Headers = "Referer: https://example.com/\r\nUser-Agent: Mozilla/5.0"
+        };
+
+        var args = ArgsBuilder.Build(options);
+
+        Assert.DoesNotContain("-H \"\"", args);
+        Assert.Equal(2, args.Split("-H ").Length - 1);
+    }
 }
