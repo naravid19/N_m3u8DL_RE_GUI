@@ -20,6 +20,9 @@ function classify(url, mimeType, status, type) {
   if (!url.startsWith('http://') && !url.startsWith('https://')) return null;
 
   const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes('#mp4/') || lowerUrl.includes('#hls/') || lowerUrl.includes('maxchunksize=')) {
+    return null;
+  }
 
   // 1. Exclude segments (unless it's an m3u8 / mpd playlist)
   const isManifest = lowerUrl.includes('.m3u8') || lowerUrl.includes('.m3u') || lowerUrl.includes('.mpd');

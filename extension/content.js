@@ -12,6 +12,8 @@
     if (!url || typeof url !== 'string') return;
     if (url.startsWith('blob:') || url.startsWith('data:') || url.startsWith('javascript:')) return;
     if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+    // Filter out synthetic player URLs that use hash fragments for internal routing (e.g. Hydrax/Abysscdn #mp4/...)
+    if (url.includes('#mp4/') || url.includes('#hls/') || url.includes('#chunk') || url.includes('maxChunkSize=')) return;
 
     if (seenUrls.has(url)) return;
     seenUrls.add(url);
