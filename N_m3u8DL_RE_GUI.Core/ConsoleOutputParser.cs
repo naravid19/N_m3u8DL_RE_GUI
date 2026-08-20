@@ -38,5 +38,5 @@ public static class ConsoleOutputParser
     }
 
     /// <summary>Strips escapes and surrounding whitespace; empty when nothing remains.</summary>
-    public static string Clean(string rawLine) => StripAnsi(rawLine ?? string.Empty).Trim();
+    public static string Clean(string? rawLine) => StripAnsi(rawLine ?? string.Empty).Trim();
 }

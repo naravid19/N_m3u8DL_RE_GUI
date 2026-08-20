@@ -289,4 +289,34 @@ public class BatchScriptServiceTests
             File.Delete(tempFile);
         }
     }
+
+    [Fact]
+    public async Task BothBatchPaths_ShouldEmitTheSamePreamble()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"batch_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var m3u8File = Path.Combine(directory, "video.m3u8");
+        await File.WriteAllTextAsync(m3u8File, string.Empty);
+        var textFile = Path.Combine(directory, "list.txt");
+        await File.WriteAllTextAsync(textFile, "https://example.com/a.m3u8");
+
+        try
+        {
+            var service = new BatchScriptService();
+            var fromDirectory = await service.BuildScriptAsync(
+                directory, @"C:\re.exe", _ => Task.FromResult("t"), _ => "--args");
+            var fromTextFile = await service.BuildScriptAsync(
+                textFile, @"C:\re.exe", _ => Task.FromResult("t"), _ => "--args");
+
+            static string Preamble(string script) =>
+                string.Join("\n", script.Split('\n').Take(3).Select(l => l.TrimEnd('\r')));
+
+            Assert.Equal(Preamble(fromDirectory.Content), Preamble(fromTextFile.Content));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }
+

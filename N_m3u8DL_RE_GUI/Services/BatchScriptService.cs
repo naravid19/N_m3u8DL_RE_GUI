@@ -73,7 +73,7 @@ public class BatchScriptService : IBatchScriptService
         var builder = new StringBuilder();
         builder.AppendLine("@echo off");
         builder.AppendLine("chcp 65001 >nul");
-        builder.AppendLine("::Created by N_m3u8DL_RE_GUI\r\n");
+        builder.AppendLine("::Created by N_m3u8DL_RE_GUI");
         var index = 0;
         foreach (var item in items)
         {
