@@ -592,7 +592,18 @@ namespace N_m3u8DL_RE_GUI
 
         private void TextBox_URL_PreviewDrop(object sender, System.Windows.DragEventArgs e)
         {
-            if (TryGetFirstDroppedPath(e, out var path) && DropInputRules.IsSupportedUrlInputPath(path))
+            if (!TryGetFirstDroppedPath(e, out var path))
+                return;
+
+            // Must come first: a .har is a source to extract from, never a stream input.
+            if (DropInputRules.IsHarPath(path))
+            {
+                ImportFromHar(path);
+                e.Handled = true;
+                return;
+            }
+
+            if (DropInputRules.IsSupportedUrlInputPath(path))
             {
                 MarkDragCopy(e);
                 if (TextBox_URL.Text != path) FlashTextBox(TextBox_URL);
@@ -600,6 +611,37 @@ namespace N_m3u8DL_RE_GUI
                 if (DropInputRules.ShouldAutoFillTitleFromFileName(path))
                     TextBox_Title.Text = Path.GetFileNameWithoutExtension(path);
             }
+        }
+
+        private void ImportFromHar(string path)
+        {
+            IReadOnlyList<CapturedRequest> candidates;
+            try
+            {
+                candidates = HarStreamExtractor.ExtractFromFile(path);
+            }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                SetStatus(ex.Message, isError: true);
+                return;
+            }
+
+            if (candidates.Count == 0)
+            {
+                SetStatus("No stream was found in that capture. Clear the network log, press play, " +
+                          "let it run a few seconds, then save the HAR again.", isError: true);
+                return;
+            }
+
+            if (candidates.Count == 1)
+            {
+                TryApplyCapturedRequest(candidates[0]);
+                return;
+            }
+
+            var picker = new Views.StreamPickerWindow(candidates) { Owner = this };
+            if (picker.ShowDialog() == true)
+                TryApplyCapturedRequest(picker.Selected);
         }
 
         private void TextBox_MuxJson_PreviewDragEnter(object sender, System.Windows.DragEventArgs e)
