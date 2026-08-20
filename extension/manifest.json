@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "N_m3u8DL-RE Companion",
-  "version": "1.0.0",
-  "description": "Finds video streams on the page you are watching and copies them as a cURL command for N_m3u8DL-RE GUI.",
+  "version": "1.0.1",
+  "description": "Finds video streams on any page or player iframe and copies them as a cURL command for N_m3u8DL-RE GUI.",
   "permissions": [
     "webRequest",
     "storage",
-    "tabs"
+    "tabs",
+    "activeTab"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -14,6 +15,18 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "N_m3u8DL-RE Companion"

@@ -12,20 +12,31 @@
       <img src="../icons/48.png" alt="Logo" class="logo-img" width="18" height="18">
       <span class="logo-text">N_m3u8DL-RE</span>
     </div>
-    <span id="stream-count" class="badge">0</span>
+    <div class="header-actions">
+      <span id="stream-count" class="badge">0</span>
+      <button id="btn-refresh" class="icon-btn" title="Refresh stream list">🔄</button>
+      <button id="btn-clear" class="icon-btn" title="Clear detected streams">🗑️</button>
+    </div>
   </header>
+
+  <div class="tabs-nav">
+    <button id="tab-current" class="tab-btn active">Current Tab</button>
+    <button id="tab-all" class="tab-btn">All Recent</button>
+  </div>
 
   <main id="main-content">
     <div id="empty-state" class="empty-state">
-      <p class="empty-title">No streams detected yet</p>
-      <p class="empty-hint">Start playing a video on the page, and detected streams will appear here automatically.</p>
+      <div class="empty-icon">📡</div>
+      <p class="empty-title">Waiting for video stream...</p>
+      <p class="empty-hint">1. Play or seek the video on this page.<br>2. Streams (HLS, DASH, MP4) will appear here automatically.</p>
     </div>
 
     <div id="stream-list" class="stream-list"></div>
   </main>
 
   <footer class="footer">
-    <span id="toast" class="toast">Copied as cURL! Switch to GUI & click "Paste from browser"</span>
+    <div id="toast" class="toast">Copied as cURL! Switch to GUI & click "Paste from browser"</div>
+    <div class="helper-hint">💡 Click <strong>"Copy as cURL"</strong> then press <strong>"📋 Paste from browser"</strong> in GUI</div>
   </footer>
 
   <script src="popup.js"></script>

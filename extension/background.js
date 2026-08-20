@@ -1,92 +1,152 @@
 /**
  * N_m3u8DL-RE Companion — Background Service Worker (Manifest V3)
  *
- * Observes browser network requests in real-time, extracts stream manifests/media,
- * and maintains detected stream state in chrome.storage.session across service worker restarts.
+ * Captures video streams from network traffic and DOM media elements across tabs & iframes.
+ * Stores state safely in chrome.storage.local.
  */
 
-const SEGMENT_EXTENSIONS = new Set([
+const SEGMENT_EXTENSIONS = [
   '.ts', '.m4s', '.aac', '.mp3', '.vtt', '.cmfv', '.cmfa', '.cmft', '.init', '.key'
-]);
+];
 
-// Ephemeral in-flight headers cache: requestUrl -> { referer, userAgent, cookie }
-const pendingHeaders = new Map();
+// Ephemeral in-flight headers cache: requestUrl -> { referer, userAgent, cookie, origin }
+const inFlightHeaders = new Map();
 
 /**
- * Classify a stream using the exact same rules as HarStreamExtractor.Classify in Core.
+ * Classify a stream using robust URL and Content-Type inspection.
  */
-function classify(url, mimeType, status) {
-  let pathname = '';
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return null;
+function classify(url, mimeType, status, type) {
+  if (!url || typeof url !== 'string') return null;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return null;
+
+  const lowerUrl = url.toLowerCase();
+
+  // 1. Exclude segments (unless it's an m3u8 / mpd playlist)
+  const isManifest = lowerUrl.includes('.m3u8') || lowerUrl.includes('.m3u') || lowerUrl.includes('.mpd');
+  if (!isManifest) {
+    for (const ext of SEGMENT_EXTENSIONS) {
+      if (lowerUrl.includes(ext)) return null;
     }
-    pathname = parsed.pathname.toLowerCase();
-  } catch {
-    return null;
   }
 
-  // Segment extensions are excluded even when MIME is video/*
-  const dotIndex = pathname.lastIndexOf('.');
-  const ext = dotIndex !== -1 ? pathname.substring(dotIndex) : '';
-  if (SEGMENT_EXTENSIONS.has(ext)) {
-    return null;
-  }
-
-  if (pathname.endsWith('.m3u8') || pathname.endsWith('.m3u')) {
+  // 2. HLS Manifests
+  if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.m3u')) {
     return 'HLS';
   }
 
-  if (pathname.endsWith('.mpd')) {
+  // 3. DASH Manifests
+  if (lowerUrl.includes('.mpd')) {
     return 'DASH';
   }
 
+  // 4. MIME Type matches
   const mime = (mimeType || '').toLowerCase();
-  if (mime.includes('mpegurl')) {
+  if (mime.includes('mpegurl') || mime.includes('application/x-mpegurl') || mime.includes('audio/x-mpegurl')) {
     return 'HLS';
   }
   if (mime.includes('dash+xml')) {
     return 'DASH';
   }
 
-  if (status === 200 || status === 206) {
-    if (pathname.endsWith('.mp4') || pathname.endsWith('.webm') || pathname.endsWith('.mkv')) {
-      return 'Media';
-    }
-    if (mime.startsWith('video/')) {
-      return 'Media';
-    }
+  // 5. Progressive Video Streams
+  if (
+    lowerUrl.includes('.mp4') ||
+    lowerUrl.includes('.webm') ||
+    lowerUrl.includes('.mkv') ||
+    lowerUrl.includes('.mov') ||
+    lowerUrl.includes('.flv')
+  ) {
+    return 'Media';
+  }
+
+  if (mime.startsWith('video/') || type === 'media') {
+    return 'Media';
   }
 
   return null;
 }
 
-// 1. Capture outgoing request headers
+/**
+ * Register a detected stream in storage.
+ */
+async function registerStream(tabId, streamData) {
+  const effectiveTabId = tabId && tabId > 0 ? tabId : null;
+  const now = Date.now();
+
+  const streamItem = {
+    url: streamData.url,
+    kind: streamData.kind,
+    referer: streamData.referer || null,
+    userAgent: streamData.userAgent || null,
+    cookie: streamData.cookie || null,
+    origin: streamData.origin || null,
+    tabId: effectiveTabId,
+    timestamp: now
+  };
+
+  try {
+    const data = await chrome.storage.local.get(null);
+
+    // 1. Per-tab storage
+    if (effectiveTabId) {
+      const tabKey = `tab_${effectiveTabId}`;
+      const tabList = data[tabKey] || [];
+
+      if (!tabList.some((s) => s.url === streamItem.url)) {
+        tabList.unshift(streamItem);
+        // Keep max 25 per tab
+        if (tabList.length > 25) tabList.length = 25;
+        await chrome.storage.local.set({ [tabKey]: tabList });
+        updateBadge(effectiveTabId, tabList.length);
+      }
+    }
+
+    // 2. Global recent streams ring-buffer (max 30)
+    const recent = data.recent_streams || [];
+    if (!recent.some((s) => s.url === streamItem.url)) {
+      recent.unshift(streamItem);
+      if (recent.length > 30) recent.length = 30;
+      await chrome.storage.local.set({ recent_streams: recent });
+    }
+  } catch (err) {
+    console.error('[N_m3u8DL-RE] Error storing stream:', err);
+  }
+}
+
+function updateBadge(tabId, count) {
+  if (!tabId || tabId <= 0) return;
+  chrome.action.setBadgeBackgroundColor({ color: '#5865F2', tabId });
+  chrome.action.setBadgeText({
+    tabId,
+    text: count > 0 ? String(count) : ''
+  });
+}
+
+// 1. Intercept outgoing request headers
 chrome.webRequest.onSendHeaders.addListener(
   (details) => {
-    if (!details.requestHeaders || details.tabId < 0) return;
+    if (!details.requestHeaders) return;
 
     let referer = null;
     let userAgent = null;
     let cookie = null;
+    let origin = null;
 
     for (const h of details.requestHeaders) {
       const name = h.name.toLowerCase();
       if (name === 'referer') referer = h.value;
       else if (name === 'user-agent') userAgent = h.value;
       else if (name === 'cookie') cookie = h.value;
+      else if (name === 'origin') origin = h.value;
     }
 
-    pendingHeaders.set(details.url, { referer, userAgent, cookie, at: Date.now() });
+    inFlightHeaders.set(details.url, { referer, userAgent, cookie, origin, at: Date.now() });
 
-    // Prune stale pending entries (> 2 minutes)
-    if (pendingHeaders.size > 200) {
-      const now = Date.now();
-      for (const [key, val] of pendingHeaders.entries()) {
-        if (now - val.at > 120000) {
-          pendingHeaders.delete(key);
-        }
+    // Prune stale cache
+    if (inFlightHeaders.size > 300) {
+      const cutoff = Date.now() - 120000;
+      for (const [key, val] of inFlightHeaders.entries()) {
+        if (val.at < cutoff) inFlightHeaders.delete(key);
       }
     }
   },
@@ -94,11 +154,9 @@ chrome.webRequest.onSendHeaders.addListener(
   ['requestHeaders', 'extraHeaders']
 );
 
-// 2. Classify response and record stream candidates in session storage
+// 2. Intercept responses and classify stream
 chrome.webRequest.onHeadersReceived.addListener(
-  async (details) => {
-    if (details.tabId < 0) return;
-
+  (details) => {
     let contentType = null;
     if (details.responseHeaders) {
       for (const h of details.responseHeaders) {
@@ -109,57 +167,54 @@ chrome.webRequest.onHeadersReceived.addListener(
       }
     }
 
-    const kind = classify(details.url, contentType, details.statusCode);
+    const kind = classify(details.url, contentType, details.statusCode, details.type);
     if (!kind) return;
 
-    const headers = pendingHeaders.get(details.url) || {};
-    const key = `streams:${details.tabId}`;
+    const headers = inFlightHeaders.get(details.url) || {};
 
-    try {
-      const stored = await chrome.storage.session.get(key);
-      const list = stored[key] || [];
-
-      // Deduplicate by exact URL, preserving the first occurrence
-      if (!list.some((s) => s.url === details.url)) {
-        list.push({
-          url: details.url,
-          kind: kind,
-          referer: headers.referer || null,
-          userAgent: headers.userAgent || null,
-          cookie: headers.cookie || null,
-          at: Date.now()
-        });
-
-        await chrome.storage.session.set({ [key]: list });
-        updateBadge(details.tabId, list.length);
-      }
-    } catch (err) {
-      console.error('Failed to update session streams', err);
-    }
+    registerStream(details.tabId, {
+      url: details.url,
+      kind: kind,
+      referer: headers.referer || (details.initiator ? details.initiator + '/' : null),
+      userAgent: headers.userAgent || navigator.userAgent,
+      cookie: headers.cookie || null,
+      origin: headers.origin || null
+    });
   },
   { urls: ['<all_urls>'] },
-  ['responseHeaders']
+  ['responseHeaders', 'extraHeaders']
 );
 
-function updateBadge(tabId, count) {
-  if (tabId < 0) return;
-  chrome.action.setBadgeBackgroundColor({ color: '#5865F2', tabId });
-  chrome.action.setBadgeText({
-    tabId,
-    text: count > 0 ? String(count) : ''
-  });
-}
+// 3. Listen to messages from content scripts
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message && message.type === 'MEDIA_ELEMENT_DETECTED') {
+    const tabId = sender.tab ? sender.tab.id : null;
+    const kind = classify(message.url, null, 200, 'media') || 'Media';
 
-// 3. Tab lifecycle cleanup
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.url) {
-    const key = `streams:${tabId}`;
-    chrome.storage.session.remove(key);
-    updateBadge(tabId, 0);
+    registerStream(tabId, {
+      url: message.url,
+      kind: kind,
+      referer: message.referer || (sender.tab ? sender.tab.url : null),
+      userAgent: navigator.userAgent
+    });
+
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  if (message && message.type === 'CLEAR_STREAMS') {
+    const tabId = message.tabId;
+    if (tabId) {
+      chrome.storage.local.remove(`tab_${tabId}`, () => {
+        updateBadge(tabId, 0);
+        sendResponse({ ok: true });
+      });
+      return true;
+    }
   }
 });
 
+// 4. Tab cleanup only when tab is actually closed
 chrome.tabs.onRemoved.addListener((tabId) => {
-  const key = `streams:${tabId}`;
-  chrome.storage.session.remove(key);
+  chrome.storage.local.remove(`tab_${tabId}`);
 });
