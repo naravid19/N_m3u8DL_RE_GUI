@@ -98,4 +98,52 @@ public class DropInputRulesTests
             tempDir.Delete(recursive: true);
         }
     }
+
+    [Fact]
+    public void IsHarPath_AcceptsAnExistingHarFile()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"c_{Guid.NewGuid():N}.har");
+        File.WriteAllText(path, "{}");
+        try
+        {
+            Assert.True(DropInputRules.IsHarPath(path));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void IsHarPath_IsCaseInsensitive()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"c_{Guid.NewGuid():N}.HAR");
+        File.WriteAllText(path, "{}");
+        try
+        {
+            Assert.True(DropInputRules.IsHarPath(path));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(@"C:\does\not\exist.har")]
+    public void IsHarPath_RejectsMissingOrEmptyPaths(string? path)
+    {
+        Assert.False(DropInputRules.IsHarPath(path));
+    }
+
+    [Fact]
+    public void HarFile_MustNotBeTreatedAsAStreamInput()
+    {
+        // Regression guard: a .har handed straight to the downloader is a bug.
+        var path = Path.Combine(Path.GetTempPath(), $"c_{Guid.NewGuid():N}.har");
+        File.WriteAllText(path, "{}");
+        try
+        {
+            Assert.False(DropInputRules.IsSupportedUrlInputPath(path));
+            Assert.False(DropInputRules.ShouldAutoFillTitleFromFileName(path));
+        }
+        finally { File.Delete(path); }
+    }
 }
+
