@@ -139,3 +139,37 @@ test('F5 still fixed: a host containing .ts does not suppress a real stream', ()
 test('F6 still fixed: a 403 is not offered as a stream', () => {
   assert.equal(classify('https://cdn.example.com/video/movie.mp4', null, 403, 'media'), null);
 });
+
+// --- Query parameter allowlist & MSS path guard (M8, M9) ---
+
+test('a format hint is read only from a parameter that could carry one', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/p?type=m3u8', null, 200, 'xmlhttprequest'),
+    { kind: 'HLS', confidence: 'low' }
+  );
+});
+
+test('an unrelated parameter whose value happens to read as a format is ignored', () => {
+  assert.equal(classify('https://cdn.example.com/p?theme=dash', null, 200, 'document'), null);
+});
+
+test('a filename parameter still resolves', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/get?file=/hls/master.m3u8', null, 200, 'xmlhttprequest'),
+    { kind: 'HLS', confidence: 'low' }
+  );
+});
+
+test('a JSON API ending in /manifest is not Smooth Streaming', () => {
+  assert.equal(
+    classify('https://api.example.com/v1/manifest', 'application/json', 200, 'xmlhttprequest'),
+    null
+  );
+});
+
+test('a real MSS manifest is still detected', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/video/Manifest', 'text/xml', 200, 'xmlhttprequest'),
+    { kind: 'MSS', confidence: 'high' }
+  );
+});

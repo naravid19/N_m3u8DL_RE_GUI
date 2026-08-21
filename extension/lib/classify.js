@@ -41,6 +41,12 @@ function classifyByMime(mime) {
   return null;
 }
 
+/** Parameter names that plausibly carry a format or a filename. Reading every
+ *  parameter means ?theme=dash classifies as DASH. */
+const FORMAT_PARAM_NAMES = new Set([
+  'type', 'format', 'fmt', 'file', 'filename', 'url', 'src', 'stream', 'manifest', 'playlist'
+]);
+
 /**
  * Last resort for CDNs that pass the real filename or a format flag through the
  * query string. Deliberately restricted to manifest kinds: promoting a media
@@ -49,7 +55,9 @@ function classifyByMime(mime) {
  */
 function classifyByQuery(searchParams) {
   if (!searchParams) return null;
-  for (const value of searchParams.values()) {
+  for (const [key, value] of searchParams.entries()) {
+    if (!FORMAT_PARAM_NAMES.has(key.toLowerCase())) continue;
+
     const lower = value.toLowerCase();
 
     for (const [ext, kind] of MANIFEST_EXTENSIONS) {
@@ -132,8 +140,12 @@ export function classify(url, mimeType, status, type) {
   const byMime = classifyByMime(mime);
   if (byMime) return high(byMime);
 
+  const NON_MANIFEST_MIMES = ['application/json', 'text/html', 'text/plain'];
+
   // MSS commonly has no extension at all — the path just ends in /Manifest.
-  if (/\/manifest$/.test(parts.path)) return high('MSS');
+  if (/\/manifest$/.test(parts.path) && !NON_MANIFEST_MIMES.some((m) => mime.startsWith(m))) {
+    return high('MSS');
+  }
 
   // Segments are excluded only after manifests have had every chance.
   if (SEGMENT_EXTENSIONS.has(parts.ext)) return null;
