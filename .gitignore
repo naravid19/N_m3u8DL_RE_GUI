@@ -279,14 +279,7 @@ cf_dl_*.bat
 
 test.txt
 /tools
-/docs/*
-!/docs/superpowers/
+/docs/
 /references
 /graphify-out
-/.impeccable
-
-
-/docs
-/N_m3u8DL_RE_GUI
-/N_m3u8DL_RE_GUI.Core
-/N_m3u8DL_RE_GUI.Tests
+/.impeccable
