@@ -40,3 +40,17 @@ When installing this extension unpacked or from source, the browser prompts for 
 * **Where it is kept:** Stored strictly in `chrome.storage.session` (in-memory only). Data survives background service-worker sleeps within the browsing session, but is **instantly purged when the browser is closed**. Captured session cookies are **never written unencrypted to disk**.
 * **Where it is sent:** **Nowhere.** The extension contains zero outbound telemetry, analytical trackers, or external API endpoints. Captured stream details leave the extension only when you explicitly click **"📋 Copy as cURL"** or **"Copy URL"** to place them on your local system clipboard.
 * **Scope & Reach:** The extension only inspects requests initiated by the browser during your navigation. It cannot access or request content that the browser itself cannot access.
+
+---
+
+## 🧪 Testing
+
+Run the automated test suite from the repository root:
+
+```bash
+node --test "extension/test/*.test.js"
+```
+
+> [!NOTE]
+> On Windows, use the quoted glob `"extension/test/*.test.js"` (or `cd extension && node --test`) rather than a bare directory argument so Node resolves test files accurately.
+
