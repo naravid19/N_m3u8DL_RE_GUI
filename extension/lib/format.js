@@ -1,0 +1,70 @@
+/**
+ * Pure display helpers for formatting stream items, file sizes, and URLs in the popup.
+ * No chrome.* access so it runs directly in node --test.
+ */
+
+/**
+ * Format raw byte counts into human-readable strings (B, KB, MB, GB).
+ */
+export function formatBytes(bytes) {
+  if (bytes === null || bytes === undefined || typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) {
+    return '';
+  }
+
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  if (bytes < 1024 * 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+/**
+ * Format Unix timestamps into human-readable relative time strings.
+ */
+export function formatRelativeTime(ts) {
+  if (!ts) return '';
+  const sec = Math.floor((Date.now() - ts) / 1000);
+  if (sec < 10) return 'just now';
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  return `${Math.floor(min / 60)}h ago`;
+}
+
+/**
+ * Elides long URLs preserving the head (origin/scheme) and tail (filename/extension).
+ */
+export function elideUrl(url, max = 40) {
+  if (!url || typeof url !== 'string') return '';
+  if (url.length <= max) return url;
+
+  const headLen = Math.floor((max - 1) * 0.6);
+  const tailLen = max - 1 - headLen;
+
+  return `${url.slice(0, headLen)}…${url.slice(-tailLen)}`;
+}
+
+/**
+ * Produces a concise descriptor for a stream item (e.g. "HLS", "Media · 1.0 GB", "HLS · guess").
+ */
+export function describeStream(item) {
+  if (!item) return '';
+
+  const parts = [item.kind || 'Media'];
+
+  if (item.confidence === 'low') {
+    parts.push('guess');
+  }
+
+  const size = formatBytes(item.sizeBytes);
+  if (size) {
+    parts.push(size);
+  }
+
+  return parts.join(' · ');
+}
