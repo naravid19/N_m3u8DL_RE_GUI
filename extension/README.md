@@ -1,6 +1,15 @@
-# N-RE Stream Bridge — Browser Extension (v1.2.0)
+# N-RE Stream Bridge — Browser Extension (v1.3.0)
 
 A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes network activity while you play a video, automatically detects stream manifests (HLS `.m3u8`, DASH `.mpd`, Smooth Streaming `.ism`/`.isml`, Abyss/Hydrax), audio streams (`.m4a`, `.opus`, `.flac`, `.wav`, `.aac`, `.mp3`), and progressive media (`.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`), and lets you copy the exact cURL command with required headers (`Referer`, `User-Agent`, `Cookie`, `Origin`) into **N_m3u8DL-RE GUI** with 1 click.
+
+---
+
+## 🌟 Key Features
+
+* **Quality Probing on Demand:** Click **`▸ Qualities`** on any manifest (HLS/DASH/MSS) to inspect available video renditions (e.g. `1080p · 5.0 Mbps`, `720p · 2.5 Mbps`). The extension fetches the manifest only when requested, replaying captured credentials so CDN authentication passes.
+* **Direct Quality Handoff via `# nre-*:` Directives:** Selecting a quality attaches a shell comment `# nre-select-video: res="1080*"` to the cURL payload. The GUI automatically applies the resolution selector to the download configuration without breaking bash cURL compatibility.
+* **Multi-Select & Batch Export:** Select multiple stream URLs using checkboxes or Select All, then click **`📋 Copy as list`**. Pasting into **N_m3u8DL-RE GUI** instantly generates a numbered batch run.
+* **Page Grouping & 420px Adaptive UI:** "All Recent" streams are neatly grouped by origin domain with visible card hierarchy, live relative timestamps, and WCAG AA contrast compliance.
 
 ---
 
@@ -35,13 +44,20 @@ A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes net
 
 ## 🎬 How to Use
 
-1. Navigate to any video/streaming webpage.
-2. Start playing the video.
-3. The extension icon will show a badge count (e.g. `1`) when a stream is detected.
-4. Click the extension icon to view detected streams (ranked with optimal manifest first and live file sizes).
-5. Click **📋 Copy as cURL**.
-6. Switch to **N_m3u8DL-RE GUI** and click **📋 Paste from browser** (or paste directly into the URL field).
-7. All stream URLs and headers (`Referer`, `Cookie`, `User-Agent`, `Origin`) are instantly filled. Click **▶ GO** to download!
+### Single Stream with Quality Choice
+1. Navigate to any video/streaming webpage and play the video.
+2. Click the extension icon.
+3. Click **`▸ Qualities`** to expand and select your preferred rendition (e.g. `1080p`, `720p`).
+4. Click **`📋 Copy as cURL`**.
+5. Switch to **N_m3u8DL-RE GUI** and click **`📋 Paste from browser`** (or press Ctrl+V).
+6. Stream URL, headers, and the quality selector are filled automatically. Click **▶ GO**!
+
+### Batch Multi-Stream Download
+1. Browse to multiple episodes or open several video tabs.
+2. In the popup, switch to **All Recent** or select desired streams via checkboxes.
+3. Click **`📋 Copy as list`**.
+4. In the GUI, click **`📋 Paste from browser`** or paste into the URL box.
+5. The GUI loads all URLs as a batch queue. Click **▶ GO** to download all in order!
 
 ---
 
@@ -50,13 +66,13 @@ A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes net
 When installing this extension unpacked or from source, the browser prompts for host permissions (`<all_urls>`). Here is a clear, transparent explanation of what is used and why:
 
 * **Why `<all_urls>` is required:** Video streams and manifests are hosted on third-party Content Delivery Networks (CDNs) and dynamic media servers whose domains cannot be known in advance. Intercepting outgoing request headers (such as `Cookie` and `Referer` required for protected stream playback) requires host permission matching the CDN origin.
-* **What is captured:** Only requests that classify as video streams or manifests (HLS, DASH, MSS, Abyss, progressive MP4/WebM). For each detected stream, the extension records:
+* **What is captured:** Only requests that classify as video streams or manifests (HLS, DASH, MSS, Abyss, progressive MP4/WebM, audio). For each detected stream, the extension records:
   - Stream URL
   - Standard playback headers: `Referer`, `User-Agent`, `Cookie`, and `Origin`
   - Originating Tab ID and timestamp
 * **Where it is kept:** Stored strictly in `chrome.storage.session` (in-memory only). Data survives background service-worker sleeps within the browsing session, but is **instantly purged when the browser is closed**. Captured session cookies are **never written unencrypted to disk**.
-* **Where it is sent:** **Nowhere.** The extension contains zero outbound telemetry, analytical trackers, or external API endpoints. Captured stream details leave the extension only when you explicitly click **"📋 Copy as cURL"** or **"Copy URL"** to place them on your local system clipboard.
-* **Scope & Reach:** The extension only inspects requests initiated by the browser during your navigation. It cannot access or request content that the browser itself cannot access.
+* **Where it is sent:** **Nowhere.** The extension contains zero outbound telemetry, analytical trackers, or external API endpoints. Captured stream details leave the extension only when you explicitly click **"📋 Copy as cURL"** or **"Copy as list"** to place them on your local system clipboard.
+* **On-Demand Probing Restraint:** Probing manifest qualities makes exactly one network request to the manifest URL **only when you click "Qualities"** and never unprompted in the background.
 
 ---
 

@@ -25,8 +25,19 @@
   </div>
 
   <main id="main-content">
+    <div id="bulk-bar" class="bulk-bar" hidden>
+      <div class="bulk-left">
+        <input type="checkbox" id="select-all-checkbox" aria-label="Select all streams">
+        <span id="selected-count">0 selected</span>
+      </div>
+      <div class="bulk-actions">
+        <button id="btn-bulk-copy" class="btn btn-sm">📋 Copy as list</button>
+        <button id="btn-bulk-clear" class="btn btn-secondary btn-sm">Clear</button>
+      </div>
+    </div>
+
     <div id="filter-bar" class="filter-bar" hidden>
-      <input type="text" id="stream-filter" class="filter-input" placeholder="Filter streams by URL..." aria-label="Filter streams by URL">
+      <input type="text" id="stream-filter" class="filter-input" placeholder="Filter streams by URL or kind..." aria-label="Filter streams by URL or kind">
     </div>
 
     <div id="empty-state" class="empty-state">
@@ -37,10 +48,11 @@
         2. Streams (HLS, DASH, MSS, MP4) appear here automatically.<br>
         3. No luck? Try another server or player on the page.
       </p>
-      <p class="empty-hint" id="hint-other-tabs" hidden>
+      <div class="empty-hint" id="hint-other-tabs" hidden>
         Nothing on this tab yet — but <strong id="other-tab-count">0</strong> stream(s)
-        were found on other tabs. Try <strong>All Recent</strong> above.
-      </p>
+        were found on other tabs.<br>
+        <button id="btn-switch-all" class="btn btn-secondary btn-sm" style="margin-top: 10px;">Switch to All Recent</button>
+      </div>
     </div>
 
     <p id="no-matches" class="empty-hint" style="text-align: center; padding: 24px 16px;" hidden>

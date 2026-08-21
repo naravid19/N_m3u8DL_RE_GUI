@@ -109,16 +109,18 @@ Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
 | Batch File  | Drop a `.txt` file containing multiple URLs (one per line). |
 | Folder      | Drop a folder containing stream files to batch process them all. |
 
-### N-RE Stream Bridge Browser Extension (v1.2.0)
+### N-RE Stream Bridge Browser Extension (v1.3.0)
 
-Use the companion browser extension **N-RE Stream Bridge** in `extension/` for 1-click stream capture in Chrome, Edge, and Brave:
+Use the companion browser extension **N-RE Stream Bridge** in `extension/` for 1-click stream capture, quality selection, and multi-URL batch queues in Chrome, Edge, and Brave:
 1. Open `chrome://extensions` and enable **Developer mode**.
 2. Click **Load unpacked** and select the `extension/` folder.
-3. Play any video or audio in your browser → click the extension icon → **📋 Copy as cURL**.
-4. In the GUI, click **📋 Paste from browser** → URL and required headers are filled instantly!
+3. Play any video or audio in your browser → click the extension icon.
+4. **Single Stream:** Click **`▸ Qualities`** to pick your resolution (1080p, 720p, etc.) → **`📋 Copy as cURL`**.
+5. **Batch Streams:** Check multiple stream rows → click **`📋 Copy as list`**.
+6. In the GUI, click **`📋 Paste from browser`** (or Ctrl+V) → All stream URLs, headers, and quality selectors are filled instantly!
 
 > [!NOTE]
-> **Stream Coverage & Privacy:** Supports **HLS** (`.m3u8`), **DASH** (`.mpd`), **Smooth Streaming** (`.ism`/`/Manifest`), **Abyss/Hydrax**, standalone audio (`.m4a`, `.opus`, `.flac`, `.wav`, `.aac`, `.mp3`), and progressive formats (`.mp4`, `.m4v`, `.webm`, `.mkv`, etc.). Automatically suppresses segment flooding to keep manifests visible, shows live file sizes and confidence badges, and uses memory-backed `chrome.storage.session` so sensitive cookies are never written unencrypted to disk.
+> **Stream Coverage & Privacy:** Supports **HLS** (`.m3u8`), **DASH** (`.mpd`), **Smooth Streaming** (`.ism`/`/Manifest`), **Abyss/Hydrax**, standalone audio (`.m4a`, `.opus`, `.flac`, `.wav`, `.aac`, `.mp3`), and progressive formats (`.mp4`, `.m4v`, `.webm`, `.mkv`, etc.). Automatically suppresses segment flooding to keep manifests visible, shows live file sizes and confidence badges, probes stream renditions strictly on demand, and uses memory-backed `chrome.storage.session` so sensitive cookies are never written unencrypted to disk.
 
 ### How to use Cloudflare Bypass
 

@@ -116,7 +116,8 @@ public static class CurlCommandParser
             AddHeader(headers, $"Cookie: {cookieFlagValue}");
         }
 
-        return new CapturedRequest(url, headers, ClassifyUrl(url));
+        var directives = CaptureDirectives.Parse(text);
+        return new CapturedRequest(url, headers, ClassifyUrl(url), directives);
     }
 
     private static void AddHeader(List<CapturedHeader> headers, string raw)

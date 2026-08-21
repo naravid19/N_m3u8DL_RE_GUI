@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -26,8 +27,12 @@ public enum CapturedStreamKind
 public sealed record CapturedRequest(
     string Url,
     IReadOnlyList<CapturedHeader> Headers,
-    CapturedStreamKind Kind)
+    CapturedStreamKind Kind,
+    IReadOnlyDictionary<string, string>? Directives = null)
 {
+    public IReadOnlyDictionary<string, string> Directives { get; init; } =
+        Directives ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Newline-separated "Name: Value" lines, the format TextBox_Headers holds.
     /// Newlines are illegal inside an HTTP header value, so this round-trips

@@ -784,11 +784,19 @@ namespace N_m3u8DL_RE_GUI
                 return;
             }
 
-            if (!TryApplyCapturedRequest(CurlCommandParser.Parse(clipboardText)))
+            if (TryApplyCapturedRequest(CurlCommandParser.Parse(clipboardText)))
+                return;
+
+            if (BatchPasteHelper.LooksLikeBatchList(clipboardText))
             {
-                SetStatus("Clipboard does not contain a cURL command with an http(s) URL. " +
-                          "In your browser: F12 → Network → right-click the request → Copy as cURL.", isError: true);
+                var batchFile = BatchPasteHelper.WriteTempBatchFile(clipboardText);
+                TextBox_URL.Text = batchFile;
+                SetStatus("Imported batch list — click GO to download.");
+                return;
             }
+
+            SetStatus("Clipboard does not contain a cURL command or multi-stream batch list. " +
+                      "In your browser extension: click 'Copy as cURL' or 'Copy as list'.", isError: true);
         }
 
         private void TextBox_URL_Pasting(object sender, DataObjectPastingEventArgs e)
@@ -797,11 +805,23 @@ namespace N_m3u8DL_RE_GUI
                 return;
 
             var pasted = e.DataObject.GetData(DataFormats.UnicodeText) as string;
-            if (!CurlCommandParser.LooksLikeCurl(pasted))
+            if (string.IsNullOrWhiteSpace(pasted))
                 return;
 
-            if (TryApplyCapturedRequest(CurlCommandParser.Parse(pasted)))
-                e.CancelCommand(); // we already placed the URL; stop the raw command landing in the box
+            if (CurlCommandParser.LooksLikeCurl(pasted))
+            {
+                if (TryApplyCapturedRequest(CurlCommandParser.Parse(pasted)))
+                    e.CancelCommand();
+                return;
+            }
+
+            if (BatchPasteHelper.LooksLikeBatchList(pasted))
+            {
+                var batchFile = BatchPasteHelper.WriteTempBatchFile(pasted);
+                TextBox_URL.Text = batchFile;
+                SetStatus("Imported batch list — click GO to download.");
+                e.CancelCommand();
+            }
         }
 
         /// <summary>
@@ -818,11 +838,17 @@ namespace N_m3u8DL_RE_GUI
             if (captured.Headers.Count > 0)
                 TextBox_Headers.Text = captured.ToHeaderLines();
 
+            if (captured.Directives.TryGetValue("select-video", out var selectVideo) && !string.IsNullOrWhiteSpace(selectVideo))
+            {
+                TextBox_SelectVideo.Text = selectVideo;
+            }
+
             var kind = captured.Kind == CapturedStreamKind.Unknown
                 ? "stream"
                 : captured.Kind.ToString().ToUpperInvariant();
 
-            SetStatus($"Imported {kind} — 1 URL, {captured.Headers.Count} header(s).");
+            var qualityMsg = captured.Directives.ContainsKey("select-video") ? $" (Quality: {captured.Directives["select-video"]})" : "";
+            SetStatus($"Imported {kind} — 1 URL, {captured.Headers.Count} header(s){qualityMsg}.");
             return true;
         }
 
@@ -1383,7 +1409,7 @@ namespace N_m3u8DL_RE_GUI
         }
 
         /// <summary>
-        /// Clean up stale Cloudflare batch files from %TEMP% directory created in previous runs.
+        /// Clean up stale batch files and pasted lists from %TEMP% directory created in previous runs.
         /// </summary>
         private static void CleanStaleTempBatchFiles()
         {
@@ -1391,12 +1417,17 @@ namespace N_m3u8DL_RE_GUI
             {
                 var tempDir = Path.GetTempPath();
                 var dirInfo = new DirectoryInfo(tempDir);
-                var staleFiles = dirInfo.GetFiles("cf_dl_*.bat")
-                    .Where(f => (DateTime.Now - f.LastWriteTime).TotalHours > 1);
+                var patterns = new[] { "cf_dl_*.bat", "batch_*.bat", "paste_*.txt" };
 
-                foreach (var file in staleFiles)
+                foreach (var pattern in patterns)
                 {
-                    try { file.Delete(); } catch { }
+                    var staleFiles = dirInfo.GetFiles(pattern)
+                        .Where(f => (DateTime.Now - f.LastWriteTime).TotalHours > 1);
+
+                    foreach (var file in staleFiles)
+                    {
+                        try { file.Delete(); } catch { }
+                    }
                 }
             }
             catch (Exception ex)
