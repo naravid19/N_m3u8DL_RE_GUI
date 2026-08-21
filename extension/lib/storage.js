@@ -13,6 +13,14 @@ const MAX_RECENT = 30;
 
 const tabKeyFor = (tabId) => `tab_${tabId}`;
 
+/** Kinds that are a download target in their own right. A tab holding one of
+ *  these is watching a stream, so anything media-shaped alongside it is one of
+ *  that stream's segments — not a separate video. Abyss is excluded: it is a
+ *  player page, which says nothing about what else on the tab is a segment. */
+const MANIFEST_KINDS = new Set(['HLS', 'DASH', 'MSS']);
+
+const isManifest = (item) => MANIFEST_KINDS.has(item.kind);
+
 // Every mutation runs through this chain, so concurrent detections cannot
 // read-modify-write over each other. A rejection must not poison the chain.
 let writeChain = Promise.resolve();
@@ -42,13 +50,29 @@ export function addStream(tabId, item) {
 
     if (effectiveTabId) {
       const key = tabKeyFor(effectiveTabId);
-      const list = data[key] || [];
+      let list = data[key] || [];
+
+      const incomingIsManifest = isManifest(item);
+      const listHasManifest = list.some(isManifest);
+
+      if (!incomingIsManifest && listHasManifest) {
+        // A manifest is already the download target for this tab; this is one
+        // of its segments. Dropping it is what keeps the manifest visible.
+        return list.length;
+      }
+
+      if (incomingIsManifest && !listHasManifest) {
+        // First manifest for the tab — evict segments captured before it.
+        list = list.filter((s) => s.kind !== 'Media');
+      }
+
       if (!list.some((s) => s.url === item.url)) {
         list.unshift(item);
         if (list.length > MAX_PER_TAB) list.length = MAX_PER_TAB;
-        patch[key] = list;
       }
-      tabCount = (patch[key] || list).length;
+
+      patch[key] = list;
+      tabCount = list.length;
     }
 
     const recent = data[RECENT_KEY] || [];
