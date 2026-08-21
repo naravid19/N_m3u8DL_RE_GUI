@@ -3,10 +3,16 @@
  */
 
 import { getTabStreams, getRecentStreams, sweepOrphanTabs, clearTab } from '../lib/storage.js';
+import { formatBytes, formatRelativeTime, elideUrl, describeStream } from '../lib/format.js';
 
 let activeTabId = null;
 let currentView = 'current'; // 'current' | 'all'
 let toastTimer = null;
+let renderTimer = null;
+let renderGeneration = 0;
+let filterQuery = '';
+
+const KIND_RANK = { HLS: 0, DASH: 0, MSS: 0, Abyss: 1, Media: 2 };
 
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -32,73 +38,146 @@ function toCurl(stream) {
   return parts.join(' \\\n  ');
 }
 
-function formatRelativeTime(ts) {
-  if (!ts) return '';
-  const sec = Math.floor((Date.now() - ts) / 1000);
-  if (sec < 10) return 'just now';
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  return `${Math.floor(min / 60)}h ago`;
+async function copyWithFeedback(button, text, originalLabel, successMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    showToast('Could not write to clipboard. Select the URL and copy it manually.');
+    console.debug('[N_m3u8DL-RE] Clipboard write failed:', err);
+    return;
+  }
+
+  button.textContent = '✓ Copied';
+  button.classList.add('is-copied');
+  setTimeout(() => {
+    button.textContent = originalLabel;
+    button.classList.remove('is-copied');
+  }, 1500);
+
+  showToast(successMessage);
 }
 
-async function renderStreams() {
+async function loadStreams() {
+  if (currentView === 'current' && activeTabId) {
+    const currentStreams = await getTabStreams(activeTabId);
+    let otherCount = 0;
+    if (currentStreams.length === 0) {
+      const recent = await getRecentStreams();
+      otherCount = recent.length;
+    }
+    return { streams: currentStreams, otherCount };
+  } else {
+    const recent = await getRecentStreams();
+    return { streams: recent, otherCount: 0 };
+  }
+}
+
+function getKindClass(kind) {
+  switch ((kind || '').toLowerCase()) {
+    case 'hls': return 'kind-hls';
+    case 'dash': return 'kind-dash';
+    case 'mss': return 'kind-mss';
+    case 'abyss': return 'kind-abyss';
+    default: return 'kind-media';
+  }
+}
+
+function paint({ streams, otherCount }) {
   const countBadge = document.getElementById('stream-count');
   const emptyState = document.getElementById('empty-state');
   const streamList = document.getElementById('stream-list');
-
-  let streams = [];
-
-  if (currentView === 'current' && activeTabId) {
-    streams = await getTabStreams(activeTabId);
-    // If current tab is empty, but we have global recent streams, hint or show count
-    if (streams.length === 0) {
-      const recent = await getRecentStreams();
-      if (recent.length > 0) {
-        countBadge.textContent = '0';
-        emptyState.querySelector('.empty-hint').innerHTML =
-          `No stream on this tab yet. Found <strong>${recent.length}</strong> stream(s) on other tabs. Click <strong>"All Recent"</strong> above.`;
-      }
-    }
-  } else {
-    streams = await getRecentStreams();
-  }
+  const filterBar = document.getElementById('filter-bar');
+  const hintDefault = document.getElementById('hint-default');
+  const hintOtherTabs = document.getElementById('hint-other-tabs');
+  const otherTabCount = document.getElementById('other-tab-count');
 
   countBadge.textContent = String(streams.length);
+
+  // Toggle filter bar visibility based on unfiltered item count
+  if (streams.length >= 5) {
+    filterBar.hidden = false;
+  } else {
+    filterBar.hidden = true;
+    if (!filterQuery) {
+      document.getElementById('stream-filter').value = '';
+    }
+  }
+
+  // Filter streams by search query if set
+  let displayed = streams;
+  if (filterQuery) {
+    const q = filterQuery.toLowerCase();
+    displayed = streams.filter((s) => (s.url && s.url.toLowerCase().includes(q)) || (s.kind && s.kind.toLowerCase().includes(q)));
+  }
 
   if (streams.length === 0) {
     emptyState.style.display = 'block';
     streamList.style.display = 'none';
+    streamList.textContent = '';
+
+    if (otherCount > 0 && currentView === 'current') {
+      hintDefault.hidden = true;
+      hintOtherTabs.hidden = false;
+      otherTabCount.textContent = String(otherCount);
+    } else {
+      hintDefault.hidden = false;
+      hintOtherTabs.hidden = true;
+    }
     return;
   }
 
   emptyState.style.display = 'none';
   streamList.style.display = 'flex';
-  streamList.innerHTML = '';
+  streamList.textContent = ''; // clear without innerHTML (C8)
 
-  // Sort: Manifests (HLS, DASH, Abyss) first then Media
-  const sorted = [...streams].sort((a, b) => {
-    const aRank = (a.kind === 'HLS' || a.kind === 'DASH' || a.kind === 'Abyss') ? 0 : 1;
-    const bRank = (b.kind === 'HLS' || b.kind === 'DASH' || b.kind === 'Abyss') ? 0 : 1;
-    return aRank - bRank;
-  });
+  // Rank: manifests first, high confidence first, then newest first
+  const ranked = [...displayed].sort((a, b) =>
+    (KIND_RANK[a.kind] ?? 3) - (KIND_RANK[b.kind] ?? 3) ||
+    (a.confidence === 'low') - (b.confidence === 'low') ||
+    (b.timestamp || 0) - (a.timestamp || 0)
+  );
 
-  for (const item of sorted) {
+  ranked.forEach((item, index) => {
     const card = document.createElement('div');
     card.className = 'stream-card';
+    if (index === 0 && !filterQuery && ranked.length > 1) {
+      card.classList.add('is-primary');
+    }
 
     const meta = document.createElement('div');
     meta.className = 'stream-meta';
 
+    const metaLeft = document.createElement('div');
+    metaLeft.className = 'meta-left';
+
     const kindSpan = document.createElement('span');
-    kindSpan.className = 'stream-kind';
-    if (item.kind === 'Abyss') {
-      kindSpan.classList.add('kind-abyss');
-      kindSpan.textContent = '🎬 Abyss / Hydrax';
-    } else {
-      kindSpan.textContent = item.kind;
+    kindSpan.className = `stream-kind ${getKindClass(item.kind)}`;
+    kindSpan.textContent = item.kind === 'Abyss' ? '🎬 Abyss / Hydrax' : item.kind;
+    metaLeft.appendChild(kindSpan);
+
+    if (index === 0 && !filterQuery && ranked.length > 1) {
+      const recBadge = document.createElement('span');
+      recBadge.className = 'badge-recommended';
+      recBadge.textContent = '⭐ Recommended';
+      metaLeft.appendChild(recBadge);
     }
-    meta.appendChild(kindSpan);
+
+    if (item.confidence === 'low') {
+      const guessBadge = document.createElement('span');
+      guessBadge.className = 'badge-guess';
+      guessBadge.textContent = 'guess';
+      metaLeft.appendChild(guessBadge);
+    }
+
+    const size = formatBytes(item.sizeBytes);
+    if (size) {
+      const sizeSpan = document.createElement('span');
+      sizeSpan.className = 'stream-desc';
+      sizeSpan.textContent = `· ${size}`;
+      metaLeft.appendChild(sizeSpan);
+    }
+
+    meta.appendChild(metaLeft);
 
     if (item.timestamp) {
       const timeSpan = document.createElement('span');
@@ -117,19 +196,19 @@ async function renderStreams() {
 
     const copyCurlBtn = document.createElement('button');
     copyCurlBtn.className = 'btn';
-    copyCurlBtn.innerHTML = '📋 Copy as cURL';
+    copyCurlBtn.textContent = '📋 Copy as cURL';
+    copyCurlBtn.setAttribute('aria-label', `Copy cURL command for ${item.kind} stream`);
     copyCurlBtn.addEventListener('click', async () => {
       const curlCmd = toCurl(item);
-      await navigator.clipboard.writeText(curlCmd);
-      showToast('Copied cURL! Switch to GUI & click "Paste from browser"');
+      await copyWithFeedback(copyCurlBtn, curlCmd, '📋 Copy as cURL', 'Copied cURL! Switch to GUI & click "Paste from browser"');
     });
 
     const copyUrlBtn = document.createElement('button');
     copyUrlBtn.className = 'btn btn-secondary';
     copyUrlBtn.textContent = 'Copy URL';
+    copyUrlBtn.setAttribute('aria-label', `Copy raw URL for ${item.kind} stream`);
     copyUrlBtn.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(item.url);
-      showToast('Copied raw URL to clipboard');
+      await copyWithFeedback(copyUrlBtn, item.url, 'Copy URL', 'Copied raw URL to clipboard');
     });
 
     actions.appendChild(copyCurlBtn);
@@ -139,7 +218,14 @@ async function renderStreams() {
     card.appendChild(urlDiv);
     card.appendChild(actions);
     streamList.appendChild(card);
-  }
+  });
+}
+
+async function renderStreams() {
+  const generation = ++renderGeneration;
+  const data = await loadStreams();
+  if (generation !== renderGeneration) return;
+  paint(data);
 }
 
 async function sweepOnOpen() {
@@ -150,7 +236,6 @@ async function sweepOnOpen() {
       console.debug(`[N_m3u8DL-RE] Cleared ${removed} orphaned tab entries.`);
     }
   } catch (err) {
-    // A sweep failure must never stop the list from rendering.
     console.debug('[N_m3u8DL-RE] Sweep skipped:', err);
   }
 }
@@ -172,14 +257,18 @@ async function init() {
   tabCurrent.addEventListener('click', () => {
     currentView = 'current';
     tabCurrent.classList.add('active');
+    tabCurrent.setAttribute('aria-selected', 'true');
     tabAll.classList.remove('active');
+    tabAll.setAttribute('aria-selected', 'false');
     renderStreams();
   });
 
   tabAll.addEventListener('click', () => {
     currentView = 'all';
     tabAll.classList.add('active');
+    tabAll.setAttribute('aria-selected', 'true');
     tabCurrent.classList.remove('active');
+    tabCurrent.setAttribute('aria-selected', 'false');
     renderStreams();
   });
 
@@ -198,9 +287,18 @@ async function init() {
     showToast('Cleared stream list');
   });
 
-  // Live storage change listener: auto-update popup if streams detected in real time!
-  chrome.storage.onChanged.addListener(() => {
+  // Filter input handler
+  const filterInput = document.getElementById('stream-filter');
+  filterInput.addEventListener('input', (e) => {
+    filterQuery = e.target.value.trim();
     renderStreams();
+  });
+
+  // Live storage change listener with debouncing (C3)
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'session') return; // ignore local migration cleanup
+    if (renderTimer) clearTimeout(renderTimer);
+    renderTimer = setTimeout(renderStreams, 150);
   });
 
   // Render immediately for fast UI

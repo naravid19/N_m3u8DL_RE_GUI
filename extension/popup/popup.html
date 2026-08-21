@@ -14,28 +14,40 @@
     </div>
     <div class="header-actions">
       <span id="stream-count" class="badge">0</span>
-      <button id="btn-refresh" class="icon-btn" title="Refresh stream list">🔄</button>
-      <button id="btn-clear" class="icon-btn" title="Clear detected streams">🗑️</button>
+      <button id="btn-refresh" class="icon-btn" title="Refresh stream list" aria-label="Refresh stream list">🔄</button>
+      <button id="btn-clear" class="icon-btn" title="Clear detected streams" aria-label="Clear detected streams">🗑️</button>
     </div>
   </header>
 
-  <div class="tabs-nav">
-    <button id="tab-current" class="tab-btn active">Current Tab</button>
-    <button id="tab-all" class="tab-btn">All Recent</button>
+  <div class="tabs-nav" role="tablist" aria-label="Stream categories">
+    <button id="tab-current" class="tab-btn active" role="tab" aria-selected="true">Current Tab</button>
+    <button id="tab-all" class="tab-btn" role="tab" aria-selected="false">All Recent</button>
   </div>
 
   <main id="main-content">
+    <div id="filter-bar" class="filter-bar" hidden>
+      <input type="text" id="stream-filter" class="filter-input" placeholder="Filter streams by URL..." aria-label="Filter streams by URL">
+    </div>
+
     <div id="empty-state" class="empty-state">
       <div class="empty-icon">📡</div>
       <p class="empty-title">Waiting for video stream...</p>
-      <p class="empty-hint">1. Play or seek the video on this page.<br>2. Streams (HLS, DASH, MP4) will appear here automatically.</p>
+      <p class="empty-hint" id="hint-default">
+        1. Play or seek the video on this page.<br>
+        2. Streams (HLS, DASH, MSS, MP4) appear here automatically.<br>
+        3. No luck? Try another server or player on the page.
+      </p>
+      <p class="empty-hint" id="hint-other-tabs" hidden>
+        Nothing on this tab yet — but <strong id="other-tab-count">0</strong> stream(s)
+        were found on other tabs. Try <strong>All Recent</strong> above.
+      </p>
     </div>
 
-    <div id="stream-list" class="stream-list"></div>
+    <div id="stream-list" class="stream-list" role="feed" aria-label="Detected video streams"></div>
   </main>
 
   <footer class="footer">
-    <div id="toast" class="toast">Copied as cURL! Switch to GUI & click "Paste from browser"</div>
+    <div id="toast" class="toast" role="status" aria-live="polite">Copied as cURL! Switch to GUI & click "Paste from browser"</div>
     <div class="helper-hint">💡 Click <strong>"Copy as cURL"</strong> then press <strong>"📋 Paste from browser"</strong> in GUI</div>
   </footer>
 

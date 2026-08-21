@@ -5,14 +5,20 @@
 }
 
 body {
-  width: 400px;
-  max-height: 520px;
+  width: 420px;
+  max-height: 540px;
   background-color: #0D0D0F;
   color: #F2F2F8;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 12px;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* Accessibility: Visible focus outline */
+:focus-visible {
+  outline: 2px solid #7A87FF;
+  outline-offset: 1px;
 }
 
 .header {
@@ -54,16 +60,18 @@ body {
 
 .icon-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   font-size: 13px;
   cursor: pointer;
-  padding: 3px 6px;
+  padding: 4px 6px;
   border-radius: 4px;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  color: #F2F2F8;
 }
 
 .icon-btn:hover {
   background-color: #282834;
+  border-color: #38384A;
 }
 
 .tabs-nav {
@@ -95,7 +103,30 @@ body {
 }
 
 #main-content {
-  padding: 12px;
+  padding: 10px 12px 12px;
+}
+
+.filter-bar {
+  margin-bottom: 8px;
+}
+
+.filter-input {
+  width: 100%;
+  background-color: #141418;
+  border: 1px solid #2A2A38;
+  color: #F2F2F8;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  transition: border-color 0.15s ease;
+}
+
+.filter-input:focus {
+  border-color: #5865F2;
+}
+
+.filter-input::placeholder {
+  color: #66667C;
 }
 
 .empty-state {
@@ -121,6 +152,10 @@ body {
   font-size: 11px;
 }
 
+.empty-hint strong {
+  color: #F2F2F8;
+}
+
 .stream-list {
   display: flex;
   flex-direction: column;
@@ -138,35 +173,98 @@ body {
   transition: border-color 0.15s ease;
 }
 
+.stream-card.is-primary {
+  border-color: #4854D4;
+  background-color: #1E1F2A;
+}
+
 .stream-card:hover {
-  border-color: #5865F2;
+  border-color: #7A87FF;
 }
 
 .stream-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
+}
+
+.meta-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .stream-kind {
   font-weight: 700;
-  font-size: 11px;
-  color: #7A87FF;
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
 
-.stream-kind.kind-abyss {
-  color: #E879F9;
-  background: rgba(232, 121, 249, 0.15);
-  padding: 1px 6px;
-  border-radius: 4px;
+.kind-hls {
+  color: #99A3FF;
+  background: rgba(122, 135, 255, 0.18);
+  border: 1px solid rgba(122, 135, 255, 0.35);
+}
+
+.kind-dash {
+  color: #67E8F9;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.kind-mss {
+  color: #FCD34D;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.kind-abyss {
+  color: #F0ABFC;
+  background: rgba(232, 121, 249, 0.18);
   border: 1px solid rgba(232, 121, 249, 0.35);
+}
+
+.kind-media {
+  color: #CBD5E1;
+  background: rgba(148, 163, 184, 0.18);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.badge-guess {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #FCD34D;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: lowercase;
+}
+
+.badge-recommended {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #6EE7B7;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.stream-desc {
+  font-size: 10.5px;
+  color: #A0A0B8;
 }
 
 .stream-time {
   font-size: 10px;
-  color: #66667C;
+  color: #71718A;
+  margin-left: auto;
 }
 
 .stream-url {
@@ -204,17 +302,22 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.1s ease;
   flex: 1.2;
   justify-content: center;
 }
 
 .btn:hover {
-  background-color: #4350D8;
+  background-color: #4752C4;
 }
 
 .btn:active {
-  background-color: #3E4ACB;
+  background-color: #3C45A5;
+}
+
+.btn.is-copied {
+  background-color: #10B981 !important;
+  color: #FFFFFF;
 }
 
 .btn-secondary {
@@ -226,6 +329,11 @@ body {
 
 .btn-secondary:hover {
   background-color: #2A2A38;
+}
+
+.btn-secondary.is-copied {
+  border-color: #10B981 !important;
+  color: #6EE7B7 !important;
 }
 
 .footer {
@@ -241,9 +349,9 @@ body {
 
 .toast {
   display: none;
-  background-color: #2ECC71;
+  background-color: #10B981;
   color: #0D0D0F;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 11px;
   padding: 8px 10px;
   border-radius: 4px;
