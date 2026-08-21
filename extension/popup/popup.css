@@ -235,6 +235,12 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
+.kind-audio {
+  color: #34D399;
+  background: rgba(52, 211, 153, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
 .badge-guess {
   font-size: 9.5px;
   font-weight: 600;

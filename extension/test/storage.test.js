@@ -117,6 +117,15 @@ test('clearAll removes every tab list and the recent list', async () => {
   assert.deepEqual(await getRecentStreams(), []);
 });
 
+test('purges Audio entries when a manifest arrives late', async () => {
+  await addStream(TAB, stream('https://cdn.example.com/audio-seg.aac', 'Audio'));
+  await addStream(TAB, stream('https://cdn.example.com/master.m3u8', 'HLS'));
+
+  const list = await getTabStreams(TAB);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].kind, 'HLS');
+});
+
 test('a clear issued mid-detection is not undone by it', async () => {
   // Without serialization the in-flight addStream's set() lands after the
   // remove() and the list reappears.

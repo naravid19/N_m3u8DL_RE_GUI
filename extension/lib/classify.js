@@ -21,6 +21,9 @@ const MEDIA_EXTENSIONS = new Set([
   '.mp4', '.m4v', '.webm', '.mkv', '.mov', '.flv', '.ogv', '.3gp'
 ]);
 
+const AUDIO_EXTENSIONS = new Set(['.m4a', '.opus', '.flac', '.wav', '.oga']);
+const CONDITIONAL_AUDIO_EXTENSIONS = new Set(['.aac', '.mp3']);
+
 /** Format hints a CDN may put in the query when the path carries no extension. */
 const QUERY_HINTS = new Map([
   ['m3u8', 'HLS'],
@@ -147,11 +150,18 @@ export function classify(url, mimeType, status, type) {
     return high('MSS');
   }
 
-  // Segments are excluded only after manifests have had every chance.
+  // Audio files by extension or explicit audio content-type
+  if (AUDIO_EXTENSIONS.has(parts.ext)) return high('Audio');
+  if (CONDITIONAL_AUDIO_EXTENSIONS.has(parts.ext) && mime.startsWith('audio/')) {
+    return high('Audio');
+  }
+
+  // Segments are excluded only after manifests and standalone audio have had every chance.
   if (SEGMENT_EXTENSIONS.has(parts.ext)) return null;
 
   if (MEDIA_EXTENSIONS.has(parts.ext)) return high('Media');
   if (mime.startsWith('video/')) return high('Media');
+  if (mime.startsWith('audio/')) return high('Audio');
 
   // Below here we are guessing. Manifest kinds only.
   const byQuery = classifyByQuery(parts.search);

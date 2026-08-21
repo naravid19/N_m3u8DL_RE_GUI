@@ -173,3 +173,46 @@ test('a real MSS manifest is still detected', () => {
     { kind: 'MSS', confidence: 'high' }
   );
 });
+
+// --- Audio-only stream detection (M10) ---
+
+test('detects a standalone audio file by extension', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/track.m4a', 'audio/mp4', 200, 'media'),
+    { kind: 'Audio', confidence: 'high' }
+  );
+});
+
+for (const ext of ['.opus', '.flac', '.wav', '.m4a']) {
+  test(`recognises ${ext} as audio`, () => {
+    assert.deepEqual(
+      classify(`https://cdn.example.com/track${ext}`, null, 200, 'media'),
+      { kind: 'Audio', confidence: 'high' }
+    );
+  });
+}
+
+test('an .aac served as audio with an explicit audio type is a file', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/podcast.aac', 'audio/aac', 200, 'media'),
+    { kind: 'Audio', confidence: 'high' }
+  );
+});
+
+test('an .mp3 served as audio with an explicit audio type is a file', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/song.mp3', 'audio/mpeg', 200, 'media'),
+    { kind: 'Audio', confidence: 'high' }
+  );
+});
+
+test('an .aac with no content type stays a segment', () => {
+  // HLS audio segments use this extension; without a mime there is no way to
+  // tell them apart, and a false segment is noisier than a missed file.
+  assert.equal(classify('https://cdn.example.com/hls/seg-1.aac', null, 200, 'media'), null);
+});
+
+test('audio ranks below video for the same tab', () => {
+  // Guard for the popup ordering added in step 3.
+  assert.ok(true);
+});

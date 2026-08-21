@@ -13,7 +13,7 @@ let renderTimer = null;
 let renderGeneration = 0;
 let filterQuery = '';
 
-const KIND_RANK = { HLS: 0, DASH: 0, MSS: 0, Abyss: 1, Media: 2 };
+const KIND_RANK = { HLS: 0, DASH: 0, MSS: 0, Abyss: 1, Media: 2, Audio: 2 };
 
 function showToast(message) {
   const toast = document.getElementById('toast');
@@ -67,6 +67,7 @@ function getKindClass(kind) {
     case 'dash': return 'kind-dash';
     case 'mss': return 'kind-mss';
     case 'abyss': return 'kind-abyss';
+    case 'audio': return 'kind-audio';
     default: return 'kind-media';
   }
 }
