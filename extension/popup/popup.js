@@ -76,20 +76,21 @@ function paint({ streams, otherCount }) {
   const emptyState = document.getElementById('empty-state');
   const streamList = document.getElementById('stream-list');
   const filterBar = document.getElementById('filter-bar');
+  const filterInput = document.getElementById('stream-filter');
   const hintDefault = document.getElementById('hint-default');
   const hintOtherTabs = document.getElementById('hint-other-tabs');
   const otherTabCount = document.getElementById('other-tab-count');
+  const noMatches = document.getElementById('no-matches');
+  const noMatchesTerm = document.getElementById('no-matches-term');
 
   countBadge.textContent = String(streams.length);
 
-  // Toggle filter bar visibility based on unfiltered item count
-  if (streams.length >= 5) {
-    filterBar.hidden = false;
-  } else {
-    filterBar.hidden = true;
-    if (!filterQuery) {
-      document.getElementById('stream-filter').value = '';
-    }
+  // Keep the bar visible whenever a filter is active or streams count >= 5
+  const showFilter = streams.length >= 5 || filterQuery.length > 0;
+  filterBar.hidden = !showFilter;
+  if (!showFilter) {
+    filterQuery = '';
+    filterInput.value = '';
   }
 
   // Filter streams by search query if set
@@ -103,6 +104,7 @@ function paint({ streams, otherCount }) {
     emptyState.style.display = 'block';
     streamList.style.display = 'none';
     streamList.textContent = '';
+    noMatches.hidden = true;
 
     if (otherCount > 0 && currentView === 'current') {
       hintDefault.hidden = true;
@@ -116,6 +118,16 @@ function paint({ streams, otherCount }) {
   }
 
   emptyState.style.display = 'none';
+
+  if (displayed.length === 0) {
+    streamList.style.display = 'none';
+    streamList.textContent = '';
+    noMatches.hidden = false;
+    noMatchesTerm.textContent = filterQuery;
+    return;
+  }
+
+  noMatches.hidden = true;
   streamList.style.display = 'flex';
   streamList.textContent = ''; // clear without innerHTML (C8)
 
