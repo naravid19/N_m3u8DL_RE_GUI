@@ -19,7 +19,7 @@ const tabKeyFor = (tabId) => `tab_${tabId}`;
  *  player page, which says nothing about what else on the tab is a segment. */
 const MANIFEST_KINDS = new Set(['HLS', 'DASH', 'MSS']);
 
-const isManifest = (item) => MANIFEST_KINDS.has(item.kind);
+const isManifest = (item) => item && MANIFEST_KINDS.has(item.kind);
 
 // Every mutation runs through this chain, so concurrent detections cannot
 // read-modify-write over each other. A rejection must not poison the chain.
@@ -48,11 +48,12 @@ export function addStream(tabId, item) {
     const patch = {};
     let tabCount = 0;
 
+    const incomingIsManifest = isManifest(item);
+
     if (effectiveTabId) {
       const key = tabKeyFor(effectiveTabId);
       let list = data[key] || [];
 
-      const incomingIsManifest = isManifest(item);
       const listHasManifest = list.some(isManifest);
 
       if (!incomingIsManifest && listHasManifest) {
@@ -63,7 +64,7 @@ export function addStream(tabId, item) {
 
       if (incomingIsManifest && !listHasManifest) {
         // First manifest for the tab — evict segments captured before it.
-        list = list.filter((s) => s.kind !== 'Media');
+        list = list.filter((s) => s.kind !== 'Media' && s.kind !== 'Audio');
       }
 
       if (!list.some((s) => s.url === item.url)) {
@@ -75,12 +76,19 @@ export function addStream(tabId, item) {
       tabCount = list.length;
     }
 
-    const recent = data[RECENT_KEY] || [];
+    let recent = data[RECENT_KEY] || [];
+
+    // M3: When a manifest arrives on a tab, purge earlier media segments from that tab in recent_streams
+    if (incomingIsManifest && effectiveTabId) {
+      recent = recent.filter((s) => !(s.tabId === effectiveTabId && (s.kind === 'Media' || s.kind === 'Audio')));
+    }
+
     if (!recent.some((s) => s.url === item.url)) {
       recent.unshift(item);
       if (recent.length > MAX_RECENT) recent.length = MAX_RECENT;
-      patch[RECENT_KEY] = recent;
     }
+
+    patch[RECENT_KEY] = recent;
 
     if (Object.keys(patch).length > 0) {
       await chrome.storage.session.set(patch);
@@ -105,6 +113,19 @@ export async function getRecentStreams() {
 export function clearTab(tabId) {
   if (!tabId || tabId <= 0) return Promise.resolve();
   return serialize(() => chrome.storage.session.remove(tabKeyFor(tabId)));
+}
+
+/**
+ * Clears all tab streams and the recent streams list in a serialized transaction.
+ */
+export function clearAll() {
+  return serialize(async () => {
+    const all = await chrome.storage.session.get(null);
+    const keys = Object.keys(all).filter((k) => k.startsWith('tab_') || k === RECENT_KEY);
+    if (keys.length > 0) {
+      await chrome.storage.session.remove(keys);
+    }
+  });
 }
 
 /**

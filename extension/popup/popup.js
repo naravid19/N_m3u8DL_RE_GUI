@@ -2,7 +2,7 @@
  * N_m3u8DL-RE Companion — Popup Logic
  */
 
-import { getTabStreams, getRecentStreams, sweepOrphanTabs, clearTab } from '../lib/storage.js';
+import { getTabStreams, getRecentStreams, sweepOrphanTabs, clearTab, clearAll } from '../lib/storage.js';
 import { formatBytes, formatRelativeTime, elideUrl, describeStream } from '../lib/format.js';
 import { toCurl } from '../lib/curl.js';
 
@@ -262,10 +262,7 @@ async function init() {
   });
 
   document.getElementById('btn-clear').addEventListener('click', async () => {
-    if (activeTabId) {
-      await clearTab(activeTabId);
-    }
-    await chrome.storage.session.remove('recent_streams');
+    await clearAll();
     renderStreams();
     showToast('Cleared stream list');
   });

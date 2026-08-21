@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { installFakeChrome } from './helpers/fake-chrome.js';
 
 const fake = installFakeChrome();
-const { addStream, getTabStreams } = await import('../lib/storage.js');
+const { addStream, getTabStreams, getRecentStreams, clearAll } = await import('../lib/storage.js');
 
 const TAB = 7;
 
@@ -39,6 +39,15 @@ test('purges media already stored when a manifest arrives late', async () => {
   const list = await getTabStreams(TAB);
   assert.equal(list.length, 1);
   assert.equal(list[0].kind, 'HLS');
+});
+
+test('purges media from recent_streams when a manifest arrives late (M3)', async () => {
+  await addStream(TAB, stream('https://cdn.example.com/seg-00001.mp4', 'Media'));
+  await addStream(TAB, stream('https://cdn.example.com/master.m3u8', 'HLS'));
+
+  const recent = await getRecentStreams();
+  assert.equal(recent.length, 1);
+  assert.equal(recent[0].kind, 'HLS');
 });
 
 test('keeps multiple manifests — the user may need to choose', async () => {
@@ -95,4 +104,25 @@ test('returns the tab count so the badge is accurate', async () => {
   assert.equal(await addStream(TAB, stream('https://cdn.example.com/b.mp4', 'Media')), 2);
   // A duplicate must not inflate the badge.
   assert.equal(await addStream(TAB, stream('https://cdn.example.com/b.mp4', 'Media')), 2);
+});
+
+test('clearAll removes every tab list and the recent list', async () => {
+  await addStream(TAB, stream('https://cdn.example.com/a.m3u8', 'HLS'));
+  await addStream(9, stream('https://cdn.example.com/b.m3u8', 'HLS'));
+
+  await clearAll();
+
+  assert.deepEqual(await getTabStreams(TAB), []);
+  assert.deepEqual(await getTabStreams(9), []);
+  assert.deepEqual(await getRecentStreams(), []);
+});
+
+test('a clear issued mid-detection is not undone by it', async () => {
+  // Without serialization the in-flight addStream's set() lands after the
+  // remove() and the list reappears.
+  const pending = addStream(TAB, stream('https://cdn.example.com/late.m3u8', 'HLS'));
+  const cleared = clearAll();
+  await Promise.all([pending, cleared]);
+
+  assert.deepEqual(await getRecentStreams(), []);
 });
