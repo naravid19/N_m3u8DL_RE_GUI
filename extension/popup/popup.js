@@ -151,19 +151,13 @@ function paint({ streams, otherCount }) {
       metaLeft.appendChild(recBadge);
     }
 
-    if (item.confidence === 'low') {
-      const guessBadge = document.createElement('span');
-      guessBadge.className = 'badge-guess';
-      guessBadge.textContent = 'guess';
-      metaLeft.appendChild(guessBadge);
-    }
-
-    const size = formatBytes(item.sizeBytes);
-    if (size) {
-      const sizeSpan = document.createElement('span');
-      sizeSpan.className = 'stream-desc';
-      sizeSpan.textContent = `· ${size}`;
-      metaLeft.appendChild(sizeSpan);
+    const descText = describeStream(item);
+    const descDetails = descText.split(' · ').slice(1);
+    if (descDetails.length > 0) {
+      const descSpan = document.createElement('span');
+      descSpan.className = 'stream-desc';
+      descSpan.textContent = `· ${descDetails.join(' · ')}`;
+      metaLeft.appendChild(descSpan);
     }
 
     meta.appendChild(metaLeft);
@@ -177,7 +171,7 @@ function paint({ streams, otherCount }) {
 
     const urlDiv = document.createElement('div');
     urlDiv.className = 'stream-url';
-    urlDiv.textContent = item.url;
+    urlDiv.textContent = elideUrl(item.url, 64);
     urlDiv.title = item.url;
 
     const actions = document.createElement('div');
