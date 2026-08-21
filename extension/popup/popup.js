@@ -73,10 +73,10 @@ async function renderStreams() {
   streamList.style.display = 'flex';
   streamList.innerHTML = '';
 
-  // Sort: Manifests first (HLS, DASH) then Media
+  // Sort: Manifests (HLS, DASH, Abyss) first then Media
   const sorted = [...streams].sort((a, b) => {
-    const aRank = a.kind === 'Media' ? 1 : 0;
-    const bRank = b.kind === 'Media' ? 1 : 0;
+    const aRank = (a.kind === 'HLS' || a.kind === 'DASH' || a.kind === 'Abyss') ? 0 : 1;
+    const bRank = (b.kind === 'HLS' || b.kind === 'DASH' || b.kind === 'Abyss') ? 0 : 1;
     return aRank - bRank;
   });
 
@@ -89,7 +89,12 @@ async function renderStreams() {
 
     const kindSpan = document.createElement('span');
     kindSpan.className = 'stream-kind';
-    kindSpan.textContent = item.kind;
+    if (item.kind === 'Abyss') {
+      kindSpan.classList.add('kind-abyss');
+      kindSpan.textContent = '🎬 Abyss / Hydrax';
+    } else {
+      kindSpan.textContent = item.kind;
+    }
     meta.appendChild(kindSpan);
 
     if (item.timestamp) {

@@ -7,10 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [2.1.5] - 2026-08-15
+## [2.1.5] - 2026-08-20
 
 ### Added
 
+- **Native Abyss / Hydrax Stream Downloader (`N_m3u8DL_RE_GUI.Core.Abyss`)**:
+  - Implemented pure C# crypto engine (`AbyssCrypto`) supporting AES-CTR (Counter Mode 128-bit block feedback), MD5 key derivation (string & byte-mapped numeric), and Double-Base64 chunk token encoding with **zero external dependencies**.
+  - Created `AbyssMetadataFetcher` with dual-engine architecture: in-process `HttpClient` with automatic fallback to native `curl.exe` and DNS-over-HTTPS (`1.1.1.1`) to transparently bypass Cloudflare Managed Challenges / JA3-JA4 TLS fingerprint filters on Abyss hosts (`abysscdn.com`, `playhydrax.com`, `zplayer.io`, `short.ink`, `abyss.to`).
+  - Added `HeaderParser` (`N_m3u8DL_RE_GUI.Core.Capture`) supporting multi-line, cURL `-H`, and pipe-delimited headers, dynamically propagating custom `Referer` and `User-Agent` credentials to both metadata fetch and 2MB chunk segment downloads.
+  - Created `AbyssDownloadService` for concurrent 2MB chunk downloading with `SemaphoreSlim` rate limiting, transient failure retries, live speed & ETA reporting, and automatic byte reassembly into continuous `.mp4` video files.
+  - Wired direct Abyss stream handling into `MainWindow`: pasting an Abyss link automatically triggers metadata extraction, selects the optimal resolution, tracks progress in the GUI progress bar & log view, and supports cancellation via the Stop button.
+- **Universal Stream Capture & Browser Companion Extension**:
+  - `CapturedRequest`, `HeaderPolicy` (stripping `:authority`, `sec-*`, `accept-encoding`), and `CurlCommandParser` (tokenizing single/multi-line bash, cmd, and Firefox cURL commands).
+  - Added "📋 Paste from browser" (`Button_PasteCurl`) and automatic clipboard listener on `TextBox_URL` for instant 1-click importing.
+  - `HarStreamExtractor`: Drop a `.har` network capture file directly onto the GUI; automatically filters noise, deduplicates byte-range requests, and prioritizes master manifests.
+  - `StreamPickerWindow`: Interactive multi-stream dialog with stream badges (`HLS`, `DASH`, `Abyss`, `Media`) when a capture contains multiple streams.
+  - Manifest V3 Browser Extension (`extension/`): Dual-channel network & DOM sniffer for Chrome, Edge, and Brave with real-time stream cards, purple `🎬 Abyss / Hydrax` badges, and 1-click "Copy as cURL" buttons.
 - **In-Window Feedback Surface & Progress Reporting (Zone D)**:
   - Added live progress bar and status strip (`TextBlock_Status`, `ProgressBar_Download`) directly in the main window.
   - Added collapsible live log viewer (`TextBox_Log`) with `ToggleButton_Log` toggle.
@@ -49,8 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added keyboard bindings: `Alt+G` / `Enter` for GO, `Alt+S` / `Escape` for Stop.
   - Added `AutomationProperties.Name` across all interactive inputs.
   - Added `XamlAccessibilityTests` headless automated XAML validation suite.
-- **Comprehensive Unit & Integration Test Suite (542 Tests)**:
-  - Expanded test coverage across all layers (`HtmlTitleExtractorTests`, `TextEncodingDetectorEdgeTests`, `ArgsBuilderQuotingTests`, `LegacyConfigCodecTests`, `XamlContrastTests`, `ConsoleOutputParserTests`, `CfCommandBuilderTests`, `XamlAccessibilityTests`, `JsonConfigServiceSecretCoverageTests`, `DownloadServiceTests`), reaching 542/542 passing tests with 0 warnings.
+- **Comprehensive Unit & Integration Test Suite (640 Tests)**:
+  - Expanded test coverage across all layers (`HeaderParserTests`, `LiveAbyssFetchIntegrationTests`, `AbyssCryptoTests`, `AbyssMetadataFetcherTests`, `HarStreamExtractorTests`, `CurlCommandParserTests`, `HtmlTitleExtractorTests`, `TextEncodingDetectorEdgeTests`, `ArgsBuilderQuotingTests`, `LegacyConfigCodecTests`, `XamlContrastTests`, `ConsoleOutputParserTests`, `CfCommandBuilderTests`, `XamlAccessibilityTests`, `JsonConfigServiceSecretCoverageTests`, `DownloadServiceTests`), reaching **639/640 passing tests (1 live integration skip)** with 0 errors and 0 warnings.
 
 ### Changed
 

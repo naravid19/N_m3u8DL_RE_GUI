@@ -45,6 +45,7 @@
 ### Main Benefits:
 
 - 🚀 **No command-line memorization** - Common options are available through simple UI controls.
+- 🎬 **Native Abyss & Hydrax Support** - Direct AES-CTR chunk decryption and assembly for `abysscdn.com`, `playhydrax.com`, `zplayer.io`, and `short.ink` without external tools.
 - 📦 **Batch processing** - Download multiple streams from text files or folders with one click.
 - 🔒 **Privacy First** - Your settings and headers are automatically saved between sessions and heavily encrypted using Windows DPAPI.
 - 🛡️ **Cloudflare WAF Bypass** - Built-in TLS fingerprint impersonation to bypass Cloudflare security seamlessly.
@@ -102,7 +103,8 @@ Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
 | ----------- | ------------------------------------- |
 | 📋 Paste from Browser | Copy a request as cURL from browser DevTools (F12) or click **Copy as cURL** in the Browser Extension, then click **📋 Paste from browser**. |
 | 🗂️ HAR Capture Drop | Drag a `.har` network capture onto the GUI. If multiple streams are found, an interactive picker window lets you select the master stream. |
-| Direct URL  | Paste a stream URL directly into the top bar. |
+| 🎬 Abyss / Hydrax | Paste `abysscdn.com/?v=...`, `playhydrax.com/?v=...`, `zplayer.io/?v=...`, or `short.ink/...` directly. The GUI automatically fetches resolutions and downloads chunks natively. |
+| Direct URL  | Paste a standard `.m3u8`, `.mpd`, or `.mp4` stream URL directly into the top bar. |
 | Drag & Drop | Drag `.m3u8`, `.mpd`, or `.txt` files directly into the window. |
 | Batch File  | Drop a `.txt` file containing multiple URLs (one per line). |
 | Folder      | Drop a folder containing stream files to batch process them all. |
@@ -135,6 +137,7 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 
 ### Core Features
 - **Universal Stream Capture** - Paste browser cURL commands directly, drag-and-drop `.har` captures with automated stream ranking and picking, or use the Chrome/Edge extension companion.
+- **Native Abyss / Hydrax Downloader** - Built-in zero-dependency C# crypto engine that decrypts and reassembles fragmented chunks from `abysscdn.com`, `playhydrax.com`, `zplayer.io`, and `short.ink`.
 - **3-Zone Modern UX/UI Architecture** - Clean layout with a top URL hero bar, a 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and a fixed command preview bar at the bottom.
 - **GUI Auto-Update Engine** - Zero rate-limit HTTP update checker. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top.
 - **Full RE Support** - Compatible with all major N_m3u8DL-RE command-line arguments.
@@ -147,7 +150,7 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 - **Thread-Safe Cancellation** - Responsive process cancellation with clean token lifetime management that safely terminates child process trees.
 - **In-Window Live Feedback & Progress** - Real-time progress bar, live status messages, collapsible diagnostic log, and an "Open Folder" button on completion.
 - **Accessible & Keyboard Ready** - High-contrast focus visual indicators, access keys (`Alt+G` for Go, `Alt+S` / `Escape` for Stop), and full UI automation properties.
-- **Automated Test Suite (617 Tests)** - Rock-solid stability backed by 617 unit, integration, contrast, and accessibility tests covering all core models, services, XAML a11y, and view models.
+- **Automated Test Suite (640 Tests)** - Rock-solid stability backed by 640 unit, integration, contrast, and accessibility tests covering all core models, services, XAML a11y, and view models.
 
 ### Download Options
 - **Concurrent Downloads** - Download multiple streams simultaneously.

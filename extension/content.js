@@ -52,7 +52,44 @@
   }
 
   function scanAllMedia() {
+    // 1. Scan HTML5 video/audio elements
     document.querySelectorAll('video, audio, source').forEach(checkMediaElement);
+
+    // 2. Scan iframes for embedded players (e.g. Abyss, Hydrax, Marimo, TonyTonyChopper)
+    document.querySelectorAll('iframe').forEach((iframe) => {
+      try {
+        const src = iframe.src || iframe.getAttribute('data-src') || iframe.getAttribute('src');
+        if (src && typeof src === 'string') {
+          const lower = src.toLowerCase();
+          if (
+            lower.includes('abysscdn.com/?v=') ||
+            lower.includes('playhydrax.com/?v=') ||
+            lower.includes('zplayer.io/?v=') ||
+            lower.includes('abyss.to/?v=') ||
+            lower.includes('short.ink/')
+          ) {
+            reportStream(src, 'Abyss');
+          }
+        }
+      } catch {
+        // Cross-origin iframe security
+      }
+    });
+
+    // 3. If the current frame itself is an Abyss player page
+    try {
+      const currentUrl = window.location.href;
+      const lower = currentUrl.toLowerCase();
+      if (
+        lower.includes('abysscdn.com/?v=') ||
+        lower.includes('playhydrax.com/?v=') ||
+        lower.includes('zplayer.io/?v=') ||
+        lower.includes('abyss.to/?v=') ||
+        lower.includes('short.ink/')
+      ) {
+        reportStream(currentUrl, 'Abyss');
+      }
+    } catch {}
   }
 
   // 1. Initial scan on load

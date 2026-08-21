@@ -24,7 +24,18 @@ function classify(url, mimeType, status, type) {
     return null;
   }
 
-  // 1. Exclude segments (unless it's an m3u8 / mpd playlist)
+  // 1. Abyss / Hydrax stream endpoints
+  if (
+    lowerUrl.includes('abysscdn.com/?v=') ||
+    lowerUrl.includes('playhydrax.com/?v=') ||
+    lowerUrl.includes('zplayer.io/?v=') ||
+    lowerUrl.includes('abyss.to/?v=') ||
+    lowerUrl.includes('short.ink/')
+  ) {
+    return 'Abyss';
+  }
+
+  // 2. Exclude segments (unless it's an m3u8 / mpd playlist)
   const isManifest = lowerUrl.includes('.m3u8') || lowerUrl.includes('.m3u') || lowerUrl.includes('.mpd');
   if (!isManifest) {
     for (const ext of SEGMENT_EXTENSIONS) {
@@ -32,12 +43,12 @@ function classify(url, mimeType, status, type) {
     }
   }
 
-  // 2. HLS Manifests
+  // 3. HLS Manifests
   if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.m3u')) {
     return 'HLS';
   }
 
-  // 3. DASH Manifests
+  // 4. DASH Manifests
   if (lowerUrl.includes('.mpd')) {
     return 'DASH';
   }

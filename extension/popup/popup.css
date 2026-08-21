@@ -156,6 +156,14 @@ body {
   letter-spacing: 0.5px;
 }
 
+.stream-kind.kind-abyss {
+  color: #E879F9;
+  background: rgba(232, 121, 249, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(232, 121, 249, 0.35);
+}
+
 .stream-time {
   font-size: 10px;
   color: #66667C;

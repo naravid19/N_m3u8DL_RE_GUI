@@ -22,6 +22,7 @@ using Media = System.Windows.Media;
 using MediaColor = System.Windows.Media.Color;
 using Anim = System.Windows.Media.Animation;
 using N_m3u8DL_RE_GUI.Core;
+using N_m3u8DL_RE_GUI.Core.Abyss;
 using N_m3u8DL_RE_GUI.Core.Capture;
 using Services = N_m3u8DL_RE_GUI.Services;
 
@@ -924,6 +925,23 @@ namespace N_m3u8DL_RE_GUI
                 return;
             }
 
+            // Abyss / Hydrax native download mode
+            if (AbyssMetadataFetcher.IsAbyssUrl(TextBox_URL.Text))
+            {
+                Button_GO.IsEnabled = false;
+                Button_Stop.Visibility = Visibility.Visible;
+                try
+                {
+                    await StartAbyssDownloadAsync(TextBox_URL.Text);
+                }
+                finally
+                {
+                    Button_GO.IsEnabled = true;
+                    Button_Stop.Visibility = Visibility.Collapsed;
+                }
+                return;
+            }
+
             // Batch download mode
             if (_batchScriptService.IsBatchInput(TextBox_URL.Text))
             {
@@ -1127,6 +1145,83 @@ namespace N_m3u8DL_RE_GUI
             catch (System.ComponentModel.Win32Exception ex)
             {
                 Debug.WriteLine($"Failed to open target '{targetPath}': {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Native C# downloader for Abyss/Hydrax video streams (abysscdn.com, playhydrax.com, short.ink, etc.).
+        /// Automatically parses metadata, selects optimal quality, downloads fragmented chunks, and reassembles into MP4.
+        /// </summary>
+        private async Task StartAbyssDownloadAsync(string url)
+        {
+            var cts = BeginCancellableOperation();
+            _lastOutputDirectory = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text)
+                                   ?? Environment.CurrentDirectory;
+
+            ResetRunState();
+            SetStatus("Fetching Abyss/Hydrax video metadata…");
+            AppendLog($"[Abyss] Connecting to Abyss host for video: {url}");
+
+            try
+            {
+                var customHeaders = HeaderParser.Parse(TextBox_Headers?.Text);
+                if (customHeaders.TryGetValue("Referer", out var refererVal))
+                {
+                    AppendLog($"[Abyss] Using Referer: {refererVal}");
+                }
+
+                var mp4 = await AbyssMetadataFetcher.FetchMetadataAsync(url, customHeaders: customHeaders, cancellationToken: cts.Token);
+                if (mp4.Sources == null || mp4.Sources.Count == 0)
+                {
+                    throw new InvalidOperationException("No downloadable video streams found in Abyss metadata.");
+                }
+
+                // Pick highest resolution/size available
+                var source = mp4.Sources.OrderByDescending(s => s.Size).First();
+
+                var titleClean = _utilityService.GetValidFileName(TextBox_Title.Text);
+                if (string.IsNullOrWhiteSpace(titleClean))
+                    titleClean = $"abyss_{mp4.Slug}_{source.Label}";
+                if (!titleClean.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
+                    titleClean += ".mp4";
+
+                string outputPath = Path.Combine(_lastOutputDirectory, titleClean);
+
+                AppendLog($"[Abyss] Video: {mp4.Slug} | Quality: {source.Label} | Size: {source.Size / (1024.0 * 1024.0):F1} MB | Codec: {source.Codec}");
+                AppendLog($"[Abyss] Saving to: {outputPath}");
+                SetStatus($"Downloading Abyss stream: {source.Label}…");
+
+                var abyssService = new AbyssDownloadService();
+                var progress = new Progress<AbyssDownloadProgress>(p =>
+                {
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        ProgressBar_Download.Value = (int)p.Percentage;
+                        SetStatus($"[Abyss] {p}");
+                    });
+                });
+
+                await abyssService.DownloadAsync(mp4, source, outputPath, customHeaders: customHeaders, connections: 8, progress: progress, cancellationToken: cts.Token);
+
+                ProgressBar_Download.Value = 100;
+                SetStatus($"[Abyss] Download complete! Saved to {outputPath}");
+                AppendLog($"[Abyss] Successfully downloaded and reassembled {outputPath}");
+                Button_OpenFolder.Visibility = Visibility.Visible;
+            }
+            catch (OperationCanceledException)
+            {
+                SetStatus("[Abyss] Download stopped by user.");
+                AppendLog("[Abyss] Download cancelled.");
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"[Abyss] Error: {ex.Message}", isError: true);
+                AppendLog($"[Abyss] Exception: {ex}");
+                ToggleButton_Log.IsChecked = true;
+            }
+            finally
+            {
+                EndCancellableOperation(cts);
             }
         }
 
