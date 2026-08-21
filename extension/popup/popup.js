@@ -2,6 +2,8 @@
  * N_m3u8DL-RE Companion — Popup Logic
  */
 
+import { getTabStreams, getRecentStreams, sweepOrphanTabs, clearTab } from '../lib/storage.js';
+
 let activeTabId = null;
 let currentView = 'current'; // 'current' | 'all'
 let toastTimer = null;
@@ -45,20 +47,21 @@ async function renderStreams() {
   const emptyState = document.getElementById('empty-state');
   const streamList = document.getElementById('stream-list');
 
-  const allData = await chrome.storage.local.get(null);
   let streams = [];
 
   if (currentView === 'current' && activeTabId) {
-    streams = allData[`tab_${activeTabId}`] || [];
+    streams = await getTabStreams(activeTabId);
     // If current tab is empty, but we have global recent streams, hint or show count
-    if (streams.length === 0 && (allData.recent_streams || []).length > 0) {
-      const recent = allData.recent_streams || [];
-      countBadge.textContent = '0';
-      emptyState.querySelector('.empty-hint').innerHTML =
-        `No stream on this tab yet. Found <strong>${recent.length}</strong> stream(s) on other tabs. Click <strong>"All Recent"</strong> above.`;
+    if (streams.length === 0) {
+      const recent = await getRecentStreams();
+      if (recent.length > 0) {
+        countBadge.textContent = '0';
+        emptyState.querySelector('.empty-hint').innerHTML =
+          `No stream on this tab yet. Found <strong>${recent.length}</strong> stream(s) on other tabs. Click <strong>"All Recent"</strong> above.`;
+      }
     }
   } else {
-    streams = allData.recent_streams || [];
+    streams = await getRecentStreams();
   }
 
   countBadge.textContent = String(streams.length);
@@ -139,6 +142,19 @@ async function renderStreams() {
   }
 }
 
+async function sweepOnOpen() {
+  try {
+    const tabs = await chrome.tabs.query({});
+    const removed = await sweepOrphanTabs(tabs.map((t) => t.id));
+    if (removed > 0) {
+      console.debug(`[N_m3u8DL-RE] Cleared ${removed} orphaned tab entries.`);
+    }
+  } catch (err) {
+    // A sweep failure must never stop the list from rendering.
+    console.debug('[N_m3u8DL-RE] Sweep skipped:', err);
+  }
+}
+
 async function init() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -175,9 +191,9 @@ async function init() {
 
   document.getElementById('btn-clear').addEventListener('click', async () => {
     if (activeTabId) {
-      await chrome.storage.local.remove(`tab_${activeTabId}`);
+      await clearTab(activeTabId);
     }
-    await chrome.storage.local.set({ recent_streams: [] });
+    await chrome.storage.session.remove('recent_streams');
     renderStreams();
     showToast('Cleared stream list');
   });
@@ -187,7 +203,11 @@ async function init() {
     renderStreams();
   });
 
+  // Render immediately for fast UI
   renderStreams();
+
+  // Sweep orphaned tab keys in background after first render
+  sweepOnOpen();
 }
 
 document.addEventListener('DOMContentLoaded', init);
