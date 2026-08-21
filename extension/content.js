@@ -6,7 +6,18 @@
  */
 
 (function () {
+  const MAX_SEEN = 200;
   const seenUrls = new Set();
+
+  function rememberUrl(url) {
+    if (seenUrls.has(url)) return false;
+    // Set iterates in insertion order, so the first key is the oldest.
+    if (seenUrls.size >= MAX_SEEN) {
+      seenUrls.delete(seenUrls.values().next().value);
+    }
+    seenUrls.add(url);
+    return true;
+  }
 
   function reportStream(url, kindHint) {
     if (!url || typeof url !== 'string') return;
@@ -15,8 +26,7 @@
     // Filter out synthetic player URLs that use hash fragments for internal routing (e.g. Hydrax/Abysscdn #mp4/...)
     if (url.includes('#mp4/') || url.includes('#hls/') || url.includes('#chunk') || url.includes('maxChunkSize=')) return;
 
-    if (seenUrls.has(url)) return;
-    seenUrls.add(url);
+    if (!rememberUrl(url)) return;
 
     try {
       chrome.runtime.sendMessage({
