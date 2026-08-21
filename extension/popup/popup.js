@@ -178,6 +178,7 @@ function paint({ streams, otherCount }) {
     if (item.timestamp) {
       const timeSpan = document.createElement('span');
       timeSpan.className = 'stream-time';
+      timeSpan.dataset.timestamp = String(item.timestamp);
       timeSpan.textContent = formatRelativeTime(item.timestamp);
       meta.appendChild(timeSpan);
     }
@@ -234,6 +235,13 @@ async function sweepOnOpen() {
   } catch (err) {
     console.debug('[N_m3u8DL-RE] Sweep skipped:', err);
   }
+}
+
+function refreshTimestamps() {
+  document.querySelectorAll('.stream-time[data-timestamp]').forEach((el) => {
+    const ts = Number.parseInt(el.dataset.timestamp, 10);
+    if (Number.isFinite(ts)) el.textContent = formatRelativeTime(ts);
+  });
 }
 
 async function init() {
@@ -293,6 +301,10 @@ async function init() {
     if (renderTimer) clearTimeout(renderTimer);
     renderTimer = setTimeout(renderStreams, 150);
   });
+
+  // Live relative timestamp refresher
+  const ticker = setInterval(refreshTimestamps, 30000);
+  window.addEventListener('pagehide', () => clearInterval(ticker));
 
   // Render immediately for fast UI
   renderStreams();
