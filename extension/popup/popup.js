@@ -4,6 +4,7 @@
 
 import { getTabStreams, getRecentStreams, sweepOrphanTabs, clearTab } from '../lib/storage.js';
 import { formatBytes, formatRelativeTime, elideUrl, describeStream } from '../lib/format.js';
+import { toCurl } from '../lib/curl.js';
 
 let activeTabId = null;
 let currentView = 'current'; // 'current' | 'all'
@@ -24,18 +25,6 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     toast.style.display = 'none';
   }, 3500);
-}
-
-function toCurl(stream) {
-  const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
-  const parts = [`curl ${q(stream.url)}`];
-
-  if (stream.referer)   parts.push(`-H ${q('Referer: ' + stream.referer)}`);
-  if (stream.userAgent) parts.push(`-H ${q('User-Agent: ' + stream.userAgent)}`);
-  if (stream.cookie)    parts.push(`-H ${q('Cookie: ' + stream.cookie)}`);
-  if (stream.origin)    parts.push(`-H ${q('Origin: ' + stream.origin)}`);
-
-  return parts.join(' \\\n  ');
 }
 
 async function copyWithFeedback(button, text, originalLabel, successMessage) {
