@@ -1160,14 +1160,14 @@ namespace N_m3u8DL_RE_GUI
 
             ResetRunState();
             SetStatus("Fetching Abyss/Hydrax video metadata…");
-            AppendLog($"[Abyss] Connecting to Abyss host for video: {url}");
+            AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Abyss/Hydrax video stream detected: {url}");
 
             try
             {
                 var customHeaders = HeaderParser.Parse(TextBox_Headers?.Text);
                 if (customHeaders.TryGetValue("Referer", out var refererVal))
                 {
-                    AppendLog($"[Abyss] Using Referer: {refererVal}");
+                    AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Custom Referer: {refererVal}");
                 }
 
                 var mp4 = await AbyssMetadataFetcher.FetchMetadataAsync(url, customHeaders: customHeaders, cancellationToken: cts.Token);
@@ -1187,8 +1187,8 @@ namespace N_m3u8DL_RE_GUI
 
                 string outputPath = Path.Combine(_lastOutputDirectory, titleClean);
 
-                AppendLog($"[Abyss] Video: {mp4.Slug} | Quality: {source.Label} | Size: {source.Size / (1024.0 * 1024.0):F1} MB | Codec: {source.Codec}");
-                AppendLog($"[Abyss] Saving to: {outputPath}");
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Video: {mp4.Slug} | Quality: {source.Label} | Size: {source.Size / (1024.0 * 1024.0):F1} MB | Codec: {source.Codec}");
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Output file: {outputPath}");
                 SetStatus($"Downloading Abyss stream: {source.Label}…");
 
                 var abyssService = new AbyssDownloadService();
@@ -1197,26 +1197,35 @@ namespace N_m3u8DL_RE_GUI
                     Dispatcher.InvokeAsync(() =>
                     {
                         ProgressBar_Download.Value = (int)p.Percentage;
-                        SetStatus($"[Abyss] {p}");
+                        SetStatus($"Downloading Abyss: {p}");
                     });
                 });
 
-                await abyssService.DownloadAsync(mp4, source, outputPath, customHeaders: customHeaders, connections: 8, progress: progress, cancellationToken: cts.Token);
+                var logAction = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
+
+                await abyssService.DownloadAsync(
+                    mp4,
+                    source,
+                    outputPath,
+                    customHeaders: customHeaders,
+                    connections: 8,
+                    progress: progress,
+                    log: logAction,
+                    cancellationToken: cts.Token);
 
                 ProgressBar_Download.Value = 100;
-                SetStatus($"[Abyss] Download complete! Saved to {outputPath}");
-                AppendLog($"[Abyss] Successfully downloaded and reassembled {outputPath}");
+                SetStatus($"Saved to {outputPath}");
                 Button_OpenFolder.Visibility = Visibility.Visible;
             }
             catch (OperationCanceledException)
             {
-                SetStatus("[Abyss] Download stopped by user.");
-                AppendLog("[Abyss] Download cancelled.");
+                SetStatus("Download stopped by user.");
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} WARN : Download cancelled by user.");
             }
             catch (Exception ex)
             {
-                SetStatus($"[Abyss] Error: {ex.Message}", isError: true);
-                AppendLog($"[Abyss] Exception: {ex}");
+                SetStatus($"Download error: {ex.Message}", isError: true);
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} ERROR : {ex.Message}");
                 ToggleButton_Log.IsChecked = true;
             }
             finally

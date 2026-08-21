@@ -98,14 +98,25 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
         public long DownloadedBytes { get; set; }
         public long TotalBytes { get; set; }
         public double SpeedBytesPerSec { get; set; }
-        public double Percentage => TotalBytes > 0 ? (DownloadedBytes * 100.0 / TotalBytes) : 0;
+        public TimeSpan? Eta { get; set; }
+        public double Percentage => TotalBytes > 0 ? Math.Min(100.0, DownloadedBytes * 100.0 / TotalBytes) : 0;
+
+        public string FormatN_m3u8DL_RE_Line()
+        {
+            double speedMBs = SpeedBytesPerSec / (1024.0 * 1024.0);
+            double mbDownloaded = DownloadedBytes / (1024.0 * 1024.0);
+            double mbTotal = TotalBytes / (1024.0 * 1024.0);
+            string etaStr = Eta.HasValue ? $"{Eta.Value.Hours:D2}:{Eta.Value.Minutes:D2}:{Eta.Value.Seconds:D2}" : "--:--:--";
+            return $"{DateTime.Now:HH:mm:ss.fff} INFO : {speedMBs:F2}MB/s {mbDownloaded:F1}MB/{mbTotal:F1}MB {Percentage:F1}% {etaStr} [{DownloadedChunks}/{TotalChunks}]";
+        }
 
         public override string ToString()
         {
+            double speedMBs = SpeedBytesPerSec / (1024.0 * 1024.0);
             double mbDownloaded = DownloadedBytes / (1024.0 * 1024.0);
             double mbTotal = TotalBytes / (1024.0 * 1024.0);
-            double mbps = (SpeedBytesPerSec * 8.0) / (1000.0 * 1000.0);
-            return $"{Percentage:F1}% ({mbDownloaded:F1}MB / {mbTotal:F1}MB) | Chunks: {DownloadedChunks}/{TotalChunks} | Speed: {mbps:F2} Mbps";
+            string etaStr = Eta.HasValue ? $"{Eta.Value.Hours:D2}:{Eta.Value.Minutes:D2}:{Eta.Value.Seconds:D2}" : "--:--:--";
+            return $"{speedMBs:F2} MB/s | {mbDownloaded:F1} MB / {mbTotal:F1} MB ({Percentage:F1}%) | Seg: {DownloadedChunks}/{TotalChunks} | ETA: {etaStr}";
         }
     }
 }

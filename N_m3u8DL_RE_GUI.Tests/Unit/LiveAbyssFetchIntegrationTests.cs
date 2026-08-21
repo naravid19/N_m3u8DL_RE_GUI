@@ -20,8 +20,27 @@ namespace N_m3u8DL_RE_GUI.Tests.Unit
 
             var mp4 = await AbyssMetadataFetcher.FetchMetadataAsync(url, customHeaders: headers);
             Assert.NotNull(mp4);
-            Assert.Equal("ahozDvaga", mp4.Slug);
-            Assert.NotEmpty(mp4.Sources);
+
+            var source = mp4.Sources.OrderByDescending(s => s.Size).First();
+            string primaryDomain = mp4.Domains[0];
+            string baseUrl = AbyssDownloadService.BuildSegmentBaseUrl(primaryDomain, source.Subdomain);
+            string sizeKeyHex = AbyssCrypto.DeriveKey(source.Size);
+            int chunkSize = source.PartSize.HasValue && source.PartSize.Value > 0 ? source.PartSize.Value : 2097152;
+
+            string token0 = AbyssDownloadService.GenerateSegmentToken(mp4.Md5Id, source.ResId, source.Size, chunkSize, 0, sizeKeyHex);
+            string chunkUrl = $"{baseUrl}/sora/{source.Size}/{token0}";
+
+            var handler = new System.Net.Http.HttpClientHandler { AutomaticDecompression = System.Net.DecompressionMethods.All };
+            using var client = new System.Net.Http.HttpClient(handler);
+
+            using var req1 = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, chunkUrl);
+            req1.Headers.Add("User-Agent", headers["User-Agent"]);
+            req1.Headers.Add("Referer", "https://abysscdn.com/");
+            var resp1 = await client.SendAsync(req1);
+            byte[] b1 = await resp1.Content.ReadAsByteArrayAsync();
+
+            Assert.True(resp1.IsSuccessStatusCode, $"chunkUrl: {chunkUrl} | Code: {(int)resp1.StatusCode} | Len: {b1.Length}");
+            Assert.True(b1.Length > 0, "Chunk byte length is 0");
         }
     }
 }

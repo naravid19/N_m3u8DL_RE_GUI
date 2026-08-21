@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
 {
     /// <summary>
     /// Downloads and reassembles fragmented video chunks from Abyss/Hydrax CDN servers.
+    /// Provides N_m3u8DL-RE consistent logging, progress reporting, and high throughput.
     /// </summary>
     public class AbyssDownloadService
     {
@@ -30,11 +32,12 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
                 var handler = new HttpClientHandler
                 {
                     AutomaticDecompression = System.Net.DecompressionMethods.All,
-                    MaxConnectionsPerServer = 32
+                    CheckCertificateRevocationList = false,
+                    MaxConnectionsPerServer = 64
                 };
                 _httpClient = new HttpClient(handler)
                 {
-                    Timeout = TimeSpan.FromSeconds(30)
+                    Timeout = TimeSpan.FromSeconds(45)
                 };
             }
         }
@@ -73,9 +76,10 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
             AbyssMp4 mp4,
             AbyssSource source,
             string outputFilePath,
-            System.Collections.Generic.IReadOnlyDictionary<string, string> customHeaders = null,
+            IReadOnlyDictionary<string, string> customHeaders = null,
             int connections = DefaultConcurrentConnections,
             IProgress<AbyssDownloadProgress> progress = null,
+            Action<string> log = null,
             CancellationToken cancellationToken = default)
         {
             if (mp4 == null) throw new ArgumentNullException(nameof(mp4));
@@ -91,18 +95,17 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
             int chunkSize = source.PartSize.HasValue && source.PartSize.Value > 0 ? source.PartSize.Value : DefaultFragmentSize;
             int totalChunks = (int)Math.Ceiling((double)source.Size / chunkSize);
 
-            // Prepare headers for chunk requests
+            // User-Agent from custom headers if provided
             string userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-            string referer = "https://abysscdn.com/";
-
             if (customHeaders != null)
             {
                 foreach (var kvp in customHeaders)
                 {
                     if (kvp.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+                    {
                         userAgent = kvp.Value;
-                    else if (kvp.Key.Equals("Referer", StringComparison.OrdinalIgnoreCase))
-                        referer = kvp.Value;
+                        break;
+                    }
                 }
             }
 
@@ -117,7 +120,51 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
 
             long totalDownloadedBytes = 0;
             int downloadedChunksCount = 0;
+            int isDownloading = 1;
             var stopwatch = Stopwatch.StartNew();
+
+            log?.Invoke($"{DateTime.Now:HH:mm:ss.fff} INFO : Starting {connections} parallel segment workers (Total segments: {totalChunks})...");
+
+            // Background reporter for smooth progress bar and periodic N_m3u8DL-RE style logs
+            var progressReportingTask = Task.Run(async () =>
+            {
+                var lastLogStopwatch = Stopwatch.StartNew();
+                while (Volatile.Read(ref isDownloading) == 1 && !cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+
+                    long currentBytes = Volatile.Read(ref totalDownloadedBytes);
+                    int currentChunks = Volatile.Read(ref downloadedChunksCount);
+                    double elapsedSec = stopwatch.Elapsed.TotalSeconds;
+                    double speed = elapsedSec > 0 ? (currentBytes / elapsedSec) : 0;
+                    long remainingBytes = Math.Max(0, source.Size - currentBytes);
+                    TimeSpan? eta = speed > 0 ? TimeSpan.FromSeconds(remainingBytes / speed) : null;
+
+                    var p = new AbyssDownloadProgress
+                    {
+                        DownloadedChunks = currentChunks,
+                        TotalChunks = totalChunks,
+                        DownloadedBytes = currentBytes,
+                        TotalBytes = source.Size,
+                        SpeedBytesPerSec = speed,
+                        Eta = eta
+                    };
+                    progress?.Report(p);
+
+                    if (lastLogStopwatch.ElapsedMilliseconds >= 1000 && currentBytes > 0)
+                    {
+                        lastLogStopwatch.Restart();
+                        log?.Invoke(p.FormatN_m3u8DL_RE_Line());
+                    }
+                }
+            }, CancellationToken.None);
 
             using var semaphore = new SemaphoreSlim(connections, connections);
             var downloadTasks = Enumerable.Range(0, totalChunks).Select(async chunkIndex =>
@@ -133,26 +180,17 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
 
                     // Download with retry
                     int retries = 0;
-                    const int maxRetries = 3;
+                    const int maxRetries = 5;
+                    Exception lastException = null;
+
                     while (true)
                     {
                         try
                         {
                             using var request = new HttpRequestMessage(HttpMethod.Get, chunkUrl);
                             request.Headers.Add("User-Agent", userAgent);
-                            request.Headers.Add("Referer", referer);
-
-                            if (customHeaders != null)
-                            {
-                                foreach (var kvp in customHeaders)
-                                {
-                                    if (!kvp.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase) &&
-                                        !kvp.Key.Equals("Referer", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        request.Headers.TryAddWithoutValidation(kvp.Key, kvp.Value);
-                                    }
-                                }
-                            }
+                            request.Headers.Add("Referer", "https://abysscdn.com/");
+                            request.Headers.Add("Origin", "https://abysscdn.com");
 
                             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                             response.EnsureSuccessStatusCode();
@@ -162,35 +200,24 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
 
                             byte[] buffer = new byte[65536];
                             int read;
-                            long chunkBytes = 0;
                             while ((read = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false)) > 0)
                             {
                                 await fileStream.WriteAsync(buffer, 0, read, cancellationToken).ConfigureAwait(false);
-                                chunkBytes += read;
-
-                                long currentTotal = Interlocked.Add(ref totalDownloadedBytes, read);
-                                if (progress != null && stopwatch.ElapsedMilliseconds > 0)
-                                {
-                                    double elapsedSec = stopwatch.Elapsed.TotalSeconds;
-                                    double speed = elapsedSec > 0 ? (currentTotal / elapsedSec) : 0;
-
-                                    progress.Report(new AbyssDownloadProgress
-                                    {
-                                        DownloadedChunks = Volatile.Read(ref downloadedChunksCount),
-                                        TotalChunks = totalChunks,
-                                        DownloadedBytes = currentTotal,
-                                        TotalBytes = source.Size,
-                                        SpeedBytesPerSec = speed
-                                    });
-                                }
+                                Interlocked.Add(ref totalDownloadedBytes, read);
                             }
 
                             Interlocked.Increment(ref downloadedChunksCount);
                             break; // success
                         }
-                        catch (Exception) when (++retries <= maxRetries && !cancellationToken.IsCancellationRequested)
+                        catch (Exception ex) when (++retries <= maxRetries && !cancellationToken.IsCancellationRequested)
                         {
+                            lastException = ex;
                             await Task.Delay(1000 * retries, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            lastException = ex;
+                            throw new HttpRequestException($"Failed to download segment {chunkIndex}/{totalChunks} from {chunkUrl} after {retries} retries: {ex.Message}", lastException);
                         }
                     }
                 }
@@ -204,12 +231,14 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
             {
                 await Task.WhenAll(downloadTasks).ConfigureAwait(false);
             }
-            catch
+            finally
             {
-                // Clean up temp dir if aborted
-                try { if (Directory.Exists(tempDirPath)) Directory.Delete(tempDirPath, true); } catch { }
-                throw;
+                Volatile.Write(ref isDownloading, 0);
+                try { await progressReportingTask.ConfigureAwait(false); } catch { }
             }
+
+            log?.Invoke($"{DateTime.Now:HH:mm:ss.fff} INFO : All {totalChunks} segments downloaded successfully.");
+            log?.Invoke($"{DateTime.Now:HH:mm:ss.fff} INFO : Merging segments into output MP4...");
 
             // Concatenate all chunks in order into output file
             using (var outStream = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 131072, true))
@@ -236,15 +265,19 @@ namespace N_m3u8DL_RE_GUI.Core.Abyss
             // Final 100% progress report
             if (progress != null)
             {
+                double elapsedSec = stopwatch.Elapsed.TotalSeconds;
                 progress.Report(new AbyssDownloadProgress
                 {
                     DownloadedChunks = totalChunks,
                     TotalChunks = totalChunks,
                     DownloadedBytes = source.Size,
                     TotalBytes = source.Size,
-                    SpeedBytesPerSec = stopwatch.Elapsed.TotalSeconds > 0 ? (source.Size / stopwatch.Elapsed.TotalSeconds) : 0
+                    SpeedBytesPerSec = elapsedSec > 0 ? (source.Size / elapsedSec) : 0,
+                    Eta = TimeSpan.Zero
                 });
             }
+
+            log?.Invoke($"{DateTime.Now:HH:mm:ss.fff} INFO : Download finished! Saved to {outputFilePath}");
         }
     }
 }

@@ -61,8 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added keyboard bindings: `Alt+G` / `Enter` for GO, `Alt+S` / `Escape` for Stop.
   - Added `AutomationProperties.Name` across all interactive inputs.
   - Added `XamlAccessibilityTests` headless automated XAML validation suite.
-- **Comprehensive Unit & Integration Test Suite (640 Tests)**:
-  - Expanded test coverage across all layers (`HeaderParserTests`, `LiveAbyssFetchIntegrationTests`, `AbyssCryptoTests`, `AbyssMetadataFetcherTests`, `HarStreamExtractorTests`, `CurlCommandParserTests`, `HtmlTitleExtractorTests`, `TextEncodingDetectorEdgeTests`, `ArgsBuilderQuotingTests`, `LegacyConfigCodecTests`, `XamlContrastTests`, `ConsoleOutputParserTests`, `CfCommandBuilderTests`, `XamlAccessibilityTests`, `JsonConfigServiceSecretCoverageTests`, `DownloadServiceTests`), reaching **639/640 passing tests (1 live integration skip)** with 0 errors and 0 warnings.
+- **Comprehensive Unit & Integration Test Suite (641 Tests)**:
+  - Expanded test coverage across all layers (`HeaderParserTests`, `LiveAbyssFetchIntegrationTests`, `AbyssCryptoTests`, `AbyssMetadataFetcherTests`, `HarStreamExtractorTests`, `CurlCommandParserTests`, `HtmlTitleExtractorTests`, `TextEncodingDetectorEdgeTests`, `ArgsBuilderQuotingTests`, `LegacyConfigCodecTests`, `XamlContrastTests`, `ConsoleOutputParserTests`, `CfCommandBuilderTests`, `XamlAccessibilityTests`, `JsonConfigServiceSecretCoverageTests`, `DownloadServiceTests`), reaching **640/641 passing tests (1 live integration skip)** with 0 errors and 0 warnings.
 
 ### Changed
 

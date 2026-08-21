@@ -53,5 +53,30 @@ namespace N_m3u8DL_RE_GUI.Tests.Unit
             Assert.DoesNotContain("=", token);
             Assert.True(token.Length > 0);
         }
+
+        [Fact]
+        public void AbyssDownloadProgress_CalculatesCorrectPercentageSpeedAndETA()
+        {
+            var progress = new AbyssDownloadProgress
+            {
+                DownloadedChunks = 50,
+                TotalChunks = 100,
+                DownloadedBytes = 50 * 1024 * 1024,
+                TotalBytes = 100 * 1024 * 1024,
+                SpeedBytesPerSec = 10 * 1024 * 1024,
+                Eta = TimeSpan.FromSeconds(5)
+            };
+
+            Assert.Equal(50.0, progress.Percentage);
+            string statusStr = progress.ToString();
+            Assert.Contains("10.00 MB/s", statusStr);
+            Assert.Contains("50.0 MB / 100.0 MB", statusStr);
+            Assert.Contains("50.0%", statusStr);
+            Assert.Contains("Seg: 50/100", statusStr);
+            Assert.Contains("ETA: 00:00:05", statusStr);
+
+            string reLogLine = progress.FormatN_m3u8DL_RE_Line();
+            Assert.Contains("INFO : 10.00MB/s 50.0MB/100.0MB 50.0% 00:00:05 [50/100]", reLogLine);
+        }
     }
 }
