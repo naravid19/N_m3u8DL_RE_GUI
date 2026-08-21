@@ -48,6 +48,8 @@ async function register(tabId, streamData) {
     const count = await addStream(tabId, {
       url: streamData.url,
       kind: streamData.kind,
+      confidence: streamData.confidence || 'high',
+      sizeBytes: streamData.sizeBytes || null,
       referer: streamData.referer || null,
       userAgent: streamData.userAgent || null,
       cookie: streamData.cookie || null,
@@ -90,23 +92,26 @@ chrome.webRequest.onSendHeaders.addListener(
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     let contentType = null;
+    let contentLength = null;
     if (details.responseHeaders) {
       for (const header of details.responseHeaders) {
-        if (header.name.toLowerCase() === 'content-type') {
-          contentType = header.value;
-          break;
-        }
+        const name = header.name.toLowerCase();
+        if (name === 'content-type') contentType = header.value;
+        else if (name === 'content-length') contentLength = header.value;
       }
     }
 
-    const kind = classify(details.url, contentType, details.statusCode, details.type);
-    if (!kind) return;
+    const result = classify(details.url, contentType, details.statusCode, details.type);
+    if (!result) return;
 
     const headers = inFlightHeaders.get(details.url) || {};
+    const parsedSize = contentLength ? Number.parseInt(contentLength, 10) : NaN;
 
     register(details.tabId, {
       url: details.url,
-      kind,
+      kind: result.kind,
+      confidence: result.confidence,
+      sizeBytes: Number.isFinite(parsedSize) ? parsedSize : null,
       referer: headers.referer || (details.initiator ? details.initiator + '/' : null),
       userAgent: headers.userAgent || navigator.userAgent,
       cookie: headers.cookie || null,
@@ -122,15 +127,17 @@ chrome.webRequest.onHeadersReceived.addListener(
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'MEDIA_ELEMENT_DETECTED') {
     const tabId = sender.tab ? sender.tab.id : null;
-    const kind = classify(message.url, null, 0, 'media');
-    if (!kind) {
+    const result = classify(message.url, null, 0, 'media');
+    if (!result) {
       sendResponse({ ok: false });
       return true;
     }
 
     register(tabId, {
       url: message.url,
-      kind,
+      kind: result.kind,
+      confidence: result.confidence,
+      sizeBytes: null,
       referer: message.referer || (sender.tab ? sender.tab.url : null),
       userAgent: navigator.userAgent
     });
@@ -148,8 +155,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Per-tab origin, so a hash or query change during playback is not mistaken
+// for a navigation. v1.0.1 cleared on any URL change and wiped streams the
+// moment a player rewrote the hash.
+const tabOrigins = new Map();
+
+function originOf(url) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!changeInfo.url) return;
+
+  const nextOrigin = originOf(changeInfo.url);
+  if (!nextOrigin) return;
+
+  const previousOrigin = tabOrigins.get(tabId);
+  tabOrigins.set(tabId, nextOrigin);
+
+  if (previousOrigin && previousOrigin !== nextOrigin) {
+    clearTab(tabId);
+    updateBadge(tabId, 0);
+  }
+});
+
 // 4. Best-effort cleanup. The popup sweeps whatever this misses.
 chrome.tabs.onRemoved.addListener((tabId) => {
+  tabOrigins.delete(tabId);
   clearTab(tabId);
 });
 
