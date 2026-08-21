@@ -1,142 +1,67 @@
 /**
  * N_m3u8DL-RE Companion — Background Service Worker (Manifest V3)
  *
- * Captures video streams from network traffic and DOM media elements across tabs & iframes.
- * Stores state safely in chrome.storage.local.
+ * Two capture channels feed one storage layer: webRequest for network traffic,
+ * and messages from the content script for DOM media elements.
  */
 
-const SEGMENT_EXTENSIONS = [
-  '.ts', '.m4s', '.aac', '.mp3', '.vtt', '.cmfv', '.cmfa', '.cmft', '.init', '.key'
-];
+import { classify } from './lib/classify.js';
+import { addStream, clearTab } from './lib/storage.js';
 
-// Ephemeral in-flight headers cache: requestUrl -> { referer, userAgent, cookie, origin }
+const MAX_INFLIGHT = 300;
+const INFLIGHT_TTL_MS = 120000;
+
+// requestUrl -> { referer, userAgent, cookie, origin, at }
+// Deliberately in-memory and deliberately lossy: writing this to storage on
+// every request on the internet would cost far more than the rare miss when
+// the service worker restarts between the two listeners.
 const inFlightHeaders = new Map();
 
 /**
- * Classify a stream using robust URL and Content-Type inspection.
+ * Bounds the cache. A TTL sweep alone cannot help when 300+ requests are in
+ * flight inside the TTL window, so a size backstop follows it. Map iterates in
+ * insertion order, so the front is always the oldest entry.
  */
-function classify(url, mimeType, status, type) {
-  if (!url || typeof url !== 'string') return null;
-  if (!url.startsWith('http://') && !url.startsWith('https://')) return null;
+function pruneInFlight() {
+  if (inFlightHeaders.size <= MAX_INFLIGHT) return;
 
-  const lowerUrl = url.toLowerCase();
-  if (lowerUrl.includes('#mp4/') || lowerUrl.includes('#hls/') || lowerUrl.includes('maxchunksize=')) {
-    return null;
+  const cutoff = Date.now() - INFLIGHT_TTL_MS;
+  for (const [key, value] of inFlightHeaders) {
+    if (value.at < cutoff) inFlightHeaders.delete(key);
   }
 
-  // 1. Abyss / Hydrax stream endpoints
-  if (
-    lowerUrl.includes('abysscdn.com/?v=') ||
-    lowerUrl.includes('playhydrax.com/?v=') ||
-    lowerUrl.includes('zplayer.io/?v=') ||
-    lowerUrl.includes('abyss.to/?v=') ||
-    lowerUrl.includes('short.ink/')
-  ) {
-    return 'Abyss';
-  }
-
-  // 2. Exclude segments (unless it's an m3u8 / mpd playlist)
-  const isManifest = lowerUrl.includes('.m3u8') || lowerUrl.includes('.m3u') || lowerUrl.includes('.mpd');
-  if (!isManifest) {
-    for (const ext of SEGMENT_EXTENSIONS) {
-      if (lowerUrl.includes(ext)) return null;
-    }
-  }
-
-  // 3. HLS Manifests
-  if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.m3u')) {
-    return 'HLS';
-  }
-
-  // 4. DASH Manifests
-  if (lowerUrl.includes('.mpd')) {
-    return 'DASH';
-  }
-
-  // 4. MIME Type matches
-  const mime = (mimeType || '').toLowerCase();
-  if (mime.includes('mpegurl') || mime.includes('application/x-mpegurl') || mime.includes('audio/x-mpegurl')) {
-    return 'HLS';
-  }
-  if (mime.includes('dash+xml')) {
-    return 'DASH';
-  }
-
-  // 5. Progressive Video Streams
-  if (
-    lowerUrl.includes('.mp4') ||
-    lowerUrl.includes('.webm') ||
-    lowerUrl.includes('.mkv') ||
-    lowerUrl.includes('.mov') ||
-    lowerUrl.includes('.flv')
-  ) {
-    return 'Media';
-  }
-
-  if (mime.startsWith('video/') || type === 'media') {
-    return 'Media';
-  }
-
-  return null;
-}
-
-/**
- * Register a detected stream in storage.
- */
-async function registerStream(tabId, streamData) {
-  const effectiveTabId = tabId && tabId > 0 ? tabId : null;
-  const now = Date.now();
-
-  const streamItem = {
-    url: streamData.url,
-    kind: streamData.kind,
-    referer: streamData.referer || null,
-    userAgent: streamData.userAgent || null,
-    cookie: streamData.cookie || null,
-    origin: streamData.origin || null,
-    tabId: effectiveTabId,
-    timestamp: now
-  };
-
-  try {
-    const data = await chrome.storage.local.get(null);
-
-    // 1. Per-tab storage
-    if (effectiveTabId) {
-      const tabKey = `tab_${effectiveTabId}`;
-      const tabList = data[tabKey] || [];
-
-      if (!tabList.some((s) => s.url === streamItem.url)) {
-        tabList.unshift(streamItem);
-        // Keep max 25 per tab
-        if (tabList.length > 25) tabList.length = 25;
-        await chrome.storage.local.set({ [tabKey]: tabList });
-        updateBadge(effectiveTabId, tabList.length);
-      }
-    }
-
-    // 2. Global recent streams ring-buffer (max 30)
-    const recent = data.recent_streams || [];
-    if (!recent.some((s) => s.url === streamItem.url)) {
-      recent.unshift(streamItem);
-      if (recent.length > 30) recent.length = 30;
-      await chrome.storage.local.set({ recent_streams: recent });
-    }
-  } catch (err) {
-    console.error('[N_m3u8DL-RE] Error storing stream:', err);
+  while (inFlightHeaders.size > MAX_INFLIGHT) {
+    const oldest = inFlightHeaders.keys().next();
+    if (oldest.done) break;
+    inFlightHeaders.delete(oldest.value);
   }
 }
 
 function updateBadge(tabId, count) {
   if (!tabId || tabId <= 0) return;
   chrome.action.setBadgeBackgroundColor({ color: '#5865F2', tabId });
-  chrome.action.setBadgeText({
-    tabId,
-    text: count > 0 ? String(count) : ''
-  });
+  chrome.action.setBadgeText({ tabId, text: count > 0 ? String(count) : '' });
 }
 
-// 1. Intercept outgoing request headers
+async function register(tabId, streamData) {
+  try {
+    const count = await addStream(tabId, {
+      url: streamData.url,
+      kind: streamData.kind,
+      referer: streamData.referer || null,
+      userAgent: streamData.userAgent || null,
+      cookie: streamData.cookie || null,
+      origin: streamData.origin || null,
+      tabId: tabId && tabId > 0 ? tabId : null,
+      timestamp: Date.now()
+    });
+    updateBadge(tabId, count);
+  } catch (err) {
+    console.error('[N_m3u8DL-RE] Error storing stream:', err);
+  }
+}
+
+// 1. Capture outgoing headers so a detected stream can be replayed.
 chrome.webRequest.onSendHeaders.addListener(
   (details) => {
     if (!details.requestHeaders) return;
@@ -146,36 +71,29 @@ chrome.webRequest.onSendHeaders.addListener(
     let cookie = null;
     let origin = null;
 
-    for (const h of details.requestHeaders) {
-      const name = h.name.toLowerCase();
-      if (name === 'referer') referer = h.value;
-      else if (name === 'user-agent') userAgent = h.value;
-      else if (name === 'cookie') cookie = h.value;
-      else if (name === 'origin') origin = h.value;
+    for (const header of details.requestHeaders) {
+      const name = header.name.toLowerCase();
+      if (name === 'referer') referer = header.value;
+      else if (name === 'user-agent') userAgent = header.value;
+      else if (name === 'cookie') cookie = header.value;
+      else if (name === 'origin') origin = header.value;
     }
 
     inFlightHeaders.set(details.url, { referer, userAgent, cookie, origin, at: Date.now() });
-
-    // Prune stale cache
-    if (inFlightHeaders.size > 300) {
-      const cutoff = Date.now() - 120000;
-      for (const [key, val] of inFlightHeaders.entries()) {
-        if (val.at < cutoff) inFlightHeaders.delete(key);
-      }
-    }
+    pruneInFlight();
   },
   { urls: ['<all_urls>'] },
   ['requestHeaders', 'extraHeaders']
 );
 
-// 2. Intercept responses and classify stream
+// 2. Classify responses.
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     let contentType = null;
     if (details.responseHeaders) {
-      for (const h of details.responseHeaders) {
-        if (h.name.toLowerCase() === 'content-type') {
-          contentType = h.value;
+      for (const header of details.responseHeaders) {
+        if (header.name.toLowerCase() === 'content-type') {
+          contentType = header.value;
           break;
         }
       }
@@ -186,9 +104,9 @@ chrome.webRequest.onHeadersReceived.addListener(
 
     const headers = inFlightHeaders.get(details.url) || {};
 
-    registerStream(details.tabId, {
+    register(details.tabId, {
       url: details.url,
-      kind: kind,
+      kind,
       referer: headers.referer || (details.initiator ? details.initiator + '/' : null),
       userAgent: headers.userAgent || navigator.userAgent,
       cookie: headers.cookie || null,
@@ -199,15 +117,20 @@ chrome.webRequest.onHeadersReceived.addListener(
   ['responseHeaders', 'extraHeaders']
 );
 
-// 3. Listen to messages from content scripts
+// 3. DOM media elements reported by the content script. Status 0 means "found
+//    in the page", not "server returned 0".
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message && message.type === 'MEDIA_ELEMENT_DETECTED') {
     const tabId = sender.tab ? sender.tab.id : null;
-    const kind = classify(message.url, null, 200, 'media') || 'Media';
+    const kind = classify(message.url, null, 0, 'media');
+    if (!kind) {
+      sendResponse({ ok: false });
+      return true;
+    }
 
-    registerStream(tabId, {
+    register(tabId, {
       url: message.url,
-      kind: kind,
+      kind,
       referer: message.referer || (sender.tab ? sender.tab.url : null),
       userAgent: navigator.userAgent
     });
@@ -216,19 +139,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message && message.type === 'CLEAR_STREAMS') {
-    const tabId = message.tabId;
-    if (tabId) {
-      chrome.storage.local.remove(`tab_${tabId}`, () => {
-        updateBadge(tabId, 0);
-        sendResponse({ ok: true });
-      });
-      return true;
-    }
+  if (message && message.type === 'CLEAR_STREAMS' && message.tabId) {
+    clearTab(message.tabId).then(() => {
+      updateBadge(message.tabId, 0);
+      sendResponse({ ok: true });
+    });
+    return true;
   }
 });
 
-// 4. Tab cleanup only when tab is actually closed
+// 4. Best-effort cleanup. The popup sweeps whatever this misses.
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.local.remove(`tab_${tabId}`);
+  clearTab(tabId);
+});
+
+// One-shot: 1.0.1 wrote captured cookies to storage.local, which persists on
+// disk across restarts. Clear anything it left behind.
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.remove(['recent_streams']);
+  chrome.storage.local.get(null, (all) => {
+    if (!all) return;
+    const stale = Object.keys(all).filter((key) => key.startsWith('tab_'));
+    if (stale.length > 0) chrome.storage.local.remove(stale);
+  });
 });
