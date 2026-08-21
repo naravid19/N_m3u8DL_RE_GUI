@@ -4,23 +4,51 @@
  */
 
 /**
+ * Resolves the true size of a response.
+ *
+ * On a 206 the content-length header is the length of the returned range, not
+ * of the file — a 1.2 GB video fetched in 5 MB chunks reports 5 MB. The total
+ * after the slash in Content-Range is the figure worth showing.
+ */
+export function totalSizeFrom(contentLength, contentRange, status) {
+  if (status === 206) {
+    const total = /\/(\d+)\s*$/.exec(contentRange || '');
+    if (total) {
+      return { sizeBytes: Number.parseInt(total[1], 10), isPartial: false };
+    }
+    const range = toByteCount(contentLength);
+    return { sizeBytes: range, isPartial: range !== null };
+  }
+
+  return { sizeBytes: toByteCount(contentLength), isPartial: false };
+}
+
+function toByteCount(value) {
+  if (value === null || value === undefined) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+/**
  * Format raw byte counts into human-readable strings (B, KB, MB, GB).
  */
-export function formatBytes(bytes) {
+export function formatBytes(bytes, isPartial = false) {
   if (bytes === null || bytes === undefined || typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) {
     return '';
   }
 
+  const prefix = isPartial ? '~' : '';
+
   if (bytes < 1024) {
-    return `${bytes} B`;
+    return `${prefix}${bytes} B`;
   }
   if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${prefix}${(bytes / 1024).toFixed(1)} KB`;
   }
   if (bytes < 1024 * 1024 * 1024) {
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${prefix}${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  return `${prefix}${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
 /**
@@ -61,7 +89,7 @@ export function describeStream(item) {
     parts.push('guess');
   }
 
-  const size = formatBytes(item.sizeBytes);
+  const size = formatBytes(item.sizeBytes, Boolean(item.isPartial));
   if (size) {
     parts.push(size);
   }

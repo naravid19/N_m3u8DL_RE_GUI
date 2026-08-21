@@ -7,6 +7,7 @@
 
 import { classify } from './lib/classify.js';
 import { addStream, clearTab } from './lib/storage.js';
+import { totalSizeFrom } from './lib/format.js';
 
 const MAX_INFLIGHT = 300;
 const INFLIGHT_TTL_MS = 120000;
@@ -49,7 +50,8 @@ async function register(tabId, streamData) {
       url: streamData.url,
       kind: streamData.kind,
       confidence: streamData.confidence || 'high',
-      sizeBytes: streamData.sizeBytes || null,
+      sizeBytes: streamData.sizeBytes ?? null,
+      isPartial: Boolean(streamData.isPartial),
       referer: streamData.referer || null,
       userAgent: streamData.userAgent || null,
       cookie: streamData.cookie || null,
@@ -93,11 +95,13 @@ chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     let contentType = null;
     let contentLength = null;
+    let contentRange = null;
     if (details.responseHeaders) {
       for (const header of details.responseHeaders) {
         const name = header.name.toLowerCase();
         if (name === 'content-type') contentType = header.value;
         else if (name === 'content-length') contentLength = header.value;
+        else if (name === 'content-range') contentRange = header.value;
       }
     }
 
@@ -105,13 +109,14 @@ chrome.webRequest.onHeadersReceived.addListener(
     if (!result) return;
 
     const headers = inFlightHeaders.get(details.url) || {};
-    const parsedSize = contentLength ? Number.parseInt(contentLength, 10) : NaN;
+    const { sizeBytes, isPartial } = totalSizeFrom(contentLength, contentRange, details.statusCode);
 
     register(details.tabId, {
       url: details.url,
       kind: result.kind,
       confidence: result.confidence,
-      sizeBytes: Number.isFinite(parsedSize) ? parsedSize : null,
+      sizeBytes,
+      isPartial,
       referer: headers.referer || (details.initiator ? details.initiator + '/' : null),
       userAgent: headers.userAgent || navigator.userAgent,
       cookie: headers.cookie || null,

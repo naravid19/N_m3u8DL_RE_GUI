@@ -18,6 +18,18 @@ test('formatBytes returns empty for absent or nonsensical values', () => {
   assert.equal(formatBytes(Number.NaN), '');
 });
 
+test('formatBytes marks a partial figure as approximate', () => {
+  assert.equal(formatBytes(5242880, true), '~5.0 MB');
+});
+
+test('formatBytes leaves a complete figure unmarked', () => {
+  assert.equal(formatBytes(5242880, false), '5.0 MB');
+});
+
+test('formatBytes defaults to unmarked when partiality is unknown', () => {
+  assert.equal(formatBytes(5242880), '5.0 MB');
+});
+
 test('elideUrl keeps the head and tail so the filename stays readable', () => {
   const url = 'https://cdn.example.com/a/very/long/path/that/keeps/going/master.m3u8';
   const short = elideUrl(url, 40);
@@ -50,5 +62,12 @@ test('describeStream marks a low-confidence guess', () => {
   assert.equal(
     describeStream({ kind: 'HLS', confidence: 'low', sizeBytes: null }),
     'HLS · guess'
+  );
+});
+
+test('describeStream carries the approximate marker through', () => {
+  assert.equal(
+    describeStream({ kind: 'Media', confidence: 'high', sizeBytes: 5242880, isPartial: true }),
+    'Media · ~5.0 MB'
   );
 });
