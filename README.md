@@ -109,7 +109,7 @@ Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
 | Batch File  | Drop a `.txt` file containing multiple URLs (one per line). |
 | Folder      | Drop a folder containing stream files to batch process them all. |
 
-### Browser Extension Companion (v1.1.0)
+### Browser Extension Companion (v1.2.0)
 
 Use the companion browser extension in `extension/` for 1-click stream capture in Chrome, Edge, and Brave:
 1. Open `chrome://extensions` and enable **Developer mode**.
@@ -118,7 +118,7 @@ Use the companion browser extension in `extension/` for 1-click stream capture i
 4. In the GUI, click **📋 Paste from browser** → URL and required headers are filled instantly!
 
 > [!NOTE]
-> **Privacy-Hardened Architecture:** The extension uses memory-backed `chrome.storage.session` — captured session headers and cookies are never stored unencrypted on disk and are discarded as soon as the browser is closed.
+> **Stream Coverage & Privacy:** Supports **HLS** (`.m3u8`), **DASH** (`.mpd`), **Smooth Streaming** (`.ism`/`/Manifest`), **Abyss/Hydrax**, and progressive formats (`.mp4`, `.m4v`, `.webm`, `.mkv`, etc.). Automatically suppresses segment flooding to keep manifests visible, shows live file sizes and confidence badges, and uses memory-backed `chrome.storage.session` so sensitive cookies are never written unencrypted to disk.
 
 ### How to use Cloudflare Bypass
 

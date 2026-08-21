@@ -17,19 +17,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `HeaderParser` (`N_m3u8DL_RE_GUI.Core.Capture`) supporting multi-line, cURL `-H`, and pipe-delimited headers, dynamically propagating custom `Referer` and `User-Agent` credentials to both metadata fetch and 2MB chunk segment downloads.
   - Created `AbyssDownloadService` for concurrent 2MB chunk downloading with `SemaphoreSlim` rate limiting, transient failure retries, live speed & ETA reporting, and automatic byte reassembly into continuous `.mp4` video files.
   - Wired direct Abyss stream handling into `MainWindow`: pasting an Abyss link automatically triggers metadata extraction, selects the optimal resolution, tracks progress in the GUI progress bar & log view, and supports cancellation via the Stop button.
-- **Universal Stream Capture & Browser Companion Extension (v1.1.0 Hardened)**:
+- **Universal Stream Capture & Browser Companion Extension (v1.2.0 Hardened & Enhanced)**:
   - `CapturedRequest`, `HeaderPolicy` (stripping `:authority`, `sec-*`, `accept-encoding`), and `CurlCommandParser` (tokenizing single/multi-line bash, cmd, and Firefox cURL commands).
   - Added "📋 Paste from browser" (`Button_PasteCurl`) and automatic clipboard listener on `TextBox_URL` for instant 1-click importing.
   - `HarStreamExtractor`: Drop a `.har` network capture file directly onto the GUI; automatically filters noise, deduplicates byte-range requests, and prioritizes master manifests.
-  - `StreamPickerWindow`: Interactive multi-stream dialog with stream badges (`HLS`, `DASH`, `Abyss`, `Media`) when a capture contains multiple streams.
-  - Manifest V3 Browser Extension (`extension/` v1.1.0):
-    - **Memory-backed `storage.session`**: Captured headers and cookies live in memory and are discarded on browser close; zero unencrypted session cookies on disk (F1).
-    - **Serialized Mutation Queue**: Mutex-chained promise queue eliminates read-modify-write race conditions when concurrent streams load (F2).
-    - **Scoped Key Access**: Replaced global `get(null)` with focused per-tab lookups (F3).
-    - **URL Pathname Classification**: Extracted pure ESM `lib/classify.js` module parsing URL paths to prevent substring false positives and segment suppression (F4, F5).
-    - **Status Code Validation**: Rejects `403` / `404` errors so only downloadable streams are presented (F6).
-    - **Memory Bounds & Orphan Sweeping**: Bounded in-flight request headers cache (F7), capped content-script URL cache at 200 items (F9), and automatic stale tab key sweeping on popup open (F8).
-    - **ESM Node Test Suite**: 14 automated unit tests running natively via `node --test extension/test/classify.test.js`.
+  - `StreamPickerWindow`: Interactive multi-stream dialog with stream badges (`HLS`, `DASH`, `MSS`, `Abyss`, `Media`) when a capture contains multiple streams.
+  - Manifest V3 Browser Extension (`extension/` v1.2.0):
+    - **Smooth Streaming (MSS) & Wide Format Support (C2)**: Added full detection for Smooth Streaming (`.ism`, `.isml`, `/Manifest`, `application/vnd.ms-sstr+xml`), alternate DASH MIME types (`video/vnd.mpeg.dash.mpd`), and extended progressive media (`.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`).
+    - **Manifest-First Segment Suppression (C1)**: Enforced invariant in `storage.js` so tabs with an active manifest (`HLS`/`DASH`/`MSS`) drop incoming segments and auto-purge previously buffered fragments, ensuring the master manifest is never evicted.
+    - **Confidence Tiers & Query Fallback**: Added low-confidence query string analyzer (`guess` badge) for CDNs passing manifests via URL parameters without re-introducing false positives.
+    - **Smart Navigation Origin Tracking (C5)**: Replaced over-aggressive tab wipe with origin-based clearing, preserving detected streams during hash rewrites and quality changes.
+    - **Render Debouncing & Generation Guard (C3, C4)**: 150ms storage debouncer and generation guard prevent render races and UI flicker during fast playback.
+    - **UX Enhancements & Stream Ranking**: Primary stream recommendation cards, live file size display (`sizeBytes`), searchable URL filter box (5+ items), and inline copy feedback (`✓ Copied`).
+    - **Accessibility & Contrast**: ARIA roles, live polite regions, visible focus rings, and WCAG AA compliant badge colors.
+    - **ESM Node Test Suite**: 47 automated unit tests across `classify.test.js`, `storage.test.js`, and `format.test.js` (`node --test "extension/test/*.test.js"`).
 - **In-Window Feedback Surface & Progress Reporting (Zone D)**:
   - Added live progress bar and status strip (`TextBlock_Status`, `ProgressBar_Download`) directly in the main window.
   - Added collapsible live log viewer (`TextBox_Log`) with `ToggleButton_Log` toggle.
