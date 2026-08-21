@@ -1,5 +1,5 @@
 /**
- * N_m3u8DL-RE Companion — Background Service Worker (Manifest V3)
+ * N-RE Stream Bridge — Background Service Worker (Manifest V3)
  *
  * Two capture channels feed one storage layer: webRequest for network traffic,
  * and messages from the content script for DOM media elements.

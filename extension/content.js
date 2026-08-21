@@ -1,5 +1,5 @@
 /**
- * N_m3u8DL-RE Companion — Content Script (All Frames)
+ * N-RE Stream Bridge — Content Script (All Frames)
  *
  * Runs on top page and inside player iframes.
  * Detects HTML5 video elements, sources, and media playback events.

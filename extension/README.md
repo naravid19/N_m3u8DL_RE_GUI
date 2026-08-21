@@ -1,6 +1,6 @@
-# N_m3u8DL-RE Companion — Browser Extension (v1.2.0)
+# N-RE Stream Bridge — Browser Extension (v1.2.0)
 
-A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes network activity while you play a video, automatically detects stream manifests (HLS `.m3u8`, DASH `.mpd`, Smooth Streaming `.ism`/`.isml`, Abyss/Hydrax) and progressive media (`.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`), and lets you copy the exact cURL command with required headers (`Referer`, `User-Agent`, `Cookie`, `Origin`) into **N_m3u8DL-RE GUI** with 1 click.
+A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes network activity while you play a video, automatically detects stream manifests (HLS `.m3u8`, DASH `.mpd`, Smooth Streaming `.ism`/`.isml`, Abyss/Hydrax), audio streams (`.m4a`, `.opus`, `.flac`, `.wav`, `.aac`, `.mp3`), and progressive media (`.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`), and lets you copy the exact cURL command with required headers (`Referer`, `User-Agent`, `Cookie`, `Origin`) into **N_m3u8DL-RE GUI** with 1 click.
 
 ---
 
@@ -13,6 +13,7 @@ A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes net
 | **Smooth Streaming (MSS)** | `.ism`, `.isml` path extensions, paths ending in `/Manifest`; `application/vnd.ms-sstr+xml` |
 | **Abyss / Hydrax** | `abysscdn.com/?v=`, `playhydrax.com/?v=`, `zplayer.io/?v=`, `abyss.to/?v=`, `short.ink/` |
 | **Progressive Media** | `.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp` extensions; `video/*` content type |
+| **Standalone Audio** | `.m4a`, `.opus`, `.flac`, `.wav`, `.oga` extensions; `.aac`/`.mp3` with explicit `audio/*` content type |
 | **Low-confidence Hints** | Manifest extensions or format hints (`?type=m3u8`, `?format=hls`, `?format=mpd`) in query strings (labeled `guess`) |
 
 > [!NOTE]
@@ -28,7 +29,7 @@ A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes net
 2. Enable **Developer mode** (toggle switch in the top-right corner).
 3. Click **Load unpacked** (top-left).
 4. Select the `extension/` folder from this repository / release.
-5. (Optional) Click the puzzle piece icon in the browser toolbar and pin **N_m3u8DL-RE Companion**.
+5. (Optional) Click the puzzle piece icon in the browser toolbar and pin **N-RE Stream Bridge**.
 
 ---
 

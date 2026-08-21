@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "N_m3u8DL-RE Companion",
+  "name": "N-RE Stream Bridge",
   "version": "1.2.0",
-  "description": "Finds video streams on any page or player iframe and copies them as a cURL command for N_m3u8DL-RE GUI.",
+  "description": "Sniff and capture HLS, DASH, MSS, and media streams with 1-click cURL export for N_m3u8DL-RE GUI.",
   "permissions": [
     "webRequest",
     "storage",
@@ -30,7 +30,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "N_m3u8DL-RE Companion"
+    "default_title": "N-RE Stream Bridge"
   },
   "icons": {
     "16": "icons/16.png",

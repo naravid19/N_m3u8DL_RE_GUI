@@ -1,5 +1,5 @@
 /**
- * N_m3u8DL-RE Companion — Popup Logic
+ * N-RE Stream Bridge — Popup Logic
  */
 
 import { getTabStreams, getRecentStreams, sweepOrphanTabs, clearTab, clearAll } from '../lib/storage.js';

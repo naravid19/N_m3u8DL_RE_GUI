@@ -17,20 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `HeaderParser` (`N_m3u8DL_RE_GUI.Core.Capture`) supporting multi-line, cURL `-H`, and pipe-delimited headers, dynamically propagating custom `Referer` and `User-Agent` credentials to both metadata fetch and 2MB chunk segment downloads.
   - Created `AbyssDownloadService` for concurrent 2MB chunk downloading with `SemaphoreSlim` rate limiting, transient failure retries, live speed & ETA reporting, and automatic byte reassembly into continuous `.mp4` video files.
   - Wired direct Abyss stream handling into `MainWindow`: pasting an Abyss link automatically triggers metadata extraction, selects the optimal resolution, tracks progress in the GUI progress bar & log view, and supports cancellation via the Stop button.
-- **Universal Stream Capture & Browser Companion Extension (v1.2.0 Hardened & Enhanced)**:
+- **Universal Stream Capture & N-RE Stream Bridge Browser Extension (v1.2.0 Hardened & Signal Integrity)**:
   - `CapturedRequest`, `HeaderPolicy` (stripping `:authority`, `sec-*`, `accept-encoding`), and `CurlCommandParser` (tokenizing single/multi-line bash, cmd, and Firefox cURL commands).
   - Added "📋 Paste from browser" (`Button_PasteCurl`) and automatic clipboard listener on `TextBox_URL` for instant 1-click importing.
   - `HarStreamExtractor`: Drop a `.har` network capture file directly onto the GUI; automatically filters noise, deduplicates byte-range requests, and prioritizes master manifests.
-  - `StreamPickerWindow`: Interactive multi-stream dialog with stream badges (`HLS`, `DASH`, `MSS`, `Abyss`, `Media`) when a capture contains multiple streams.
-  - Manifest V3 Browser Extension (`extension/` v1.2.0):
-    - **Smooth Streaming (MSS) & Wide Format Support (C2)**: Added full detection for Smooth Streaming (`.ism`, `.isml`, `/Manifest`, `application/vnd.ms-sstr+xml`), alternate DASH MIME types (`video/vnd.mpeg.dash.mpd`), and extended progressive media (`.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`).
-    - **Manifest-First Segment Suppression (C1)**: Enforced invariant in `storage.js` so tabs with an active manifest (`HLS`/`DASH`/`MSS`) drop incoming segments and auto-purge previously buffered fragments, ensuring the master manifest is never evicted.
-    - **Confidence Tiers & Query Fallback**: Added low-confidence query string analyzer (`guess` badge) for CDNs passing manifests via URL parameters without re-introducing false positives.
-    - **Smart Navigation Origin Tracking (C5)**: Replaced over-aggressive tab wipe with origin-based clearing, preserving detected streams during hash rewrites and quality changes.
-    - **Render Debouncing & Generation Guard (C3, C4)**: 150ms storage debouncer and generation guard prevent render races and UI flicker during fast playback.
-    - **UX Enhancements & Stream Ranking**: Primary stream recommendation cards, live file size display (`sizeBytes`), searchable URL filter box (5+ items), and inline copy feedback (`✓ Copied`).
+  - `StreamPickerWindow`: Interactive multi-stream dialog with stream badges (`HLS`, `DASH`, `MSS`, `Abyss`, `Media`, `Audio`) when a capture contains multiple streams.
+  - Manifest V3 Browser Extension (`extension/` v1.2.0 - **N-RE Stream Bridge**):
+    - **Smooth Streaming (MSS), Audio & Wide Format Support**: Added detection for Smooth Streaming (`.ism`, `.isml`, `/Manifest`), standalone audio (`.m4a`, `.opus`, `.flac`, `.wav`, `.aac`, `.mp3`), alternate DASH MIME types (`video/vnd.mpeg.dash.mpd`), and progressive media (`.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`).
+    - **Manifest-First Segment Suppression**: Enforced invariant across tab storage and `recent_streams` so tabs with an active manifest (`HLS`/`DASH`/`MSS`) drop incoming segments and auto-purge previously buffered fragments.
+    - **Content-Range & Real Size Reporting**: Extracted true file sizes from 206 Partial Content responses with approximate `~` indicators.
+    - **Dedicated cURL Serializer (`toCurl`)**: Pure modular cURL generator matching C# bash escaping semantics.
+    - **Confidence Tiers & Query Fallback**: Scoped low-confidence query string analyzer (`guess` badge) restricted to stream-carrying parameters (`type`, `format`, `file`, `stream`).
+    - **Smart Navigation Origin Tracking**: Origin-based clearing preserving detected streams during player URL hash/token rewrites.
+    - **UX Enhancements & Stream Ranking**: Primary stream recommendation cards, searchable URL filter box (5+ items) with persistent query visibility, live relative timestamps (30s ticker), and inline copy feedback (`✓ Copied`).
     - **Accessibility & Contrast**: ARIA roles, live polite regions, visible focus rings, and WCAG AA compliant badge colors.
-    - **ESM Node Test Suite**: 47 automated unit tests across `classify.test.js`, `storage.test.js`, and `format.test.js` (`node --test "extension/test/*.test.js"`).
+    - **ESM Node Test Suite**: 85 automated unit tests across `classify.test.js`, `storage.test.js`, `format.test.js`, `background-helpers.test.js`, and `curl.test.js` (`node --test "extension/test/*.test.js"`).
 - **In-Window Feedback Surface & Progress Reporting (Zone D)**:
   - Added live progress bar and status strip (`TextBlock_Status`, `ProgressBar_Download`) directly in the main window.
   - Added collapsible live log viewer (`TextBox_Log`) with `ToggleButton_Log` toggle.

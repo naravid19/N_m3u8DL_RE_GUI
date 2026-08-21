@@ -109,16 +109,16 @@ Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
 | Batch File  | Drop a `.txt` file containing multiple URLs (one per line). |
 | Folder      | Drop a folder containing stream files to batch process them all. |
 
-### Browser Extension Companion (v1.2.0)
+### N-RE Stream Bridge Browser Extension (v1.2.0)
 
-Use the companion browser extension in `extension/` for 1-click stream capture in Chrome, Edge, and Brave:
+Use the companion browser extension **N-RE Stream Bridge** in `extension/` for 1-click stream capture in Chrome, Edge, and Brave:
 1. Open `chrome://extensions` and enable **Developer mode**.
 2. Click **Load unpacked** and select the `extension/` folder.
-3. Play any video in your browser → click the extension icon → **📋 Copy as cURL**.
+3. Play any video or audio in your browser → click the extension icon → **📋 Copy as cURL**.
 4. In the GUI, click **📋 Paste from browser** → URL and required headers are filled instantly!
 
 > [!NOTE]
-> **Stream Coverage & Privacy:** Supports **HLS** (`.m3u8`), **DASH** (`.mpd`), **Smooth Streaming** (`.ism`/`/Manifest`), **Abyss/Hydrax**, and progressive formats (`.mp4`, `.m4v`, `.webm`, `.mkv`, etc.). Automatically suppresses segment flooding to keep manifests visible, shows live file sizes and confidence badges, and uses memory-backed `chrome.storage.session` so sensitive cookies are never written unencrypted to disk.
+> **Stream Coverage & Privacy:** Supports **HLS** (`.m3u8`), **DASH** (`.mpd`), **Smooth Streaming** (`.ism`/`/Manifest`), **Abyss/Hydrax**, standalone audio (`.m4a`, `.opus`, `.flac`, `.wav`, `.aac`, `.mp3`), and progressive formats (`.mp4`, `.m4v`, `.webm`, `.mkv`, etc.). Automatically suppresses segment flooding to keep manifests visible, shows live file sizes and confidence badges, and uses memory-backed `chrome.storage.session` so sensitive cookies are never written unencrypted to disk.
 
 ### How to use Cloudflare Bypass
 
@@ -139,7 +139,7 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 ## Detailed Features
 
 ### Core Features
-- **Universal Stream Capture** - Paste browser cURL commands directly, drag-and-drop `.har` captures with automated stream ranking and picking, or use the Chrome/Edge extension companion.
+- **Universal Stream Capture** - Paste browser cURL commands directly, drag-and-drop `.har` captures with automated stream ranking and picking, or use the **N-RE Stream Bridge** browser extension.
 - **Native Abyss / Hydrax Downloader** - Built-in zero-dependency C# crypto engine that decrypts and reassembles fragmented chunks from `abysscdn.com`, `playhydrax.com`, `zplayer.io`, and `short.ink`.
 - **3-Zone Modern UX/UI Architecture** - Clean layout with a top URL hero bar, a 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and a fixed command preview bar at the bottom.
 - **GUI Auto-Update Engine** - Zero rate-limit HTTP update checker. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top.
