@@ -7,6 +7,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+---
+
+## [2.1.5] - 2026-08-23
+
+### Added
+
+- **Resume Interrupted Downloads (`N_m3u8DL_RE_GUI.Core.Resume`)**:
+  - **Deterministic Temp Directory (`ResumePaths`)**: Derives `<save folder>/.nre-tmp/<sanitised saveName>` automatically when `--tmp-dir` is empty, ensuring N_m3u8DL-RE reuses downloaded segments across sessions. Includes DOS reserved device name protection (`CON`, `PRN`, `AUX`, `NUL`, `COM1..9`, `LPT1..9`) and stable prefix hash deduplication for long filenames.
+  - **Active Job Tracking (`ResumeJobStore`)**: Atomically writes `%LOCALAPPDATA%\N_m3u8DL_RE_GUI\active-job.json` on download start and deletes upon successful completion. Interrupted or stopped downloads leave the record intact so existing segments are recoverable.
+  - **Credential Safety**: The job record stores only the source hostname (`SourceHost`), never full stream URLs or access tokens, ensuring signed authentication tokens and cookies are never stored in plaintext.
+  - **Startup Resume Banner (`Border_ResumeBanner`)**: On application launch, checks for incomplete downloads with segments on disk. Displays an amber banner naming the unfinished file, saved byte size, time elapsed, and source domain with 1-click **Resume** and **Discard** actions.
+  - **Fresh Link Re-attachment Workflow**: Restores save name, save folder, and temp directory into GUI fields while prompting the user to paste a fresh link (avoiding expired token 403 errors), seamlessly continuing the download from existing segments.
+  - **Safe Discard**: Confirms deletion naming the exact byte size and cleans up both the temp segment directory and active job record.
+- **Honest 3-State Update Checker & Single Source of Truth (`Directory.Build.props`)**:
+  - **Single Source of Truth (`Directory.Build.props`)**: Solution-wide MSBuild configuration defining `<AppVersion>2.1.5</AppVersion>`, automatically propagating assembly and file versions across all projects (`N_m3u8DL_RE_GUI`, `N_m3u8DL_RE_GUI.Core`, `N_m3u8DL_RE_GUI.Tests`) without duplicate hardcoded literals.
+  - **Honest 3-State Checking (`GitHubUpdateCheckService`)**: Replaced binary boolean checking with `UpdateCheckStatus` enum (`UpToDate`, `UpdateAvailable`, `CheckFailed`). Removed fallback guesses from User-Agent and version comparisons; network failures or unparseable release tags report `CheckFailed` rather than falsely claiming up-to-date.
+  - **Dynamic GUI Branding**: Window title and version header text dynamically derive from assembly metadata at runtime.
+- **N-RE Stream Bridge Browser Extension (v1.3.0) & Suite Update Check**:
+  - **Suite Release Checker (`update-check.js`, `suite-version.js`)**: MSBuild target `WriteSuiteVersionForExtension` auto-generates `extension/suite-version.json` from `$(AppVersion)` on every build. Extension reads suite version and checks GitHub releases using `response.url` resolution to avoid browser opaque-redirect restrictions.
+  - **Daily Cached Checks (`storage.js`)**: Caches update check results in `chrome.storage.local` with 24-hour TTL (success) and 5-minute TTL (failure) to prevent redundant GitHub requests on every popup open.
+  - **Suite Update Badge**: Shows `🎉 N_m3u8DL-RE GUI v... available ↗` linking to GitHub releases when a new suite version is published.
+  - **Neutral Stream Presentation**: Removed presumptive `⭐ Recommended` and `⭐ Best match` badges, presenting all sniffed streams objectively with their exact MIME type, bitrate, and resolution.
+  - **On-Demand Quality Probing (`probe.js`, `manifest.js`)**: Pure parser for HLS master playlists (`#EXT-X-STREAM-INF`) and DASH MPDs (`<AdaptationSet>`, `<Representation>`); parses resolution, bandwidth, and codecs into interactive radio choices upon clicking `▸ Qualities`. Probing is strictly on-demand with replay of captured CDN authentication headers and 2MB/8s safety limits.
+  - **Quality Directives via Clipboard**: Appends `# nre-select-video: res="1080*"` to cURL commands when a rendition is selected, instantly setting GUI quality selectors.
+  - **Multi-Select & Batch List Export (`toBatchList`)**: Checkbox multi-selection, select all, and `📋 Copy as list` with `# Referer:` headers.
+  - **Smooth Streaming (MSS), Audio & Wide Format Support**: Added detection for Smooth Streaming (`.ism`, `.isml`, `/Manifest`), standalone audio (`.m4a`, `.opus`, `.flac`, `.wav`, `.aac`, `.mp3`), alternate DASH MIME types (`video/vnd.mpeg.dash.mpd`), and progressive media (`.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`).
+  - **Manifest-First Segment Suppression**: Enforced invariant across tab storage and `recent_streams` so tabs with an active manifest (`HLS`/`DASH`/`MSS`) drop incoming segments and auto-purge previously buffered fragments.
+  - **Content-Range & Real Size Reporting**: Extracted true file sizes from 206 Partial Content responses with approximate `~` indicators.
+  - **Dedicated cURL Serializer (`toCurl`)**: Pure modular cURL generator matching C# bash escaping semantics.
+  - **Confidence Tiers & Query Fallback**: Scoped low-confidence query string analyzer (`guess` badge) restricted to stream-carrying parameters (`type`, `format`, `file`, `stream`).
+  - **420px Adaptive UI & Grouping**: Neatly groups "All Recent" streams by origin domain, adds prominent primary card styling, two-line URL display (filename top, path bottom), roving keyboard navigation (Space/Enter/Arrows), and WCAG AA contrast compliance.
+- **Native Abyss / Hydrax Stream Downloader (`N_m3u8DL_RE_GUI.Core.Abyss`)**:
+  - Implemented pure C# crypto engine (`AbyssCrypto`) supporting AES-CTR (Counter Mode 128-bit block feedback), MD5 key derivation (string & byte-mapped numeric), and Double-Base64 chunk token encoding with **zero external dependencies**.
+  - Created `AbyssMetadataFetcher` with dual-engine architecture: in-process `HttpClient` with automatic fallback to native `curl.exe` and DNS-over-HTTPS (`1.1.1.1`) to transparently bypass Cloudflare Managed Challenges / JA3-JA4 TLS fingerprint filters on Abyss hosts (`abysscdn.com`, `playhydrax.com`, `zplayer.io`, `short.ink`, `abyss.to`).
+  - Added `HeaderParser` (`N_m3u8DL_RE_GUI.Core.Capture`) supporting multi-line, cURL `-H`, and pipe-delimited headers, dynamically propagating custom `Referer` and `User-Agent` credentials to both metadata fetch and 2MB chunk segment downloads.
+  - Created `AbyssDownloadService` for concurrent 2MB chunk downloading with `SemaphoreSlim` rate limiting, transient failure retries, live speed & ETA reporting, and automatic byte reassembly into continuous `.mp4` video files.
+  - Wired direct Abyss stream handling into `MainWindow`: pasting an Abyss link automatically triggers metadata extraction, selects the optimal resolution, tracks progress in the GUI progress bar & log view, and supports cancellation via the Stop button.
+- **Universal Stream Capture & cURL Directives (`N_m3u8DL_RE_GUI.Core.Capture`)**:
+  - `CapturedRequest`, `HeaderPolicy` (stripping `:authority`, `sec-*`, `accept-encoding`), and `CurlCommandParser` (tokenizing single/multi-line bash, cmd, and Firefox cURL commands).
+  - `CaptureDirectives`: Reads `# nre-key: value` comments appended to clipboard cURL commands, seamlessly applying parameters like `select-video` (`TextBox_SelectVideo`) without breaking backward compatibility.
+  - `BatchPasteHelper`: Distinguishes multi-stream batch payloads from single cURL commands, writes temp `.txt` queues, and auto-dispatches into the batch downloader.
+  - Added "📋 Paste from browser" (`Button_PasteCurl`) and automatic clipboard listener on `TextBox_URL` for instant 1-click importing.
+  - `HarStreamExtractor`: Drop a `.har` network capture file directly onto the GUI; automatically filters noise, deduplicates byte-range requests, and prioritizes master manifests.
+  - `StreamPickerWindow`: Interactive multi-stream dialog with stream badges (`HLS`, `DASH`, `MSS`, `Abyss`, `Media`, `Audio`) when a capture contains multiple streams.
+- **In-Window Feedback Surface & Progress Reporting (Zone D)**:
+  - Added live progress bar and status strip (`TextBlock_Status`, `ProgressBar_Download`) directly in the main window.
+  - Added collapsible live log viewer (`TextBox_Log`) with `ToggleButton_Log` toggle.
+  - Added "Open Folder" button (`Button_OpenFolder`) upon successful download completion for instant folder access.
+  - Created `ConsoleOutputParser` in `N_m3u8DL_RE_GUI.Core` for pure ANSI sequence stripping and real-time percentage extraction.
+  - Redirected standard output and error streams in `DownloadService` and forwarded clean log lines and progress to GUI.
+- **P0 Hardening & DPAPI Secret Protection Alignment**:
+  - Added legacy secret keys (`请求头`, `代理`, `IV`) to DPAPI protection registry in `JsonConfigService`.
+  - Hardened DPAPI decryption failure handling: preserves raw ciphertext (`dpapi:<blob>`) instead of wiping credentials to empty string.
+  - Stopped writing duplicate plaintext `IV` in `MainWindowConfigMapper` while maintaining backward-compatible read resolution.
+  - Extracted pure `CfCommandBuilder` to `N_m3u8DL_RE_GUI.Core` with cmd.exe `%` doubling and UTF-8 batch header.
+- **P1 Correctness & Non-UTF-8 Encoding Recovery**:
+  - `HtmlTitleExtractor`: Added streaming-safe title extractor respecting server-declared HTTP `Content-Type: charset` (GBK, Big5, Shift-JIS, ISO-8859-1) with `System.Text.Encoding.CodePages`. Replaced O(N²) buffer rescanning with fixed 7-char overlap window (`ContainsClosingTitleTag`).
+  - `TextEncodingDetector`: Real system ANSI fallback on .NET Core (`AnsiFallback`) and sample boundary tolerance for multi-byte UTF-8 sequences straddling the 8 KB boundary.
+  - `LegacyConfigCodec`: Safe escaping/unescaping (`%3B`, `%25`) for `key=value;` legacy `config.txt` format, preventing data loss in raw string fields (`AdKeyword`, `SavePattern`, etc.) while maintaining backward compatibility.
+  - `ArgsBuilder`: Cached static `EscapeChars` set eliminating allocations in fast-path argument quoting; escaped quotes in `MuxBinPath`, `RangeStart`, and `RangeEnd`.
+  - `UtilityService`: DOS reserved device name sanitization matching segments before the first dot (e.g. `CON.txt.bak` -> `_CON.txt.bak`).
+- **WCAG 2.1 AA Contrast Compliance (Part B)**:
+  - Resolved 9 measured contrast failures across dark theme palette tokens:
+    - Replaced `BorderBrushCustom` (`#2A2A38` -> `#66667C`, 3.03:1 on Card).
+    - Introduced `AccentTextBrush` (`#7A87FF`, 5.44:1 on Card) for GroupBox headers, selected tab text, and window title while retaining `AccentBrush` (`#5865F2`) for surfaces.
+    - Adjusted button hover ramps to darken on interaction (`AccentHoverBrush` `#4350D8`, `AccentPressedBrush` `#3E4ACB`) ensuring contrast increases on hover.
+    - Updated Stop button (`#C0392B`, 5.44:1) and Drop labels / validation borders (`DropLabelBrush` `#EC7063`, 5.70:1).
+  - Added automated `XamlContrastTests` to prevent contrast regressions.
+- **Option Conflict & Dependency Visibility (Part C)**:
+  - `SyncDependentControlStates`: Dynamically disables and tooltips overridden fields (`TextBox_SelectAudio`, `TextBox_DropVideo`) when **Audio Only** is active.
+  - Added Cloudflare Mode Scope Warning banner (`Border_CfScopeWarning`) in amber (`#F39C12`) explaining that CF mode ignores non-network tab settings. Enabled/disabled CF fields based on bypass toggle.
+  - Renamed Advanced tab label to "DL Language" with tooltip explaining it configures the downloader's console output rather than the GUI.
+  - Updated `DownloadOptions.AudioOnly` getter to accept both `all` and `.*` drop patterns.
+- **Process & Concurrency Lifetime Safety**:
+  - Implemented `BeginCancellableOperation()` / `EndCancellableOperation()` helper to prevent cross-operation `CancellationTokenSource` disposal in `async void` UI handlers.
+  - Added global crash protection in `App.xaml.cs` (`DispatcherUnhandledException`, `AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`).
+  - Clamped window dimensions to desktop work area on high DPI displays to prevent Zone D from sliding under the taskbar.
+- **Desktop Accessibility (a11y) & Keyboard Navigation**:
+  - Added `AccessibleFocusVisual` high-contrast dashed focus rectangle across all controls.
+  - Added keyboard bindings: `Alt+G` / `Enter` for GO, `Alt+S` / `Escape` for Stop.
+  - Added `AutomationProperties.Name` across all interactive inputs.
+  - Added `XamlAccessibilityTests` headless automated XAML validation suite.
+- **Automated Test Suite (723 .NET Tests + 246 Node.js Extension Tests)**:
+  - Total automated test suite expanded to **969 tests** (722 passing C# tests with 1 live integration skip, and 246 passing Node.js extension tests) with 0 errors and 0 warnings.
+
+### Changed
+
+- **Temp Directory Default Location**: When `TextBox_TmpDir` is left empty, segments now land deterministically in `<save folder>/.nre-tmp/<saveName>` instead of N_m3u8DL-RE's default arbitrary location.
+- Forced `--no-ansi-color` on GUI download execution paths to ensure clean log parsing.
+- Standardized all application text and messages to clean English.
+- Updated window height default to 660px with work-area clamping.
+
+### Notes & Limitations
+
+- **Batch runs are not resumable**: A single job record cannot describe a multi-item run; batch queue resume remains deferred.
+- **Abyss module scope**: The Abyss module is not covered by this series of audits, and is excluded from every test-count figure quoted in them.
+
+---
+
 ## [2.1.4] - 2026-08-08
 
 ### Added
@@ -278,6 +379,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
+| 2.1.5   | 2026-08-23 | Resume download, SSOT versioning, honest update checks, Abyss downloader, Browser Extension v1.3.0, 969 total tests |
 | 2.1.4   | 2026-08-08 | Windows DPAPI secret protection, lifecycle hardening, 164 tests |
 | 2.1.3   | 2026-08-06 | 3-Zone Modern UX/UI Architecture, Dark Mode ComboBox fixes|
 | 2.1.2   | 2026-08-06 | Dedicated CF Bypass Expander UX/UI, TLS fingerprinting    |
@@ -286,3 +388,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 2.0.0   | 2026-01-23 | Code refactoring, English codebase, UTF-8 encoding        |
 | 1.1.0   | 2026-01-13 | Stream settings refactor                                  |
 | 1.0.0   | 2025-08-05 | Initial release                                           |
+
+[Unreleased]: https://github.com/naravid19/N_m3u8DL_RE_GUI/compare/v2.1.5...HEAD
+[2.1.5]: https://github.com/naravid19/N_m3u8DL_RE_GUI/compare/v2.1.4...v2.1.5
