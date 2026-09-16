@@ -43,6 +43,7 @@ public class JsonConfigServiceSecretCoverageTests
     [Theory]
     [InlineData("KeyTextFile")]   // a path, not a secret — plaintext is correct
     [InlineData("SavePattern")]
+    [InlineData("Theme")]         // GUI preference, never sensitive
     public void Save_WithANonSecretKey_StoresTheValueInPlaintext(string key)
     {
         WithConfigDir((configPath, dir) =>

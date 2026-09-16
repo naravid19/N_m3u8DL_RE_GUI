@@ -13,6 +13,9 @@ public partial class StreamPickerWindow : Window
     public StreamPickerWindow(IReadOnlyList<CapturedRequest> candidates)
     {
         InitializeComponent();
+        // Same native-title-bar handling as MainWindow: the palette below only covers
+        // the client area, the system caption is DWM's and must be told separately.
+        Services.ThemeManager.TrackWindow(this);
         List_Candidates.ItemsSource = candidates;
         List_Candidates.SelectedIndex = 0;
     }

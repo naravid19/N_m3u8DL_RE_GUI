@@ -1,3 +1,21 @@
+/* Design tokens mirroring the GUI's dark palette (Themes/Theme.Dark.xaml), so the
+   popup and the app share one accent ramp instead of two unrelated blues. */
+:root {
+  --canvas: #0D0D0F;
+  --surface: #141418;
+  --surface-raised: #1C1C22;
+  --ink: #F2F2F8;
+  --ink-2: #8888A8;
+  --accent: #0071E3;
+  --accent-hover: #0066CC;
+  --accent-pressed: #0056AC;
+  --tint: #0A84FF;
+  --separator: #33333A;
+  --fill-tertiary: #2A2A2E;
+  --danger: #C0392B;
+  --success: #30D158;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -7,17 +25,31 @@
 body {
   width: 420px;
   max-height: 560px;
-  background-color: #0D0D0F;
-  color: #F2F2F8;
+  background-color: var(--canvas);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 12px;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
+/* Inline sprite icons. currentColor keeps each icon with the text it labels. */
+.icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  vertical-align: -2px;
+}
+
+.icon-lg {
+  width: 28px;
+  height: 28px;
+  vertical-align: baseline;
+}
+
 /* Accessibility: Visible focus outline (WCAG AA) */
 :focus-visible {
-  outline: 2px solid #7A87FF;
+  outline: 2px solid var(--tint);
   outline-offset: 1px;
 }
 
@@ -26,7 +58,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  background-color: #141418;
+  background-color: var(--surface);
   border-bottom: 1px solid #282834;
 }
 
@@ -50,7 +82,7 @@ body {
 }
 
 .badge {
-  background-color: #5865F2;
+  background-color: var(--accent);
   color: #FFFFFF;
   font-size: 11px;
   font-weight: 700;
@@ -61,12 +93,11 @@ body {
 .icon-btn {
   background: transparent;
   border: 1px solid transparent;
-  font-size: 13px;
   cursor: pointer;
   padding: 4px 6px;
-  border-radius: 4px;
+  border-radius: 8px;
   transition: background-color 0.15s ease, border-color 0.15s ease;
-  color: #F2F2F8;
+  color: var(--ink);
 }
 
 .icon-btn:hover {
@@ -98,8 +129,8 @@ body {
 }
 
 .tab-btn.active {
-  color: #7A87FF;
-  border-bottom-color: #5865F2;
+  color: var(--tint);
+  border-bottom-color: var(--accent);
 }
 
 #main-content {
@@ -148,7 +179,7 @@ body {
 }
 
 .filter-input:focus {
-  border-color: #5865F2;
+  border-color: var(--accent);
 }
 
 .filter-input::placeholder {
@@ -161,8 +192,8 @@ body {
 }
 
 .empty-icon {
-  font-size: 28px;
   margin-bottom: 8px;
+  color: var(--ink-2);
 }
 
 .empty-title {
@@ -197,13 +228,13 @@ body {
 .page-group-header {
   font-size: 11px;
   font-weight: 700;
-  color: #7A87FF;
+  color: var(--tint);
   padding: 4px 6px;
   display: flex;
   align-items: center;
   gap: 6px;
   background-color: #14141A;
-  border-radius: 4px;
+  border-radius: 6px;
   margin-bottom: 6px;
 }
 
@@ -220,18 +251,18 @@ body {
 }
 
 .stream-card.is-primary {
-  border-left: 3.5px solid #5865F2;
-  border-color: #3F4A85 #2A2A38 #2A2A38 #5865F2;
+  border-left: 3.5px solid var(--accent);
+  border-color: rgba(0, 113, 227, 0.55) #2A2A38 #2A2A38 var(--accent);
   background-color: #1E1F2C;
 }
 
 .stream-card.is-selected {
-  border-color: #5865F2;
+  border-color: var(--accent);
   background-color: #1F2133;
 }
 
 .stream-card:hover {
-  border-color: #7A87FF;
+  border-color: var(--tint);
 }
 
 .stream-meta {
@@ -250,7 +281,7 @@ body {
 
 .stream-checkbox {
   cursor: pointer;
-  accent-color: #5865F2;
+  accent-color: var(--accent);
   width: 14px;
   height: 14px;
 }
@@ -394,7 +425,7 @@ body {
 }
 
 .quality-option input[type="radio"] {
-  accent-color: #5865F2;
+  accent-color: var(--accent);
 }
 
 .qualities-status {
@@ -429,10 +460,10 @@ body {
 }
 
 .btn {
-  background-color: #5865F2;
+  background-color: var(--accent);
   color: #FFFFFF;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 600;
@@ -446,11 +477,12 @@ body {
 }
 
 .btn:hover {
-  background-color: #4752C4;
+  background-color: var(--accent-hover);
 }
 
 .btn:active {
-  background-color: #3C45A5;
+  background-color: var(--accent-pressed);
+  transform: translateY(1px);
 }
 
 .btn.is-copied {
@@ -483,7 +515,7 @@ body {
 
 .btn-qualities:hover {
   background-color: #2E2E3E;
-  border-color: #5865F2;
+  border-color: var(--accent);
 }
 
 .btn-sm {
@@ -498,7 +530,7 @@ body {
 
 .helper-hint {
   font-size: 10.5px;
-  color: #8888A8;
+  color: var(--ink-2);
   text-align: center;
   margin-top: 6px;
 }

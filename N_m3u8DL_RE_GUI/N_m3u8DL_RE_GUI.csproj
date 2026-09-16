@@ -3,7 +3,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
 
     <AssemblyName>N_m3u8DL_RE_GUI</AssemblyName>
     <RootNamespace>N_m3u8DL_RE_GUI</RootNamespace>
@@ -14,20 +13,31 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
+  <!-- The three engine files ship next to the GUI and are launched as separate
+       processes, so they must stay outside the single-file bundle. Without
+       ExcludeFromSingleFile the bundler claims them (they are not managed
+       assemblies, so it cannot actually embed them) and removes them from the
+       publish list — they then silently vanish from the output directory. -->
   <ItemGroup>
     <None Include="App.config" Condition="Exists('App.config')" />
     <Resource Include="logo_3Iv_icon.ico" />
     <None Include="..\N_m3u8DL-RE.exe" Condition="Exists('..\N_m3u8DL-RE.exe')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>N_m3u8DL-RE.exe</Link>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
     <None Include="..\ffmpeg.exe" Condition="Exists('..\ffmpeg.exe')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>ffmpeg.exe</Link>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
     <None Include="..\m3u8_cf_bypass.py" Condition="Exists('..\m3u8_cf_bypass.py')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>m3u8_cf_bypass.py</Link>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
   </ItemGroup>
 

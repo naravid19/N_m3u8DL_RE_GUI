@@ -84,4 +84,16 @@ public class MainWindowConfigMapperTests
         modernOnly.Set("CustomHLSIv", "ffeeddccbbaa99887766554433221100");
         Assert.Equal("ffeeddccbbaa99887766554433221100", MainWindowConfigMapper.ResolveCustomHlsIv(modernOnly));
     }
+
+    [Theory]
+    [InlineData("Light", "Light")]
+    [InlineData("Dark", "Dark")]
+    [InlineData(null, "Dark")]
+    [InlineData("", "Dark")]
+    [InlineData("banana", "Dark")]
+    [InlineData("light", "Dark")] // case-sensitive by design: the combo writes exact tokens
+    public void ResolveTheme_ShouldAcceptOnlyTheCanonicalLightToken_OtherwiseDark(string? value, string expected)
+    {
+        Assert.Equal(expected, MainWindowConfigMapper.ResolveTheme(value));
+    }
 }

@@ -77,6 +77,8 @@ internal static class MainWindowConfigMapper
         state.Set("AllowHlsMultiExtMap", Flag(window.CheckBox_AllowHlsMultiExtMap.IsChecked == true));
         state.Set("DisableUpdateCheck", Flag(window.CheckBox_DisableUpdateCheck.IsChecked == true));
         state.Set("AutoCheckGuiUpdate", Flag(window.CheckBox_AutoCheckGuiUpdate.IsChecked == true));
+        state.Set("AutoCheckNReUpdate", Flag(window.CheckBox_AutoCheckNReUpdate?.IsChecked == true));
+        state.Set("AutoCheckFfmpegUpdate", Flag(window.CheckBox_AutoCheckFfmpegUpdate?.IsChecked == true));
 
         state.Set("TmpDir", window.TextBox_TmpDir.Text);
         state.Set("CustomHLSKey", window.TextBox_CustomHLSKey.Text);
@@ -88,6 +90,10 @@ internal static class MainWindowConfigMapper
         state.Set("NoAnsiColor", Flag(window.CheckBox_NoAnsiColor.IsChecked == true));
         state.Set("LogFilePath", window.TextBox_LogFilePath.Text);
         state.Set("BypassCloudflare", Flag(window.CheckBox_BypassCF?.IsChecked == true));
+        state.Set("AutoRetry", Flag(window.CheckBox_AutoRetry?.IsChecked == true));
+        state.Set("AutoCfFallback", Flag(window.CheckBox_AutoCfFallback?.IsChecked == true));
+        state.Set("AllowMissingSegments", Flag(window.CheckBox_AllowMissingSegments?.IsChecked == true));
+        state.Set("Theme", (window.Combo_Theme?.SelectedItem as WpfComboBoxItem)?.Content?.ToString());
 
         return state;
     }
@@ -155,6 +161,8 @@ internal static class MainWindowConfigMapper
         RestoreCheckBox(window.CheckBox_AllowHlsMultiExtMap, config.Get("AllowHlsMultiExtMap"));
         RestoreCheckBox(window.CheckBox_DisableUpdateCheck, config.Get("DisableUpdateCheck"));
         RestoreCheckBox(window.CheckBox_AutoCheckGuiUpdate, config.Get("AutoCheckGuiUpdate"));
+        RestoreCheckBox(window.CheckBox_AutoCheckNReUpdate, string.IsNullOrEmpty(config.Get("AutoCheckNReUpdate")) ? "1" : config.Get("AutoCheckNReUpdate"));
+        RestoreCheckBox(window.CheckBox_AutoCheckFfmpegUpdate, string.IsNullOrEmpty(config.Get("AutoCheckFfmpegUpdate")) ? "1" : config.Get("AutoCheckFfmpegUpdate"));
 
         RestoreTextBox(window.TextBox_TmpDir, config.Get("TmpDir"));
         RestoreTextBox(window.TextBox_CustomHLSKey, config.Get("CustomHLSKey"));
@@ -165,7 +173,17 @@ internal static class MainWindowConfigMapper
         RestoreCheckBox(window.CheckBox_NoAnsiColor, config.Get("NoAnsiColor"));
         RestoreTextBox(window.TextBox_LogFilePath, config.Get("LogFilePath"));
         RestoreCheckBox(window.CheckBox_BypassCF, config.Get("BypassCloudflare"));
+        RestoreCheckBox(window.CheckBox_AutoRetry, string.IsNullOrEmpty(config.Get("AutoRetry")) ? "1" : config.Get("AutoRetry"));
+        RestoreCheckBox(window.CheckBox_AutoCfFallback, string.IsNullOrEmpty(config.Get("AutoCfFallback")) ? "1" : config.Get("AutoCfFallback"));
+        RestoreCheckBox(window.CheckBox_AllowMissingSegments, config.Get("AllowMissingSegments"));
+        RestoreComboByContent(window.Combo_Theme, ResolveTheme(config.Get("Theme")));
     }
+
+    /// <summary>
+    /// Normalizes the persisted Theme value: anything but "Light" (null, empty,
+    /// corrupted) means Dark. Internal so tests can cover the fallback rule.
+    /// </summary>
+    internal static string ResolveTheme(string? value) => value == "Light" ? "Light" : "Dark";
 
     private static string Flag(bool value) => value ? "1" : "0";
 

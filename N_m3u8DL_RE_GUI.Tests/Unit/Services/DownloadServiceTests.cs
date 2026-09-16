@@ -164,6 +164,74 @@ public class DownloadServiceTests
         Assert.Contains(lines, l => l.Contains("3"));
     }
 
+    [Fact]
+    public async Task StartProcessAsync_ShouldSuppressAlternatingWarnBursts()
+    {
+        // Real ffmpeg merge-phase shape: two warning variants alternating per bad
+        // packet, many times in quick succession. The burst window slides with every
+        // suppressed member, so a sustained storm stays collapsed: one visible
+        // representative per shape plus one merged suppression note.
+        var service = new DownloadService();
+        var lines = new List<string>();
+
+        var script = new System.Text.StringBuilder("@echo off\r\n");
+        for (var i = 0; i < 60; i++)
+        {
+            script.Append("echo 23:43:25.")
+                .AppendFormat("{0:D3}", i * 3 % 1000)
+                .Append(" WARN : [in#0/mpegts @ 00000278ca1d5dc0] Packet corrupt (stream = 0, dts = ")
+                .Append(i * 540540).Append(").\r\n");
+            script.Append("echo 23:43:25.")
+                .AppendFormat("{0:D3}", (i * 3 + 1) % 1000)
+                .Append(" WARN : [in#0/mpegts @ 00000278ca1d5c40] corrupt input packet in stream 0\r\n");
+        }
+
+        var bat = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+            "nre_burst_" + Guid.NewGuid().ToString("N")[..8] + ".bat");
+        System.IO.File.WriteAllText(bat, script.ToString());
+
+        try
+        {
+            await service.StartProcessAsync(bat, string.Empty,
+                message => { lock (lines) lines.Add(message); });
+
+            lock (lines)
+            {
+                var corrupt = lines.Count(l => l.Contains("corrupt"));
+                var suppressed = lines.Count(l => l.Contains("similar messages suppressed"));
+
+                // 120 raw records: the two shape representatives survive, the rest is
+                // flushed as a single merged note (cmd.exe echo pacing can straddle a
+                // window boundary, so allow one extra representative/note).
+                Assert.True(corrupt <= 4,
+                    $"expected the burst to be collapsed, got {corrupt} raw lines and {suppressed} suppress notes");
+                Assert.InRange(suppressed, 1, 2);
+            }
+        }
+        finally
+        {
+            try { System.IO.File.Delete(bat); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task StartProcessAsync_ShouldNotSuppressFailureSignatures()
+    {
+        // 404 warnings must always reach the log — they feed the CF-fallback logic.
+        var service = new DownloadService();
+        var lines = new List<string>();
+
+        await service.StartProcessAsync(
+            "cmd.exe",
+            "/c echo 22:29:53.044 WARN : Response status code does not indicate success: 404 (Not Found). && echo 22:29:53.046 WARN : Response status code does not indicate success: 404 (Not Found).",
+            message => { lock (lines) lines.Add(message); });
+
+        lock (lines)
+        {
+            Assert.Equal(2, lines.Count(l => l.Contains("404")));
+        }
+    }
+
     private static async Task WaitUntilAsync(System.Func<bool> condition, int timeoutMs = 5000)
     {
         var start = System.DateTime.UtcNow;

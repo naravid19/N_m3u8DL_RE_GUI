@@ -5,18 +5,28 @@
         Height="360" Width="720"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
-        Background="#1C1C22">
+        Background="{DynamicResource CardBrush}">
     <Window.Resources>
-        <SolidColorBrush x:Key="AccentBrush" Color="#5865F2"/>
-        <SolidColorBrush x:Key="AccentTextBrush" Color="#7A87FF"/>
-        <SolidColorBrush x:Key="AccentHoverBrush" Color="#4350D8"/>
-        <SolidColorBrush x:Key="AccentPressedBrush" Color="#3E4ACB"/>
-        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F2F2F8"/>
-        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8888A8"/>
-        <SolidColorBrush x:Key="BorderBrushCustom" Color="#66667C"/>
+        <!-- Brush definitions live in Themes/Theme.*.xaml (App-level merge), so this
+             window follows the active theme with no extra code. -->
+
+        <!-- Same visual as MainWindow's AccessibleFocusVisual, redeclared here on purpose:
+             that one lives in MainWindow's own Window.Resources, which this window's
+             resource lookup never walks, so a StaticResource to it would throw at load. -->
+        <Style x:Key="AccessibleFocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Margin="-2" Stroke="{DynamicResource TintBrush}"
+                                   StrokeThickness="2" StrokeDashArray="1 1"
+                                   SnapsToDevicePixels="True"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentFillBrush}"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,6"/>
@@ -25,26 +35,66 @@
             <Setter Property="FontSize" Value="13"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource AccentFillHoverBrush}"/>
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="{StaticResource AccentPressedBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource AccentFillPressedBrush}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style x:Key="SecondaryButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushCustom}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushCustom}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,4"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource BorderBrushCustom}"/>
+                    <Setter Property="Background" Value="{DynamicResource BorderBrushCustom}"/>
                 </Trigger>
             </Style.Triggers>
+        </Style>
+
+        <!-- List rows. Implicit because ListBox.Items is the only place it applies: the
+             stock container paints a system-blue rectangle with white text, which
+             ignores the palette entirely (and white on NavSelected would be unreadable).
+             Selection is carried the same way the sidebar carries it: the row fill
+             changes, the text stays TextPrimaryBrush. -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AccessibleFocusVisual}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Row"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource FillTertiaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource NavSelectedBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -58,23 +108,23 @@
         <TextBlock Grid.Row="0"
                    Text="This capture contains more than one stream. Pick the one to download — the first is usually the master playlist."
                    TextWrapping="Wrap"
-                   Foreground="{StaticResource TextPrimaryBrush}"
+                   Foreground="{DynamicResource TextPrimaryBrush}"
                    Margin="0,0,0,12"/>
 
         <ListBox Grid.Row="1"
                  x:Name="List_Candidates"
                  AutomationProperties.Name="Stream candidates found in the capture"
                  MouseDoubleClick="List_Candidates_MouseDoubleClick"
-                 Background="#141418"
-                 BorderBrush="{StaticResource BorderBrushCustom}"
+                 Background="{DynamicResource SurfaceBrush}"
+                 BorderBrush="{DynamicResource BorderBrushCustom}"
                  HorizontalContentAlignment="Stretch">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Margin="4">
                         <TextBlock Text="{Binding Kind}" FontWeight="Bold"
-                                   Foreground="{StaticResource AccentTextBrush}"/>
+                                   Foreground="{DynamicResource AccentTextBrush}"/>
                         <TextBlock Text="{Binding Url}" TextTrimming="CharacterEllipsis"
-                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
                     </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>

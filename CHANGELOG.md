@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.8] - 2026-09-15
+
+### Fixed
+
+- **Silent Download Failures Reported as Success**: N_m3u8DL-RE writes its terminal failure record as `ERROR: Failed` — with **no space** before the colon, unlike every other record (`WARN : ...`). The record-stamp pattern in `ConsoleOutputParser` required whitespace there, so the failure line was never split off; it stayed glued to the tail of the preceding progress frame, was classified as progress, and therefore never reached `ClassifyOutcome`. Since N_m3u8DL-RE exits with code 0 even on failure, the GUI then reported "Process finished successfully!" and skipped every recovery path. The record-stamp pattern now accepts `\s*:` before the colon.
+  - The same glued record also rendered in the progress-row colour instead of red — the cause of the previously reported "Vid Kbps rows are still black".
+  - `HandleProgressFrameLocked` and `FlushPending` now also run `ClassifyOutcome` over the frame text, so a failure signature glued anywhere onto a progress row is still detected even if it is never split into its own record.
+- **Truncated Downloads With No Failure Signature**: a new `ConsoleOutputParser.TryExtractVideoSegmentCount` reads the video bar's `done/total` counters (anchored on the `Vid ` label, so an idle `Sub Kbps --- 5/100` row cannot be mistaken for an incomplete video download). A run that exits 0 with a short video bar is now treated as a failure instead of a success.
+- **Recovery Pipeline Restored**: `EngineRunResult` gained an `Incomplete` flag, and both the auto-retry loop and the CF-bypass fallback gate on it. Previously `Outcome == None` broke out of the retry loop immediately, so the segment-count safety net could never trigger. With the three fixes above, retries, the Cloudflare fallback and the "Allow Missing Segments" partial merge all run as configured.
+- 711 automated tests pass, 0 failed (1 skipped: live-network integration).
+
+### Changed
+
+- **Publish Output Correctness (`-38 MB`)**: the three external engine files (`N_m3u8DL-RE.exe`, `ffmpeg.exe`, `m3u8_cf_bypass.py`) are now marked `ExcludeFromSingleFile`. Under `PublishSingleFile=true` the SDK's `_ComputeFilesToBundle` claims every `ResolvedFileToPublish` item that lacks that marker and removes it from the publish list; since the engine binaries are not managed assemblies the bundler could not embed them, so they were silently dropped from the output directory. The stray `ffmpeg.exe` also inflated the GUI executable itself — it is back to its true ~63 MB from the erroneous ~101 MB.
+
+---
+
+## [2.1.7] - 2026-09-15
+
+### Added
+
+- **Vector Icon Set (`Themes/Icons.xaml`)**: 23 single-line icons drawn on a 24x24 grid, replacing every emoji in the UI. Each glyph is an open polyline meant to be **stroked**, never filled — the shared `IconPath` style carries that contract. The dictionary is merged once at App level and is never swapped by `ThemeManager` (whose marker is the `Themes/Theme.` prefix), so icons stay available across dark/light switches while their colour still comes from `DynamicResource` references into the active theme.
+- **15 New Design Tokens**: both theme dictionaries grew from 19 to 34 tokens (`AccentFillBrush` / `AccentFillHoverBrush` / `AccentFillPressedBrush`, `TintBrush`, `SeparatorBrush`, `SwitchOnBrush`, `FillTertiaryBrush`, `NavSelectedBrush`, `ScrollThumbBrush`, `RaisedSurfaceBrush`, `TertiaryLabelBrush`, `DangerFillBrush`, `InputFillBrush`, `InputFillHoverBrush`, `FocusRingBrush`), so control templates no longer hard-code colours and re-colour on a theme swap.
+- **Empty-State Card**: the download list now shows a dedicated card when nothing is queued, instead of a blank region.
+
+### Changed
+
+- **Control Templates Rewritten**: group cards, checkboxes, switches, text inputs, scrollbars, progress bars, sidebar navigation and the log toggle all received explicit templates built on the new tokens — consistent corner radii, hover/pressed/focus states, and a visible focus ring for keyboard navigation.
+- **Filled Input Style**: text inputs switched from outlined to filled surfaces (`InputFillBrush` with an `InputFillHoverBrush` hover state), matching the rest of the card-based layout.
+- **Layout Polish (P0–P2)**: spacing collapsed onto a single ladder instead of seven ad-hoc steps — row gaps inside a list are now `0,8,0,0` and horizontal gaps `0,0,8,0` (was 2/4/6/7/10/12 and 5/6/7/9/10), container insets `Padding="12"` → `14`, taking `MainWindow.xaml` from 37 distinct `Margin` values down to 19. Labels in a fixed 90px label column are right-aligned, so the gap to their field is a constant 8px instead of drifting with label length; the `Request & Proxy` card's 80px column joined the 90px system and `Performance & Limits` became a 2x2 on that column (90px, right-aligned values) rather than four inline labels beside 45px pills. Input controls now share one height: `ComboBox` `MinHeight` 26 → 41, which is what a filled field actually renders at, so a drop-down and the field beside it line up. The top input area is one grid again — `Save Dir`/`Browse` reuse the URL row's columns, `Save Name` sits behind a 24px gutter as its own group, and both rows end on the same right edge. The empty-state card's heading (14/SemiBold/`TextPrimaryBrush`) now outranks the steps it introduces (13), the Cloudflare scope warning moved from `CornerRadius="3"` to `8` (the last pre-redesign radius in the file), and an empty URL field no longer paints the invalid hairline on first paint — that stroke is reserved for input that is present and malformed.
+- **Extension Popup Visual Alignment**: `extension/popup/{popup.css,popup.html,popup.js}` re-skinned onto the same token vocabulary (`--canvas`, `--surface`, `--surface-raised`, `--ink`, `--ink-2`, `--accent*`, `--tint`, `--separator`, `--fill-tertiary`, `--danger`, `--success`), so the browser extension and the desktop GUI read as one product.
+
+### Fixed
+
+- **Themed Title Bar**: the native system title bar now follows the active theme (dark caption in dark mode, light caption in light mode) on startup and after every runtime theme switch; applies to the main window and the stream picker (`Services/TitleBarTheme.cs`).
+- **Dark/Light Text Contrast**: secondary and selected-state text now clears WCAG AA on every grouped surface — `TextSecondaryBrush` lifted to `#9E9EB8` in dark, `TintOnFillBrush` (`#66B2FF`) added for selected sidebar/list/log-toggle rows, and `FillTertiaryHoverBrush` added so the secondary-button hover no longer washes the label out. Contrast assertions for those tokens were added to `XamlContrastTests`.
+- 704 automated tests pass, 0 failed (1 skipped: live-network integration).
+
+---
+
+## [2.1.6] - 2026-09-15
+
+### Added
+
+- **Dark / Light Theme Switching**:
+  - Palette moved from `MainWindow.xaml` into two app-level resource dictionaries (`Themes/Theme.Dark.xaml`, `Theme.Light.xaml`, 19 tokens each); all brush references converted from `StaticResource` to `DynamicResource` so a theme swap re-colours the whole rendered tree without a restart.
+  - `ThemeManager` swaps the merged dictionary at runtime; `Theme` combo in the Zone A title bar switches instantly, the choice persists in `config.json` (`Theme` key) and is applied before the first frame on startup.
+  - Light palette fully passes WCAG AA (4.5:1 text, 3:1 boundaries) — verified per-theme by `XamlContrastTests` against both dictionary files; the accent ramp shifts one step darker, semantic amber/red/green tokens are deepened for light backgrounds.
+  - `StreamPickerWindow` follows the active theme automatically (local palette removed).
+- **Severity-Coloured Log Viewer (`Controls/LogViewer`)**:
+  - Replaced the log `TextBox` with a `RichTextBox`-based viewer colour-coding every line by the engine's record stamp: INFO green, WARN amber, ERROR red, DEBUG/EXTRA dim — mirroring N_m3u8DL-RE's own console palette. GUI-generated lines follow the same scheme (failure wording turns red). Colours are resource references, so theme switches also re-colour history.
+- **Independent Auto-Update Engine (GUI / N_m3u8DL-RE / FFmpeg)**:
+  - The update group now has one row per component, each with its own auto-check toggle (persisted: `AutoCheckNReUpdate`, `AutoCheckFfmpegUpdate`), manual "Check Now" button, and status line.
+  - `EngineUpdateCheckService` (Core) probes the local binaries (`--version` / `-version`) and compares them against the latest GitHub release via the `releases/latest` redirect (no API rate limit). N_m3u8DL-RE tracks `nilaoda/N_m3u8DL-RE`; FFmpeg tracks GyanD essentials builds (`GyanD/codexffmpeg`), the same source as the bundled binary. Finding an update opens the release page (replacing a running binary in place is unsafe).
+- **Third-Party Tools Section (Advanced tab)**:
+  - Documents the two bundled engines with clickable GitHub links and a one-line summary of what each does.
+- **Download Recovery Pipeline (Failure Audit & Partial Merge)**:
+  - `SegmentAuditService` audits the temp segment directory against `raw.m3u8` after a failed run, reporting exactly how many segments are present/missing.
+  - Auto-retry orchestration: failed engine attempts reuse existing segments; CF-bypass fallback (browser TLS fingerprint) triggers on 404/403 symptom signatures; "Allow Missing Segments" produces a best-effort ffmpeg concat merge with a visible gap warning.
+  - README gained a "Troubleshooting Failed Downloads" table covering the three failure causes and their remedies.
+
+### Changed
+
+- **Log Noise Reduction**:
+  - Fixed the burst-suppression window (ffmpeg "Packet corrupt" storms): alternating warning shapes no longer reset each other's counters — a sliding window collapses a sustained storm into one representative per shape plus a single merged "… N similar messages suppressed." note.
+  - Identical progress frames (100% idle redraws during the ffmpeg merge) are now signature-deduplicated, eliminating dozens of repeated "1268/1268 100%" log lines.
+- **UI Layout Optimizations**:
+  - Settings combo rows moved to auto-sized label columns (no more truncated "Theme" label); Theme switch relocated to the Zone A title bar; unified 90px label columns across Zone A rows; wider status-bar progress bar.
+  - "DL Language" renamed to "Engine Language" with a clearer tooltip (it controls N_m3u8DL-RE's console output language, not the GUI's).
+  - In-page version badge removed — the title bar already carries the version.
+- **Binary Size (-11 MB)**: removed the WinForms dependency (`UseWindowsForms=false`); the only usage (`FolderBrowserDialog`) now uses WPF's native `OpenFolderDialog`. Self-contained single-file exe is ~101 MB, >99% of which is the .NET 9 runtime + WPF.
+- **Publishing**: `N_m3u8DL-RE.exe` / `ffmpeg.exe` are now copied into the publish output by the csproj (`CopyToPublishDirectory`), no manual copy step.
+- **Exit Safety**: closing the GUI now terminates the engine process tree (N_m3u8DL-RE + ffmpeg/python children) before saving config, so downloads never keep running orphaned.
+
+### Fixed
+
+- Corrected the window title deriving only (not the badge) from the assembly version after badge removal; version text stays single-sourced from `AssemblyInfo`.
+- 702 automated tests pass (1 skipped: live-network integration).
+
+---
+
 ## [2.1.5] - 2026-08-20
 
 ### Added
@@ -355,6 +436,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
+| 2.1.8   | 2026-09-15 | Silent-failure detection fixed (recovery pipeline restored), truncated-download detection, publish output fixed (-38 MB), 711 tests |
+| 2.1.7   | 2026-09-15 | 23-icon 24-grid vector set (emoji removed), 15 new design tokens, control-template rewrite, filled inputs, empty-state card, extension popup alignment, 702 tests |
+| 2.1.6   | 2026-09-15 | Dark/Light themes, severity-coloured log, per-tool auto-update, log noise fix, -11 MB (WinForms removed), 702 tests |
 | 2.1.5   | 2026-08-14 | Parallel batch, socket exhaustion fix, OOM fix, DOS device protection, 245 tests |
 | 2.1.4   | 2026-08-08 | Windows DPAPI secret protection, lifecycle hardening, 164 tests |
 | 2.1.3   | 2026-08-06 | 3-Zone Modern UX/UI Architecture, Dark Mode ComboBox fixes|

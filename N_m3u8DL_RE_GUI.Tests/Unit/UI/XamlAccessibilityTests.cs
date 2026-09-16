@@ -148,9 +148,11 @@ public class XamlAccessibilityTests
         var text = XamlText();
 
         // "_GO" gives Alt+G, "S_top" gives Alt+T. If both used the same letter, whichever
-        // control was visible would swallow the other's shortcut.
-        Assert.Contains("Content=\"▶ _GO\"", text);
-        Assert.Contains("Content=\"⏹ S_top\"", text);
+        // control was visible would swallow the other's shortcut. The button labels lost
+        // their emoji prefixes when the icon layer moved to Tag + Icons.xaml; the
+        // mnemonics themselves are unchanged.
+        Assert.Contains("Content=\"_GO\"", text);
+        Assert.Contains("Content=\"S_top\"", text);
     }
 
     [Fact]

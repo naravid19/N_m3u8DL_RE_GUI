@@ -21,6 +21,30 @@ const expandedQualities = new Set(); // set of urls currently open
 
 const KIND_RANK = { HLS: 0, DASH: 0, MSS: 0, Abyss: 1, Media: 2, Audio: 2 };
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** Builds an <svg><use href="#symbolId"/></svg> node pointing at the popup sprite. */
+function iconEl(symbolId) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(SVG_NS, 'use');
+  use.setAttribute('href', `#${symbolId}`);
+  svg.appendChild(use);
+  return svg;
+}
+
+/**
+ * Rebuilds a button's contents as [icon?] + label. Copy buttons are re-labelled in
+ * place (the label flips to "Copied" and back), so the icon has to be re-attached
+ * instead of being set once.
+ */
+function setLabel(button, symbolId, label) {
+  button.textContent = '';
+  if (symbolId) button.appendChild(iconEl(symbolId));
+  button.appendChild(document.createTextNode(label));
+}
+
 function showToast(message) {
   const toast = document.getElementById('toast');
   if (!toast) return;
@@ -33,7 +57,7 @@ function showToast(message) {
   }, 3500);
 }
 
-async function copyWithFeedback(button, text, originalLabel, successMessage) {
+async function copyWithFeedback(button, text, originalLabel, successMessage, iconId = null) {
   try {
     await navigator.clipboard.writeText(text);
   } catch (err) {
@@ -42,10 +66,10 @@ async function copyWithFeedback(button, text, originalLabel, successMessage) {
     return;
   }
 
-  button.textContent = '✓ Copied';
+  setLabel(button, 'i-check', 'Copied');
   button.classList.add('is-copied');
   setTimeout(() => {
-    button.textContent = originalLabel;
+    setLabel(button, iconId, originalLabel);
     button.classList.remove('is-copied');
   }, 1500);
 
@@ -210,7 +234,8 @@ function paint({ streams, otherCount }) {
 
       const groupHeading = document.createElement('div');
       groupHeading.className = 'page-group-header';
-      groupHeading.textContent = `🌐 ${origin} (${groupItems.length})`;
+      groupHeading.appendChild(document.createTextNode(`${origin} (${groupItems.length})`));
+      groupHeading.insertBefore(iconEl('i-globe'), groupHeading.firstChild);
       groupWrapper.appendChild(groupHeading);
 
       groupItems.forEach((item, index) => {
@@ -268,13 +293,13 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
 
   const kindSpan = document.createElement('span');
   kindSpan.className = `stream-kind ${getKindClass(item.kind)}`;
-  kindSpan.textContent = item.kind === 'Abyss' ? '🎬 Abyss / Hydrax' : item.kind;
+  kindSpan.textContent = item.kind === 'Abyss' ? 'Abyss / Hydrax' : item.kind;
   metaLeft.appendChild(kindSpan);
 
   if (index === 0 && !filterQuery && totalCount > 1) {
     const recBadge = document.createElement('span');
     recBadge.className = 'badge-recommended';
-    recBadge.textContent = '⭐ Recommended';
+    recBadge.textContent = 'Recommended';
     metaLeft.appendChild(recBadge);
   }
 
@@ -332,12 +357,12 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
 
   const copyCurlBtn = document.createElement('button');
   copyCurlBtn.className = 'btn';
-  copyCurlBtn.textContent = '📋 Copy as cURL';
+  setLabel(copyCurlBtn, 'i-copy', 'Copy as cURL');
   copyCurlBtn.setAttribute('aria-label', `Copy cURL command for ${item.kind} stream`);
   copyCurlBtn.addEventListener('click', async () => {
     const chosenQuality = selectedQualityMap.get(item.url) || null;
     const curlCmd = toCurl(item, chosenQuality ? { selectVideo: chosenQuality } : {});
-    await copyWithFeedback(copyCurlBtn, curlCmd, '📋 Copy as cURL', 'Copied cURL! Switch to GUI & click "Paste from browser"');
+    await copyWithFeedback(copyCurlBtn, curlCmd, 'Copy as cURL', 'Copied cURL! Switch to GUI & click "Paste from browser"', 'i-copy');
   });
 
   const copyUrlBtn = document.createElement('button');
@@ -354,17 +379,17 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
   if (isManifestKind) {
     const qualBtn = document.createElement('button');
     qualBtn.className = 'btn btn-secondary btn-qualities';
-    qualBtn.textContent = expandedQualities.has(item.url) ? '▾ Qualities' : '▸ Qualities';
+    setLabel(qualBtn, expandedQualities.has(item.url) ? 'i-chevron-down' : 'i-chevron-right', 'Qualities');
     qualBtn.setAttribute('aria-label', `Inspect quality renditions for ${item.kind} stream`);
 
     qualBtn.addEventListener('click', async () => {
       if (expandedQualities.has(item.url)) {
         expandedQualities.delete(item.url);
-        qualBtn.textContent = '▸ Qualities';
+        setLabel(qualBtn, 'i-chevron-right', 'Qualities');
         if (qualitiesPanel) qualitiesPanel.hidden = true;
       } else {
         expandedQualities.add(item.url);
-        qualBtn.textContent = '▾ Qualities';
+        setLabel(qualBtn, 'i-chevron-down', 'Qualities');
         if (qualitiesPanel) {
           qualitiesPanel.hidden = false;
           if (!variantsCache.has(item.url)) {
@@ -457,7 +482,7 @@ function renderQualitiesPanel(panel, item) {
   const defaultOption = createQualityOption(
     item.url,
     'best',
-    '⭐ Best Available (Default)',
+    'Best Available (Default)',
     currentSelection === 'best',
     (val) => selectedQualityMap.set(item.url, val)
   );
@@ -609,8 +634,9 @@ async function init() {
     await copyWithFeedback(
       document.getElementById('btn-bulk-copy'),
       listPayload,
-      '📋 Copy as list',
-      `Copied ${selectedStreams.length} URLs as batch list! Paste in GUI.`
+      'Copy as list',
+      `Copied ${selectedStreams.length} URLs as batch list! Paste in GUI.`,
+      'i-copy'
     );
   });
 

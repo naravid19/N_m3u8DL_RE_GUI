@@ -34,6 +34,30 @@ public class DownloadOptions
     /// Requires Python 3 + curl_cffi installed on the machine.
     /// </summary>
     public bool BypassCloudflare { get; set; }
+
+    // ============================================
+    // Failure Recovery Settings
+    // ============================================
+    /// <summary>
+    /// Automatically relaunch a failed download (up to this many retries). Each retry
+    /// reuses the temp segment directory, so only missing segments are fetched.
+    /// 0 disables automatic retry.
+    /// </summary>
+    public int AutoRetryCount { get; set; }
+
+    /// <summary>
+    /// When a download ultimately fails but the engine saw 404/403 responses, fall
+    /// back to the Cloudflare-bypass path (browser TLS fingerprint) for one more
+    /// attempt. Requires Python 3 + curl_cffi.
+    /// </summary>
+    public bool AutoCfFallback { get; set; }
+
+    /// <summary>
+    /// When a download ultimately fails, merge whatever segments exist in the temp
+    /// directory into an output file instead of discarding the run. The result may
+    /// be missing content at gap positions.
+    /// </summary>
+    public bool AllowMissingSegments { get; set; }
     
     // ============================================
     // Thread & Performance Settings

@@ -5,7 +5,18 @@
              xmlns:viewmodels="clr-namespace:N_m3u8DL_RE_GUI.ViewModels"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <!-- ViewModel Locator -->
-        <viewmodels:ViewModelLocator x:Key="Locator" />
+        <ResourceDictionary>
+            <!-- Theme dictionaries provide the app-wide palette; ThemeManager swaps
+                 this merged entry at runtime for Dark/Light switching. -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Theme.Dark.xaml"/>
+                <!-- Icon geometries + the IconPath contract. Merged after the palette
+                     and never swapped, so ThemeManager's "Themes/Theme." sweep only
+                     replaces the palette entry. -->
+                <ResourceDictionary Source="Themes/Icons.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <!-- ViewModel Locator -->
+            <viewmodels:ViewModelLocator x:Key="Locator" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

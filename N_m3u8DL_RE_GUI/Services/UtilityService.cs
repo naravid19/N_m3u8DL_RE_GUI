@@ -173,23 +173,22 @@ public class UtilityService : IUtilityService, IDisposable
     {
         try
         {
-#pragma warning disable CA1416 // Validate platform compatibility
-            using var dialog = new System.Windows.Forms.FolderBrowserDialog
+            // WPF's own folder dialog (.NET 8+): keeps the app free of the WinForms
+            // stack, which would otherwise be bundled in for this one dialog.
+            var dialog = new Microsoft.Win32.OpenFolderDialog
             {
-                Description = description,
-                ShowNewFolderButton = true
+                Title = description
             };
 
             if (!string.IsNullOrWhiteSpace(initialPath) && System.IO.Directory.Exists(initialPath))
             {
-                dialog.SelectedPath = initialPath;
+                dialog.InitialDirectory = initialPath;
             }
 
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            if (dialog.ShowDialog() == true)
             {
-                return dialog.SelectedPath;
+                return dialog.FolderName;
             }
-#pragma warning restore CA1416
         }
         catch (Exception ex)
         {

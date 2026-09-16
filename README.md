@@ -56,20 +56,32 @@
 
 <!-- GETTING STARTED -->
 
+## What's New in 2.1.8 (2026-09-15)
+
+This release fixes a failure-detection bug that could leave a failed download looking successful — and silently skipped every recovery path.
+
+- **Silent failures no longer pass as success** - N_m3u8DL-RE writes its terminal record as `ERROR: Failed`, with no space before the colon (unlike `WARN : ...`). The GUI's record splitter required that space, so the failure line stayed glued to the end of a progress row, was never classified, and — because the engine exits with code 0 even on failure — the run was reported as "Process finished successfully!". Retries, the Cloudflare fallback and the **Allow Missing Segments** merge were all bypassed. The splitter now accepts both forms, and progress frames are classified too, so a glued signature is caught either way.
+- **Truncated downloads are now detected** - a run that exits 0 while the video bar is still short of its segment total is treated as a failure, even when the engine logged nothing. The check reads the `Vid ` bar specifically, so an idle `Sub` row cannot false-positive.
+- **Recovery pipeline restored** - auto-retry, CF-bypass fallback and partial-segment merge now run as configured, including after a retry that leaves segments missing.
+- **Publish output fixed (-38 MB)** - the bundled `N_m3u8DL-RE.exe` / `ffmpeg.exe` are no longer swallowed by the single-file bundler, so they are reliably present in the release folder; the GUI executable is back to its true ~63 MB (it had been inflated to ~101 MB by a stray `ffmpeg.exe` in the bundle).
+- **711 automated tests pass**, 0 failed (1 skipped: live-network integration).
+
+> Also visible in this release: the failure record now renders **red** in the log instead of the progress-row colour.
+
 ## Getting Started (Installation)
 
 We have intentionally kept the installation process as simple as possible. No installers, no complicated setups.
 
 ### 1. Download
 
-Download the latest release (`N_m3u8DL_RE_GUI_v2.1.5.zip`) from our [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) page.
+Download the latest release (`N_m3u8DL_RE_GUI_v2.1.8.zip`) from our [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) page.
 
 ### 2. Extract
 
 Extract the `.zip` file anywhere on your computer. Inside the folder, you will find exactly **4 core files** that power everything:
 
 ```text
-N_m3u8DL_RE_GUI_v2.1.5/
+N_m3u8DL_RE_GUI_v2.1.8/
 ├── N_m3u8DL_RE_GUI.exe    <-- The main application (Double click this!)
 ├── N_m3u8DL-RE.exe        <-- The core download engine
 ├── ffmpeg.exe             <-- The video/audio muxing engine
@@ -144,7 +156,8 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 - **Universal Stream Capture** - Paste browser cURL commands directly, drag-and-drop `.har` captures with automated stream ranking and picking, or use the **N-RE Stream Bridge** browser extension.
 - **Native Abyss / Hydrax Downloader** - Built-in zero-dependency C# crypto engine that decrypts and reassembles fragmented chunks from `abysscdn.com`, `playhydrax.com`, `zplayer.io`, and `short.ink`.
 - **3-Zone Modern UX/UI Architecture** - Clean layout with a top URL hero bar, a 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and a fixed command preview bar at the bottom.
-- **GUI Auto-Update Engine** - Zero rate-limit HTTP update checker. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top.
+- **Dark / Light Theme Switching** - One-click theme combo in the title bar; the entire UI (including log history) re-colours instantly without a restart. The Light palette is WCAG AA-verified.
+- **Auto-Update Engine (GUI + Engine Tools)** - Independent update checks for the GUI, N_m3u8DL-RE, and the bundled FFmpeg build — each with its own auto-check toggle and "Check Now" button. Zero rate-limit HTTP checking; finding an update opens the release page.
 - **Full RE Support** - Compatible with all major N_m3u8DL-RE command-line arguments.
 - **Cloudflare WAF Bypass** - Dedicated amber-accented section on the Network tab with browser TLS fingerprint impersonation (`curl_cffi`), dynamic domain auto-derivation, and Referer/Cookie inputs.
 - **Batch Downloads** - Process multiple URLs from text files or drop entire folders of streams.
@@ -152,10 +165,12 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 
 ### Security and Stability
 - **Windows DPAPI Secret Protection** - Your custom headers, proxies, decryption keys, and IVs are safely encrypted via Windows DPAPI in your `config.json` file. No plaintext secrets!
-- **Thread-Safe Cancellation** - Responsive process cancellation with clean token lifetime management that safely terminates child process trees.
+- **Thread-Safe Cancellation** - Responsive process cancellation with clean token lifetime management that safely terminates child process trees — closing the GUI also stops any running download.
 - **In-Window Live Feedback & Progress** - Real-time progress bar, live status messages, collapsible diagnostic log, and an "Open Folder" button on completion.
+- **Severity-Coloured Log** - Log lines are colour-coded like the engine's own console: INFO green, WARN amber, ERROR red, DEBUG dim. Repetitive ffmpeg warnings collapse into a single suppression note; idle 100% progress redraws are deduplicated.
+- **Failure Recovery Pipeline** - On failed downloads the GUI audits the temp segments, auto-retries (reusing existing segments), falls back to the CF-bypass path on TLS blocks, and can merge partial videos with visible gap warnings (see [Troubleshooting](#troubleshooting-failed-downloads)).
 - **Accessible & Keyboard Ready** - High-contrast focus visual indicators, access keys (`Alt+G` for Go, `Alt+S` / `Escape` for Stop), and full UI automation properties.
-- **Automated Test Suite (641 Tests)** - Rock-solid stability backed by 641 unit, integration, contrast, and accessibility tests covering all core models, services, XAML a11y, and view models.
+- **Automated Test Suite (711 Tests)** - Rock-solid stability backed by 711 unit, integration, contrast, and accessibility tests covering all core models, services, XAML a11y, and view models.
 
 ### Download Options
 - **Concurrent Downloads** - Download multiple streams simultaneously.
@@ -208,6 +223,24 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 - [x] Full WCAG 2.1 AA contrast compliance and option-conflict dependency visibility
 - [ ] Collapsible option groups and task-oriented grouping
 - [ ] Queue management
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+---
+
+<!-- TROUBLESHOOTING -->
+
+## Troubleshooting Failed Downloads
+
+When N_m3u8DL-RE reports `ERROR: Failed` near the end of a run (with `WARN : Response status code does not indicate success: 404 (Not Found)` / `403 (Forbidden)` lines in the log), the cause is one of three things — each with a different remedy:
+
+| Symptom | Cause | Remedy |
+| --- | --- | --- |
+| A few segments fail with 403 while the rest downloaded fine | Cloudflare has blocked the engine's TLS fingerprint mid-run. Retrying with the same fingerprint never succeeds. | Enable **CF Fallback on 404/403** (Advanced tab). The GUI retries through `m3u8_cf_bypass.py`, which impersonates a real browser TLS fingerprint (`curl_cffi`). |
+| A segment returns 404 now but worked minutes ago (or works later) | The CDN object was temporarily unavailable (node sync lag, cold cache). | Enable **Auto Retry on Failure** (Advanced tab). Each retry reuses the temp segment directory, so only missing segments are fetched. Waiting a few minutes also helps. |
+| A segment returns 404 on every attempt across hours | The segment is genuinely absent from the source CDN (never uploaded or purged). No client-side fix exists. | Enable **Allow Missing Segments** (Advanced tab) so the GUI merges what it has into a playable file with a gap where content is missing, or pick a different quality variant. |
+
+**How the recovery pipeline works:** on failure the GUI audits the temp directory (`<save folder>/.nre-tmp/<saveName>`) against `raw.m3u8`, reports exactly how many segments are missing, auto-retries the direct engine path, falls back to the CF-bypass path for TLS-fingerprint blocks, and — if you allow missing segments — produces a best-effort merge of everything on disk.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

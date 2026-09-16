@@ -7,6 +7,49 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+  <!-- Inline sprite. Same 24-grid stroke language as the GUI's Themes/Icons.xaml, so the
+       popup and the app read as one product. Symbols carry their presentation attributes
+       because a <use> instance inherits from the use element, not from this sprite. -->
+  <svg style="display: none" aria-hidden="true" focusable="false">
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 12A8 8 0 1 1 17.4 6.1"/>
+      <path d="M20 4.6V10H14.6"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4.5 6.8H19.5"/>
+      <path d="M9.5 6.8V5.2A1.2 1.2 0 0 1 10.7 4H13.3A1.2 1.2 0 0 1 14.5 5.2V6.8"/>
+      <path d="M6.6 6.8L7.4 18.6A1.6 1.6 0 0 0 9 20.1H15A1.6 1.6 0 0 0 16.6 18.6L17.4 6.8"/>
+      <path d="M10.4 10.4V16.6 M13.6 10.4V16.6"/>
+    </symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.6 9.6H17.9A1.6 1.6 0 0 1 19.5 11.2V18.5A1.6 1.6 0 0 1 17.9 20.1H10.6A1.6 1.6 0 0 1 9 18.5V11.2A1.6 1.6 0 0 1 10.6 9.6Z"/>
+      <path d="M14.6 9.6V5.4A1.8 1.8 0 0 0 12.8 3.6H5.4A1.8 1.8 0 0 0 3.6 5.4V12.8A1.8 1.8 0 0 0 5.4 14.6H9"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12.6L9.8 17.4L19 6.6"/>
+    </symbol>
+    <symbol id="i-broadcast" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="1.4"/>
+      <path d="M8.6 8.6A4.8 4.8 0 0 0 8.6 15.4 M15.4 8.6A4.8 4.8 0 0 1 15.4 15.4"/>
+      <path d="M5.6 5.6A9 9 0 0 0 5.6 18.4 M18.4 5.6A9 9 0 0 1 18.4 18.4"/>
+    </symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3.6A6 6 0 0 1 15.4 14.4C14.6 15 14.6 16 14.6 16.6H9.4C9.4 16 9.4 15 8.6 14.4A6 6 0 0 1 12 3.6Z"/>
+      <path d="M9.2 18.4H14.8 M10.6 20.4H13.4"/>
+    </symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="8.5"/>
+      <path d="M3.5 9.5H20.5 M3.5 14.5H20.5"/>
+      <path d="M12 3.5C14.4 6.2 14.4 17.8 12 20.5 M12 3.5C9.6 6.2 9.6 17.8 12 20.5"/>
+    </symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 9.6L12 15.4L18 9.6"/>
+    </symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9.6 6L15.4 12L9.6 18"/>
+    </symbol>
+  </svg>
+
   <header class="header">
     <div class="logo">
       <img src="../icons/48.png" alt="Logo" class="logo-img" width="18" height="18">
@@ -14,8 +57,8 @@
     </div>
     <div class="header-actions">
       <span id="stream-count" class="badge">0</span>
-      <button id="btn-refresh" class="icon-btn" title="Refresh stream list" aria-label="Refresh stream list">🔄</button>
-      <button id="btn-clear" class="icon-btn" title="Clear detected streams" aria-label="Clear detected streams">🗑️</button>
+      <button id="btn-refresh" class="icon-btn" title="Refresh stream list" aria-label="Refresh stream list"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+      <button id="btn-clear" class="icon-btn" title="Clear detected streams" aria-label="Clear detected streams"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg></button>
     </div>
   </header>
 
@@ -31,7 +74,7 @@
         <span id="selected-count">0 selected</span>
       </div>
       <div class="bulk-actions">
-        <button id="btn-bulk-copy" class="btn btn-sm">📋 Copy as list</button>
+        <button id="btn-bulk-copy" class="btn btn-sm"><svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy as list</span></button>
         <button id="btn-bulk-clear" class="btn btn-secondary btn-sm">Clear</button>
       </div>
     </div>
@@ -41,7 +84,7 @@
     </div>
 
     <div id="empty-state" class="empty-state">
-      <div class="empty-icon">📡</div>
+      <div class="empty-icon"><svg class="icon icon-lg" aria-hidden="true"><use href="#i-broadcast"/></svg></div>
       <p class="empty-title">Waiting for video stream...</p>
       <p class="empty-hint" id="hint-default">
         1. Play or seek the video on this page.<br>
@@ -64,7 +107,7 @@
 
   <footer class="footer">
     <div id="toast" class="toast" role="status" aria-live="polite">Copied as cURL! Switch to GUI & click "Paste from browser"</div>
-    <div class="helper-hint">💡 Click <strong>"Copy as cURL"</strong> then press <strong>"📋 Paste from browser"</strong> in GUI</div>
+    <div class="helper-hint"><svg class="icon" aria-hidden="true"><use href="#i-bulb"/></svg> Click <strong>"Copy as cURL"</strong> then press <strong>"Paste from browser"</strong> in GUI</div>
   </footer>
 
   <script type="module" src="popup.js"></script>

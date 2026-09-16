@@ -1,0 +1,79 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Light palette. Every text/background pair keeps WCAG AA (4.5:1 normal text,
+         3:1 UI boundaries), verified by XamlContrastTests against this file. -->
+    <SolidColorBrush x:Key="BgBrush" Color="#F3F4F8"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BorderBrushCustom" Color="#8A8AA0"/>
+    <!-- The accent ramp shifts one step darker so white label text keeps >=6:1;
+         hover/pressed still darken, preserving the "contrast rises on interaction" rule. -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#4350D8"/>
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#3B47C4"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#3743BE"/>
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#303BB0"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1A24"/>
+    <!-- Left as-is by the contrast pass: #55556E already clears AA on every filled
+         surface this theme has (worst 5.91:1 on FillTertiary, 6.29:1 on InputFill).
+         Lightening it toward the dark palette's new secondary grey would have lowered
+         every one of those pairs, so the fix here is only on the tokens below. -->
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#55556E"/>
+    <!-- #F39C12 measured 2.19:1 on white — deepened to an AA-passing amber. -->
+    <SolidColorBrush x:Key="CfAmberBrush" Color="#8A5A00"/>
+    <SolidColorBrush x:Key="CommandBarBrush" Color="#E9EAF0"/>
+    <SolidColorBrush x:Key="CommandTextBrush" Color="#2A3A8C"/>
+    <SolidColorBrush x:Key="DropLabelBrush" Color="#B03A2E"/>
+    <SolidColorBrush x:Key="SuccessBrush" Color="#147A3D"/>
+    <SolidColorBrush x:Key="ErrorBrush" Color="#C0392B"/>
+    <SolidColorBrush x:Key="CfWarningBgBrush" Color="#FDF3D7"/>
+    <SolidColorBrush x:Key="DimBrush" Color="#66667C"/>
+    <SolidColorBrush x:Key="DisabledSurfaceBrush" Color="#EDEDF2"/>
+
+    <!-- iOS-like component tokens. Append-only: the keys above are frozen because
+         XamlContrastTests asserts each of their values individually. -->
+    <!-- Accent as a FILL (primary button, switch, pill). White on it is 4.70:1. -->
+    <SolidColorBrush x:Key="AccentFillBrush" Color="#0071E3"/>
+    <SolidColorBrush x:Key="AccentFillHoverBrush" Color="#0066CC"/>
+    <SolidColorBrush x:Key="AccentFillPressedBrush" Color="#0056AC"/>
+    <!-- Accent as text/icon/focus ring. On NavSelected this is 4.76:1. -->
+    <SolidColorBrush x:Key="TintBrush" Color="#0066CC"/>
+    <!-- Hairline between rows inside a group. -->
+    <SolidColorBrush x:Key="SeparatorBrush" Color="#D8D8DC"/>
+    <!-- Switch track while on. -->
+    <SolidColorBrush x:Key="SwitchOnBrush" Color="#30D158"/>
+    <!-- Switch track while off, secondary button fill, progress groove. -->
+    <SolidColorBrush x:Key="FillTertiaryBrush" Color="#E8E8ED"/>
+    <!-- Selected sidebar row. -->
+    <SolidColorBrush x:Key="NavSelectedBrush" Color="#E0EFFF"/>
+    <!-- Scrollbar thumb. -->
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#B0B0B6"/>
+    <!-- Drop-down popup surface, one step above Card. -->
+    <SolidColorBrush x:Key="RaisedSurfaceBrush" Color="#FFFFFF"/>
+    <!-- Placeholder / disabled text. Disabled-only, so it answers to the 3:1 floor the
+         WCAG exemption sets rather than the 4.5:1 body-text line; #A0A0A8 was 2.60:1 on
+         Card and 2.27:1 on a filled field, this is 3.62:1 / 3.16:1. -->
+    <SolidColorBrush x:Key="TertiaryLabelBrush" Color="#86868B"/>
+    <!-- Destructive fill (stop button). White on it is 5.44:1. -->
+    <SolidColorBrush x:Key="DangerFillBrush" Color="#C0392B"/>
+
+    <!-- Input fields. CardBrush is white here, so the fill has to step DOWN the ramp
+         instead of up to stay visible inside a white card. -->
+    <SolidColorBrush x:Key="InputFillBrush" Color="#EFEFF4"/>
+    <!-- Hover / focused fill: one more step down. -->
+    <SolidColorBrush x:Key="InputFillHoverBrush" Color="#E7E7ED"/>
+    <!-- Focus ring. TintBrush pre-mixed at ~18% over the card: the ring is painted as an
+         opaque stroke, and the 6-digit token format carries no alpha. -->
+    <SolidColorBrush x:Key="FocusRingBrush" Color="#CFE4FF"/>
+
+    <!-- Contrast pass. Same two roles as the dark palette, but neither is a contrast
+         failure in this palette: accent text on a NavSelected row is 4.76:1 either way.
+         They exist so both palettes resolve the same pair of references, and so the
+         secondary button stops hovering into BorderBrushCustom (#8A8AA0), which pulled
+         its label down from 14.13:1 to 5.11:1 exactly while the user was clicking it. -->
+    <!-- Tint as TEXT (and as the icon stroke that follows it) over a filled row. Equal
+         to TintBrush here, 4.76:1 on NavSelected — a separate key so the dark palette
+         can lift the text without moving the focus ring, which this one still owns. -->
+    <SolidColorBrush x:Key="TintOnFillBrush" Color="#0066CC"/>
+    <!-- Hover step for a FillTertiary fill, one rung deeper. TextPrimary on it is 12.89:1. -->
+    <SolidColorBrush x:Key="FillTertiaryHoverBrush" Color="#DEDEE5"/>
+</ResourceDictionary>

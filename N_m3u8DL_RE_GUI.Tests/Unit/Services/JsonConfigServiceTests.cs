@@ -26,6 +26,7 @@ public class JsonConfigServiceTests
             state.Set("SavePattern", "<SaveName>_<Resolution>");
             state.Set("LogFilePath", @"C:\Logs\test.log");
             state.Set("MuxAfterDone", "1");
+            state.Set("Theme", "Light");
             state.SetEncodedBase64("程序路径", @"C:\Tools\N_m3u8DL-RE.exe");
 
             // Act
@@ -36,6 +37,7 @@ public class JsonConfigServiceTests
             Assert.Equal("<SaveName>_<Resolution>", loaded.Get("SavePattern"));
             Assert.Equal(@"C:\Logs\test.log", loaded.Get("LogFilePath"));
             Assert.Equal("1", loaded.Get("MuxAfterDone"));
+            Assert.Equal("Light", loaded.Get("Theme"));
             Assert.Equal(@"C:\Tools\N_m3u8DL-RE.exe", loaded.GetDecodedBase64("程序路径"));
         }
         finally

@@ -6,7 +6,7 @@ echo ========================================================
 
 set "SOLUTION_DIR=%~dp0"
 set "VERSION=%~1"
-if "%VERSION%"=="" set "VERSION=2.1.4"
+if "%VERSION%"=="" set "VERSION=2.1.8"
 set "PUBLISH_DIR=%SOLUTION_DIR%Publish\N_m3u8DL_RE_GUI_v%VERSION%"
 set "PROJECT_FILE=%SOLUTION_DIR%N_m3u8DL_RE_GUI\N_m3u8DL_RE_GUI.csproj"
 
