@@ -287,4 +287,11 @@ test.txt
 /.impeccable
 
 # Generated from Directory.Build.props on every build — never hand-edit.
-/extension/suite-version.json
+/extension/suite-version.json
+/.claude
+/.serena
+nilaoda_N_m3u8DL-RE.md
+CONTEXT.md
+config.txt
+config.json
+AGENTS.md
