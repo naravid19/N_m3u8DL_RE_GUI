@@ -2,27 +2,49 @@
  * N-RE Stream Bridge — Popup Logic
  */
 
-import { getTabStreams, getRecentStreams, sweepOrphanTabs, clearTab, clearAll, clearTabView, dismissMany, undismissMany, getCachedUpdateResult, setCachedUpdateResult } from '../lib/storage.js';
-import { formatBytes, formatRelativeTime, elideUrl, describeStream } from '../lib/format.js';
+import { getTabStreams, getRecentStreams, clearTab, clearAll, clearTabView, dismissMany, undismissMany, getCachedUpdateResult, setCachedUpdateResult } from '../lib/storage.js';
+import { formatBytes, formatRelativeTime, elideUrl, describeStream, splitUrl } from '../lib/format.js';
 import { KIND_TITLES } from '../lib/classify.js';
 import { toCurl, toBatchList, findRefererMismatch } from '../lib/curl.js';
 import { probeVariants } from '../lib/probe.js';
 import { rankStreams, groupByOrigin, reconcileSelection, matchesFilter } from '../lib/list-policy.js';
 import { getExtensionVersion } from '../lib/version.js';
 import { getSuiteVersion } from '../lib/suite-version.js';
+import { getMergedCookies, applyMergedCookie } from '../lib/cookies.js';
 import { checkSuiteUpdate } from '../lib/update-check.js';
+import { sendToGui, isGuiAvailable } from '../lib/native.js';
+import { icon, hydrateIcons } from '../lib/icons.js';
 
 let activeTabId = null;
+let activeTabTitle = '';
+let activeTabUrl = '';
 let currentView = 'current'; // 'current' | 'all'
 let toastTimer = null;
 let renderTimer = null;
 let renderGeneration = 0;
 let filterQuery = '';
+let guiAvailable = null; // null = not probed yet, true | false
+let guiAvailablePromise = null;
+
+function checkGuiAvailable() {
+  if (guiAvailablePromise) return guiAvailablePromise;
+  guiAvailablePromise = isGuiAvailable().then((available) => {
+    guiAvailable = available;
+    return available;
+  });
+  return guiAvailablePromise;
+}
 
 const selectedUrls = new Set();
 const variantsCache = new Map(); // url -> { variants, error, loading }
 const selectedQualityMap = new Map(); // url -> selectVideo directive string
 const expandedQualities = new Set(); // set of urls currently open
+const qualitiesPanels = new Map(); // url -> the qualities panel currently rendered for it
+
+function setButtonLabel(button, iconName, text) {
+  const svg = iconName ? icon(iconName) : null;
+  button.replaceChildren(...(svg ? [svg] : []), document.createTextNode(text));
+}
 
 function showToast(message, options = {}) {
   const toast = document.getElementById('toast');
@@ -68,7 +90,7 @@ function hideToast() {
   }
 }
 
-async function copyWithFeedback(button, text, originalLabel, successMessage) {
+async function copyWithFeedback(button, text, originalIcon, originalLabel, successMessage) {
   try {
     await navigator.clipboard.writeText(text);
   } catch (err) {
@@ -77,10 +99,10 @@ async function copyWithFeedback(button, text, originalLabel, successMessage) {
     return;
   }
 
-  button.textContent = '✓ Copied';
+  setButtonLabel(button, 'check', 'Copied');
   button.classList.add('is-copied');
   setTimeout(() => {
-    button.textContent = originalLabel;
+    setButtonLabel(button, originalIcon, originalLabel);
     button.classList.remove('is-copied');
   }, 1500);
 
@@ -88,8 +110,8 @@ async function copyWithFeedback(button, text, originalLabel, successMessage) {
 }
 
 async function loadStreams() {
-  if (currentView === 'current' && activeTabId) {
-    const currentStreams = await getTabStreams(activeTabId);
+  if (currentView === 'current') {
+    const currentStreams = activeTabId ? await getTabStreams(activeTabId) : [];
     let otherCount = 0;
     if (currentStreams.length === 0) {
       const recent = await getRecentStreams();
@@ -110,18 +132,6 @@ function getKindClass(kind) {
     case 'abyss': return 'kind-abyss';
     case 'audio': return 'kind-audio';
     default: return 'kind-media';
-  }
-}
-
-function splitUrl(rawUrl) {
-  try {
-    const u = new URL(rawUrl);
-    const pathParts = u.pathname.split('/').filter(Boolean);
-    const filename = pathParts.length > 0 ? pathParts[pathParts.length - 1] : u.hostname;
-    const hostAndPath = `${u.origin}${u.pathname}`;
-    return { filename: `${filename}${u.search ? ' ' + u.search : ''}`, hostAndPath };
-  } catch {
-    return { filename: rawUrl, hostAndPath: '' };
   }
 }
 
@@ -258,7 +268,7 @@ function paint({ streams, otherCount }) {
 
       const groupHeading = document.createElement('div');
       groupHeading.className = 'page-group-header';
-      groupHeading.textContent = `🌐 ${headerText} (${group.items.length})`;
+      groupHeading.textContent = `${headerText} (${group.items.length})`;
       groupWrapper.appendChild(groupHeading);
 
       group.items.forEach((item, index) => {
@@ -274,6 +284,22 @@ function paint({ streams, otherCount }) {
       streamList.appendChild(card);
     });
   }
+}
+
+/** The payload both Copy as cURL and Download send. */
+async function buildCurlFor(item) {
+  const chosenQuality = selectedQualityMap.get(item.url) || null;
+  const rawTitle = item.pageTitle || activeTabTitle || '';
+  const cleanTitle = rawTitle.replace(/[#*?<>|"\\/:]/g, ' ').replace(/\s+/g, ' ').trim();
+  const options = {};
+  if (chosenQuality) options.selectVideo = chosenQuality;
+  if (cleanTitle) options.saveName = cleanTitle;
+
+  const effectivePageUrl = item.pageUrl || activeTabUrl || null;
+  const mergedCookie = await getMergedCookies(item.url, effectivePageUrl, item.cookie);
+  const streamForCurl = applyMergedCookie({ ...item, pageUrl: effectivePageUrl }, mergedCookie);
+
+  return toCurl(streamForCurl, options);
 }
 
 function createStreamCard(item, index, totalCount, allDisplayed) {
@@ -322,7 +348,7 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
 
   const kindSpan = document.createElement('span');
   kindSpan.className = `stream-kind ${getKindClass(item.kind)}`;
-  kindSpan.textContent = item.kind === 'Abyss' ? '🎬 Abyss / Hydrax' : item.kind;
+  kindSpan.textContent = item.kind === 'Abyss' ? 'Abyss / Hydrax' : item.kind;
   const expansion = KIND_TITLES[item.kind];
   if (expansion) kindSpan.title = expansion;
   metaLeft.appendChild(kindSpan);
@@ -353,7 +379,7 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
   }
 
   // --- Two-Line URL Display ---
-  const { filename, hostAndPath } = splitUrl(item.url);
+  const { filename, queryParams, hostAndPath } = splitUrl(item.url);
 
   const urlBox = document.createElement('div');
   urlBox.className = 'stream-url-box';
@@ -362,6 +388,14 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
   const fnDiv = document.createElement('div');
   fnDiv.className = 'url-filename';
   fnDiv.textContent = filename;
+
+  if (queryParams) {
+    const qSpan = document.createElement('span');
+    qSpan.className = 'url-query';
+    qSpan.textContent = ` ${queryParams.length > 38 ? queryParams.slice(0, 35) + '…' : queryParams}`;
+    qSpan.title = item.url;
+    fnDiv.appendChild(qSpan);
+  }
 
   const hostDiv = document.createElement('div');
   hostDiv.className = 'url-hostpath';
@@ -379,58 +413,136 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
     qualitiesPanel.className = 'qualities-panel';
     qualitiesPanel.hidden = !expandedQualities.has(item.url);
     renderQualitiesPanel(qualitiesPanel, item);
+    qualitiesPanels.set(item.url, qualitiesPanel);
   }
 
   // --- Action Buttons ---
   const actions = document.createElement('div');
   actions.className = 'actions';
 
+  // The GUI is the whole point of this extension, so handing a stream
+  // straight to it leads. It only appears when the GUI is actually
+  // installed — Copy as cURL remains the path when it is not.
+  const downloadBtn = document.createElement('button');
+  downloadBtn.className = 'btn';
+  setButtonLabel(downloadBtn, 'download', 'Download');
+  downloadBtn.hidden = true;
+  downloadBtn.title = 'Send this stream to N_m3u8DL-RE GUI and start downloading';
+  downloadBtn.setAttribute('aria-label', `Download this ${item.kind} stream in N_m3u8DL-RE GUI`);
+  downloadBtn.addEventListener('click', async () => {
+    downloadBtn.disabled = true;
+    setButtonLabel(downloadBtn, null, 'Sending…');
+
+    const result = await sendToGui(await buildCurlFor(item));
+
+    setButtonLabel(downloadBtn, 'download', 'Download');
+    downloadBtn.disabled = false;
+
+    if (result.ok) {
+      showToast('Sent to GUI — the download starts there.');
+    } else if (result.reason === 'unavailable') {
+      // Re-render rather than patch this one card's buttons: every visible
+      // card shares the same guiAvailable flag, and createStreamCard is
+      // already the one place that decides each card's button state from it.
+      guiAvailable = false;
+      renderStreams();
+      showToast('N_m3u8DL-RE GUI is not available. Use Copy as cURL instead.');
+    } else {
+      showToast(`GUI refused the stream: ${result.reason}`);
+    }
+  });
+
   const copyCurlBtn = document.createElement('button');
   copyCurlBtn.className = 'btn';
-  copyCurlBtn.textContent = '📋 Copy as cURL';
+  setButtonLabel(copyCurlBtn, 'clipboard', 'Copy as cURL');
   copyCurlBtn.setAttribute('aria-label', `Copy cURL command for ${item.kind} stream`);
   copyCurlBtn.addEventListener('click', async () => {
-    const chosenQuality = selectedQualityMap.get(item.url) || null;
-    const curlCmd = toCurl(item, chosenQuality ? { selectVideo: chosenQuality } : {});
-    await copyWithFeedback(copyCurlBtn, curlCmd, '📋 Copy as cURL', 'Copied cURL! Switch to GUI & click "Paste from browser"');
+    const curlCmd = await buildCurlFor(item);
+    await copyWithFeedback(copyCurlBtn, curlCmd, 'clipboard', 'Copy as cURL', 'Copied cURL! Switch to GUI & click "Paste from browser"');
   });
 
   const copyUrlBtn = document.createElement('button');
   copyUrlBtn.className = 'btn btn-secondary';
-  copyUrlBtn.textContent = 'URL only';
+  setButtonLabel(copyUrlBtn, 'link', 'URL only');
   copyUrlBtn.title = 'Copies the address without the Referer, Cookie or User-Agent headers. Most sites reject it.';
   copyUrlBtn.setAttribute('aria-label', `Copy the ${item.kind} URL without headers`);
   copyUrlBtn.addEventListener('click', async () => {
-    await copyWithFeedback(copyUrlBtn, item.url, 'URL only', 'Copied the URL only — no headers.');
+    await copyWithFeedback(copyUrlBtn, item.url, 'link', 'URL only', 'Copied the URL only — no headers.');
   });
 
-  actions.appendChild(copyCurlBtn);
-  actions.appendChild(copyUrlBtn);
-
+  let qualBtn = null;
   if (isManifestKind) {
-    const qualBtn = document.createElement('button');
+    qualBtn = document.createElement('button');
     qualBtn.className = 'btn btn-secondary btn-qualities';
-    qualBtn.textContent = expandedQualities.has(item.url) ? '▾ Qualities' : '▸ Qualities';
+    setButtonLabel(qualBtn, expandedQualities.has(item.url) ? 'chevronDown' : 'chevronRight', 'Qualities');
     qualBtn.setAttribute('aria-label', `Inspect quality renditions for ${item.kind} stream`);
 
     qualBtn.addEventListener('click', async () => {
       if (expandedQualities.has(item.url)) {
         expandedQualities.delete(item.url);
-        qualBtn.textContent = '▸ Qualities';
+        setButtonLabel(qualBtn, 'chevronRight', 'Qualities');
         if (qualitiesPanel) qualitiesPanel.hidden = true;
       } else {
         expandedQualities.add(item.url);
-        qualBtn.textContent = '▾ Qualities';
+        setButtonLabel(qualBtn, 'chevronDown', 'Qualities');
         if (qualitiesPanel) {
           qualitiesPanel.hidden = false;
           if (!variantsCache.has(item.url)) {
-            await loadQualities(item, qualitiesPanel, qualBtn);
+            await loadQualities(item, qualBtn);
           }
         }
       }
     });
+  }
 
-    actions.appendChild(qualBtn);
+  const primaryRow = document.createElement('div');
+  primaryRow.className = 'actions-primary';
+
+  const secondaryRow = document.createElement('div');
+  secondaryRow.className = 'actions-secondary';
+
+  actions.append(primaryRow, secondaryRow);
+
+  // Exactly one accent button per card. When the GUI is reachable, Download
+  // takes the accent as the full-width primary CTA, and Copy as cURL steps back
+  // to the outline treatment in the secondary toolbar; when it is not,
+  // Copy as cURL is promoted to the primary CTA in Row 1.
+  function applyGuiAvailability(available) {
+    downloadBtn.hidden = !available;
+    primaryRow.textContent = '';
+    secondaryRow.textContent = '';
+
+    if (available) {
+      downloadBtn.className = 'btn';
+      copyCurlBtn.className = 'btn btn-secondary';
+      primaryRow.appendChild(downloadBtn);
+      secondaryRow.appendChild(copyCurlBtn);
+    } else {
+      copyCurlBtn.className = 'btn';
+      primaryRow.appendChild(copyCurlBtn);
+    }
+    secondaryRow.appendChild(copyUrlBtn);
+    if (qualBtn) secondaryRow.appendChild(qualBtn);
+  }
+
+  // Render immediately with synchronous baseline (offline layout) to eliminate blank flash and CLS.
+  // Promote to primary Download if native host is detected online.
+  if (guiAvailable === true) {
+    applyGuiAvailability(true);
+  } else if (guiAvailable === false) {
+    applyGuiAvailability(false);
+  } else {
+    applyGuiAvailability(false);
+    checkGuiAvailable().then((available) => {
+      // card, not downloadBtn: the offline baseline above appends only copyCurlBtn,
+      // so downloadBtn is not in the DOM yet and its .isConnected is false by
+      // construction -- the promotion could never fire on a fresh popup open. The
+      // guard is here to skip a card that was re-rendered away while the native
+      // host was being probed, and card is the node that answers that.
+      if (available && card.isConnected) {
+        applyGuiAvailability(true);
+      }
+    });
   }
 
   // Card keyboard shortcuts
@@ -446,7 +558,11 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
       checkbox.dispatchEvent(new Event('change'));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      copyCurlBtn.click();
+      if (guiAvailable && !downloadBtn.hidden) {
+        downloadBtn.click();
+      } else {
+        copyCurlBtn.click();
+      }
     }
   });
 
@@ -458,13 +574,13 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
   return card;
 }
 
-async function loadQualities(item, panel, button) {
+async function loadQualities(item, button, { fresh = false } = {}) {
   variantsCache.set(item.url, { variants: [], error: null, loading: true });
-  renderQualitiesPanel(panel, item);
+  paintQualities(item);
   if (button) button.disabled = true;
 
   const tabId = item.tabId || activeTabId || null;
-  const result = await probeVariants(item, tabId);
+  const result = await probeVariants(item, tabId, { fresh });
   variantsCache.set(item.url, {
     variants: result.variants,
     error: result.error,
@@ -472,7 +588,16 @@ async function loadQualities(item, panel, button) {
   });
 
   if (button) button.disabled = false;
-  renderQualitiesPanel(panel, item);
+  paintQualities(item);
+}
+
+/**
+ * Paints the qualities panel on screen for this stream, if any. The list can
+ * re-render while a probe runs, which detaches the panel the probe started with.
+ */
+function paintQualities(item) {
+  const panel = qualitiesPanels.get(item.url);
+  if (panel?.isConnected) renderQualitiesPanel(panel, item);
 }
 
 function renderQualitiesPanel(panel, item) {
@@ -480,10 +605,28 @@ function renderQualitiesPanel(panel, item) {
   const cached = variantsCache.get(item.url);
 
   if (!cached || cached.loading) {
+    const skeleton = document.createElement('div');
+    skeleton.className = 'qualities-skeleton';
+    skeleton.setAttribute('role', 'status');
+    skeleton.setAttribute('aria-label', 'Reading manifest renditions');
+
+    for (let i = 0; i < 3; i++) {
+      const row = document.createElement('div');
+      row.className = 'skeleton-row';
+      const radio = document.createElement('div');
+      radio.className = 'skeleton-radio';
+      const bar = document.createElement('div');
+      bar.className = 'skeleton-bar';
+      row.append(radio, bar);
+      skeleton.appendChild(row);
+    }
+
     const status = document.createElement('div');
     status.className = 'qualities-status';
-    status.textContent = '⋯ Reading manifest...';
-    panel.appendChild(status);
+    status.textContent = 'Reading manifest…';
+    skeleton.appendChild(status);
+
+    panel.appendChild(skeleton);
     return;
   }
 
@@ -495,7 +638,7 @@ function renderQualitiesPanel(panel, item) {
     const retryBtn = document.createElement('button');
     retryBtn.className = 'btn-retry';
     retryBtn.textContent = 'Retry';
-    retryBtn.addEventListener('click', () => loadQualities(item, panel, null));
+    retryBtn.addEventListener('click', () => loadQualities(item, null, { fresh: true }));
     status.appendChild(retryBtn);
 
     panel.appendChild(status);
@@ -519,7 +662,7 @@ function renderQualitiesPanel(panel, item) {
   const defaultOption = createQualityOption(
     item.url,
     'best',
-    '⭐ Best Available (Default)',
+    'Best Available (Default)',
     currentSelection === 'best',
     (val) => selectedQualityMap.set(item.url, val)
   );
@@ -572,18 +715,6 @@ async function renderStreams() {
   paint(data);
 }
 
-async function sweepOnOpen() {
-  try {
-    const tabs = await chrome.tabs.query({});
-    const removed = await sweepOrphanTabs(tabs.map((t) => t.id));
-    if (removed > 0) {
-      console.debug(`[N-RE Stream Bridge] Cleared ${removed} orphaned tab entries.`);
-    }
-  } catch (err) {
-    console.debug('[N-RE Stream Bridge] Sweep skipped:', err);
-  }
-}
-
 function refreshTimestamps() {
   document.querySelectorAll('.stream-time[data-timestamp]').forEach((el) => {
     const ts = Number.parseInt(el.dataset.timestamp, 10);
@@ -592,10 +723,21 @@ function refreshTimestamps() {
 }
 
 async function init() {
+  hydrateIcons();
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab && tab.id) {
-      activeTabId = tab.id;
+    let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) {
+      const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      tab = tabs && tabs.length > 0 ? tabs[0] : null;
+    }
+    if (!tab) {
+      const tabs = await chrome.tabs.query({ active: true });
+      tab = tabs && tabs.length > 0 ? tabs[0] : null;
+    }
+    if (tab) {
+      if (tab.id) activeTabId = tab.id;
+      if (tab.title) activeTabTitle = tab.title;
+      if (tab.url) activeTabUrl = tab.url;
     }
   } catch (err) {
     console.error('Could not get active tab', err);
@@ -687,25 +829,29 @@ async function init() {
     renderStreams();
   });
 
-  document.getElementById('btn-bulk-copy').addEventListener('click', async () => {
+  const btnBulkCopy = document.getElementById('btn-bulk-copy');
+  btnBulkCopy.addEventListener('click', async () => {
     const data = await loadStreams();
     const selectedStreams = data.streams.filter((s) => selectedUrls.has(s.url));
     if (selectedStreams.length === 0) return;
 
     const listPayload = toBatchList(selectedStreams);
     await copyWithFeedback(
-      document.getElementById('btn-bulk-copy'),
+      btnBulkCopy,
       listPayload,
-      '📋 Copy as list',
+      'clipboard',
+      'Copy as list',
       `Copied ${selectedStreams.length} URLs as batch list! Paste in GUI.`
     );
   });
 
-  // Filter input handler
+  // Filter input handler with debouncing
   const filterInput = document.getElementById('stream-filter');
+  let filterTimer = null;
   filterInput.addEventListener('input', (e) => {
     filterQuery = e.target.value.trim();
-    renderStreams();
+    if (filterTimer) clearTimeout(filterTimer);
+    filterTimer = setTimeout(renderStreams, 150);
   });
 
   // Live storage change listener with debouncing (C3)
@@ -724,9 +870,6 @@ async function init() {
 
   // Initialize version display and check for updates
   initVersionAndUpdates();
-
-  // Sweep orphaned tab keys in background after first render
-  sweepOnOpen();
 }
 
 async function initVersionAndUpdates() {
@@ -752,7 +895,9 @@ async function initVersionAndUpdates() {
     if (updateResult && updateResult.status === 'update-available') {
       const badge = document.getElementById('ext-update-badge');
       if (badge) {
-        badge.textContent = `🎉 N_m3u8DL-RE GUI ${updateResult.latestVersion} available ↗`;
+        badge.textContent = `N_m3u8DL-RE GUI ${updateResult.latestVersion} available`;
+        const extIcon = icon('external', 11);
+        if (extIcon) badge.appendChild(extIcon);
         badge.href = updateResult.releaseUrl || 'https://github.com/naravid19/N_m3u8DL_RE_GUI/releases/latest';
         badge.hidden = false;
       }

@@ -48,17 +48,40 @@ async function fetchFromPage(tabId, url, timeoutMs) {
           });
           if (!response.ok) return { ok: false, status: response.status };
 
-          // Refuse before reading. A manifest is kilobytes; anything larger is
-          // not one, and the body would otherwise be downloaded in full and
-          // then serialized across the injection boundary before being thrown away.
           const declared = Number.parseInt(response.headers.get('content-length') || '', 10);
           if (Number.isFinite(declared) && declared > maxBytes) {
             return { ok: false, status: response.status, error: 'TooLarge' };
           }
 
-          return { ok: true, status: response.status, text: await response.text() };
+          if (!response.body || typeof response.body.getReader !== 'function') {
+            const text = await response.text();
+            if (text.length > maxBytes) return { ok: false, status: response.status, error: 'TooLarge' };
+            return { ok: true, status: response.status, text };
+          }
+
+          const reader = response.body.getReader();
+          const chunks = [];
+          let totalBytes = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            totalBytes += (value.byteLength || value.length || 0);
+            if (totalBytes > maxBytes) {
+              try { await reader.cancel(); } catch {}
+              return { ok: false, status: response.status, error: 'TooLarge' };
+            }
+            chunks.push(value);
+          }
+          const decoder = new TextDecoder('utf-8');
+          let text = '';
+          for (const chunk of chunks) {
+            text += decoder.decode(chunk, { stream: true });
+          }
+          text += decoder.decode();
+          return { ok: true, status: response.status, text };
         } catch (err) {
-          return { ok: false, status: 0, error: String(err && err.name) };
+          const msg = String(err && (err.name || err.message));
+          return { ok: false, status: 0, error: msg.includes('TooLarge') ? 'TooLarge' : msg };
         } finally {
           clearTimeout(timer);
         }
@@ -89,9 +112,35 @@ async function fetchDirect(url, timeoutMs) {
       return { ok: false, status: response.status, error: 'TooLarge' };
     }
 
-    return { ok: true, status: response.status, text: await response.text() };
+    if (!response.body || typeof response.body.getReader !== 'function') {
+      const text = await response.text();
+      if (text.length > MAX_BYTES) return { ok: false, status: response.status, error: 'TooLarge' };
+      return { ok: true, status: response.status, text };
+    }
+
+    const reader = response.body.getReader();
+    const chunks = [];
+    let totalBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += (value.byteLength || value.length || 0);
+      if (totalBytes > MAX_BYTES) {
+        try { await reader.cancel(); } catch {}
+        return { ok: false, status: response.status, error: 'TooLarge' };
+      }
+      chunks.push(value);
+    }
+    const decoder = new TextDecoder('utf-8');
+    let text = '';
+    for (const chunk of chunks) {
+      text += decoder.decode(chunk, { stream: true });
+    }
+    text += decoder.decode();
+    return { ok: true, status: response.status, text };
   } catch (err) {
-    return { ok: false, status: 0, error: err && err.name === 'AbortError' ? 'Timeout' : String(err && err.message) };
+    if (err && err.name === 'AbortError') return { ok: false, status: 0, error: 'Timeout' };
+    return { ok: false, status: 0, error: String(err && err.message) };
   } finally {
     clearTimeout(timer);
   }
@@ -100,31 +149,34 @@ async function fetchDirect(url, timeoutMs) {
 /**
  * Fetches and parses variants for a given manifest stream on demand.
  * Probes from the page context (inheriting auth/cookies) with direct fallback,
- * caching results in session storage (P9).
+ * caching results in session storage (P9). { fresh: true } skips the cache read,
+ * so a Retry is not answered by the failure it is retrying.
  * Returns { variants: Variant[], error: string|null }.
  */
-export async function probeVariants(stream, tabId = null, deps = {}) {
-  const fetchPage = deps.fetchFromPage ?? fetchFromPage;
-  const fetchDirect_ = deps.fetchDirect ?? fetchDirect;
+export async function probeVariants(stream, tabId = null, options = {}) {
+  const fetchPage = options.fetchFromPage ?? fetchFromPage;
+  const fetchDirect_ = options.fetchDirect ?? fetchDirect;
 
   if (!stream || !stream.url) {
     return { variants: [], error: 'Invalid stream' };
   }
 
   // Check session cache first (P9)
-  try {
-    const cached = await getCachedVariants(stream.url);
-    if (cached) {
-      return cached;
+  if (!options.fresh) {
+    try {
+      const cached = await getCachedVariants(stream.url);
+      if (cached) {
+        return cached;
+      }
+    } catch {
+      // ignore cache lookup error in unit tests / standalone contexts
     }
-  } catch {
-    // ignore cache lookup error in unit tests / standalone contexts
   }
 
   let fetchResult = null;
   const targetTabId = tabId || stream.tabId || null;
 
-  if (targetTabId && (deps.fetchFromPage || (typeof chrome !== 'undefined' && chrome?.scripting?.executeScript))) {
+  if (targetTabId && (options.fetchFromPage || (typeof chrome !== 'undefined' && chrome?.scripting?.executeScript))) {
     fetchResult = await fetchPage(targetTabId, stream.url, TIMEOUT_MS);
   }
 

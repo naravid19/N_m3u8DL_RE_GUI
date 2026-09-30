@@ -29,11 +29,11 @@ test('getExtensionVersion returns empty string when chrome runtime is unavailabl
 });
 
 test('manifest.json and package.json version stay synchronized', () => {
-  const manifest = JSON.parse(readFileSync(resolve('extension/manifest.json'), 'utf8'));
-  const pkg = JSON.parse(readFileSync(resolve('extension/package.json'), 'utf8'));
+  const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-  assert.equal(manifest.version, '1.3.0');
-  assert.equal(pkg.version, '1.3.0');
+  assert.equal(manifest.version, '1.4.5');
+  assert.equal(pkg.version, '1.4.5');
   assert.equal(manifest.version, pkg.version);
 });
 

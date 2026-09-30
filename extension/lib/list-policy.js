@@ -59,9 +59,13 @@ export function groupByOrigin(streams) {
  */
 export function reconcileSelection(selectedUrls, streams) {
   const result = new Set();
-  if (!selectedUrls || !streams) return result;
+  if (!selectedUrls || !streams || selectedUrls.size === 0) return result;
 
-  const streamUrls = new Set(streams.map((s) => s.url).filter(Boolean));
+  const streamUrls = new Set();
+  for (const s of streams) {
+    if (s && s.url) streamUrls.add(s.url);
+  }
+
   for (const url of selectedUrls) {
     if (streamUrls.has(url)) {
       result.add(url);

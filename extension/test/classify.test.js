@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classify, KIND_TITLES } from '../lib/classify.js';
+import { classify, extractDispositionFilename, KIND_TITLES } from '../lib/classify.js';
 
 test('recognises an HLS manifest', () => {
   assert.deepEqual(classify('https://cdn.example.com/hls/master.m3u8', null, 200, 'xmlhttprequest'), { kind: 'HLS', confidence: 'high' });
@@ -217,4 +217,118 @@ test('every kind the classifier can return has a title expansion', () => {
   for (const kind of ['HLS', 'DASH', 'MSS', 'Media', 'Audio', 'Abyss']) {
     assert.ok(KIND_TITLES[kind], `no KIND_TITLES entry for ${kind}`);
   }
+});
+
+// --- Stream detection coverage hardening ---
+
+test('accepts HTTP 304 Not Modified stream responses', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/hls/master.m3u8', null, 304, 'xmlhttprequest'),
+    { kind: 'HLS', confidence: 'high' }
+  );
+});
+
+test('accepts HTTP 302 / 307 Redirect stream responses', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/stream.mpd', null, 302, 'xmlhttprequest'),
+    { kind: 'DASH', confidence: 'high' }
+  );
+  assert.deepEqual(
+    classify('https://cdn.example.com/video.mp4', null, 307, 'media'),
+    { kind: 'Media', confidence: 'high' }
+  );
+});
+
+test('detects manifests with subpaths after .m3u8 or .mpd extension', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/hls/master.m3u8/index', null, 200, 'xmlhttprequest'),
+    { kind: 'HLS', confidence: 'high' }
+  );
+  assert.deepEqual(
+    classify('https://cdn.example.com/dash/video.mpd/manifest', null, 200, 'xmlhttprequest'),
+    { kind: 'DASH', confidence: 'high' }
+  );
+});
+
+test('detects manifests inside complex query parameters with extra tokens', () => {
+  assert.deepEqual(
+    classify('https://cdn.example.com/play?source=https%3A%2F%2Fsite.com%2Fvideo.m3u8%3Ftoken%3D123', null, 200, 'xmlhttprequest'),
+    { kind: 'HLS', confidence: 'low' }
+  );
+  assert.deepEqual(
+    classify('https://cdn.example.com/api?video=https://example.com/manifest.mpd&auth=abc', null, 200, 'xmlhttprequest'),
+    { kind: 'DASH', confidence: 'low' }
+  );
+});
+
+test('detects surrit.com master playlists and quality variants', () => {
+  assert.deepEqual(
+    classify('https://surrit.com/f4a44b42-8c05-4e77-a172-792d7c81606f/playlist.m3u8', 'application/vnd.apple.mpegurl', 200, 'xmlhttprequest'),
+    { kind: 'HLS', confidence: 'high' }
+  );
+  assert.deepEqual(
+    classify('https://surrit.com/f4a44b42-8c05-4e77-a172-792d7c81606f/1080p/video.m3u8', 'application/vnd.apple.mpegurl', 200, 'xmlhttprequest'),
+    { kind: 'HLS', confidence: 'high' }
+  );
+});
+
+test('classifies the container formats that were previously dropped', () => {
+  for (const ext of ['avi', 'wmv', 'asf', 'divx', 'f4v', 'mpeg', 'mpg']) {
+    const result = classify(`https://cdn.example.test/movie.${ext}`, null, 200, 'other');
+    assert.equal(result?.kind, 'Media', `.${ext} should classify as Media`);
+    assert.equal(result?.confidence, 'high');
+  }
+});
+
+test('classifies audio-only containers as Audio, not Media', () => {
+  for (const ext of ['weba', 'wma']) {
+    const result = classify(`https://cdn.example.test/track.${ext}`, null, 200, 'other');
+    assert.equal(result?.kind, 'Audio', `.${ext} should classify as Audio`);
+  }
+});
+
+test('still ignores extensions that would flood the list', () => {
+  // .json is every API response on the page; .srt has no path through the GUI.
+  for (const ext of ['json', 'srt']) {
+    assert.equal(classify(`https://api.example.test/data.${ext}`, null, 200, 'xmlhttprequest'), null);
+  }
+});
+
+test('extractDispositionFilename parses standard and UTF-8 encoded filenames', () => {
+  assert.equal(extractDispositionFilename('attachment; filename="video_sample.mp4"'), 'video_sample.mp4');
+  assert.equal(extractDispositionFilename('attachment; filename=track.m4a'), 'track.m4a');
+  assert.equal(extractDispositionFilename("attachment; filename*=UTF-8''%e6%b5%8b%e8%af%95.mp4"), '测试.mp4');
+  assert.equal(extractDispositionFilename('inline'), null);
+  assert.equal(extractDispositionFilename(null), null);
+});
+
+test('classify uses Content-Disposition filename when URL has no extension', () => {
+  const result = classify(
+    'https://cdn.example.test/download/stream?id=123',
+    null,
+    200,
+    'other',
+    'attachment; filename="movie.mp4"'
+  );
+  assert.deepEqual(result, { kind: 'Media', confidence: 'high' });
+
+  const audioResult = classify(
+    'https://cdn.example.test/get_audio?id=999',
+    null,
+    200,
+    'other',
+    'attachment; filename="song.flac"'
+  );
+  assert.deepEqual(audioResult, { kind: 'Audio', confidence: 'high' });
+});
+
+test('classify path extension still takes priority over Content-Disposition', () => {
+  const result = classify(
+    'https://cdn.example.test/hls/master.m3u8',
+    null,
+    200,
+    'xmlhttprequest',
+    'attachment; filename="fallback.mp4"'
+  );
+  assert.deepEqual(result, { kind: 'HLS', confidence: 'high' });
 });

@@ -1,22 +1,68 @@
+import { shouldForward } from './header-policy.js';
+import { resolveImpersonate } from './impersonate.js';
+
 /**
  * Serializes a captured stream request into a bash-compatible cURL command string
  * ready for N_m3u8DL-RE GUI clipboard consumption.
  */
+// A captured value may never break onto a line of its own: the GUI reads every
+// "# nre-*" line as an instruction, so a newline would let a page add one.
+const oneLine = (s) => String(s).replace(/[\r\n]+/g, ' ');
+
 export function toCurl(stream, options = {}) {
   if (!stream || !stream.url) return '';
 
-  const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
+  const q = (s) => `'${oneLine(s).replace(/'/g, `'\\''`)}'`;
   const parts = [`curl ${q(stream.url)}`];
 
-  if (stream.referer)   parts.push(`-H ${q('Referer: ' + stream.referer)}`);
-  if (stream.userAgent) parts.push(`-H ${q('User-Agent: ' + stream.userAgent)}`);
-  if (stream.cookie)    parts.push(`-H ${q('Cookie: ' + stream.cookie)}`);
-  if (stream.origin)    parts.push(`-H ${q('Origin: ' + stream.origin)}`);
+  if (Array.isArray(stream.headers) && stream.headers.length > 0) {
+    for (const h of stream.headers) {
+      if (h && h.name && shouldForward(h.name)) {
+        parts.push(`-H ${q(`${h.name}: ${h.value ?? ''}`)}`);
+      }
+    }
+  } else {
+    if (stream.referer && shouldForward('Referer'))     parts.push(`-H ${q('Referer: ' + stream.referer)}`);
+    if (stream.userAgent && shouldForward('User-Agent')) parts.push(`-H ${q('User-Agent: ' + stream.userAgent)}`);
+    if (stream.cookie && shouldForward('Cookie'))       parts.push(`-H ${q('Cookie: ' + stream.cookie)}`);
+    if (stream.origin && shouldForward('Origin'))       parts.push(`-H ${q('Origin: ' + stream.origin)}`);
+  }
 
   let cmd = parts.join(' \\\n  ');
 
+  if (stream.pageUrl) {
+    cmd += `\n# nre-page-url: ${oneLine(stream.pageUrl)}`;
+  }
+
+  if (stream.userAgent) {
+    const imp = resolveImpersonate(stream.userAgent);
+    if (imp) {
+      cmd += `\n# nre-impersonate: ${imp}`;
+    }
+  }
+
+  if (stream.isCloudflare) {
+    cmd += `\n# nre-cf: 1`;
+  }
+
   if (options && options.selectVideo) {
-    cmd += `\n# nre-select-video: ${options.selectVideo}`;
+    cmd += `\n# nre-select-video: ${oneLine(options.selectVideo)}`;
+  }
+
+  if (options && options.selectAudio) {
+    cmd += `\n# nre-select-audio: ${oneLine(options.selectAudio)}`;
+  }
+
+  if (options && options.selectSubtitle) {
+    cmd += `\n# nre-select-subtitle: ${oneLine(options.selectSubtitle)}`;
+  }
+
+  if (options && options.saveName) {
+    cmd += `\n# nre-save-name: ${oneLine(options.saveName)}`;
+  }
+
+  if (options && options.warn) {
+    cmd += `\n# nre-warn: ${oneLine(options.warn)}`;
   }
 
   return cmd;
@@ -74,7 +120,7 @@ export function toBatchList(streams) {
   // Check for differing Referer origins
   const mismatch = findRefererMismatch(streams);
   if (mismatch.mismatched) {
-    lines.push('# note: Selected streams originate from different Referers; using first');
+    lines.push(`# nre-warn: Referer mismatch — ${mismatch.offCount} stream(s) differ from primary origin ${oneLine(mismatch.primaryOrigin)}`);
   }
 
   // Find first stream with any captured headers
@@ -84,10 +130,10 @@ export function toBatchList(streams) {
 
   if (firstWithHeaders) {
     const headerParts = [];
-    if (firstWithHeaders.referer) headerParts.push(`Referer: ${firstWithHeaders.referer}`);
-    if (firstWithHeaders.userAgent) headerParts.push(`User-Agent: ${firstWithHeaders.userAgent}`);
-    if (firstWithHeaders.cookie) headerParts.push(`Cookie: ${firstWithHeaders.cookie}`);
-    if (firstWithHeaders.origin) headerParts.push(`Origin: ${firstWithHeaders.origin}`);
+    if (firstWithHeaders.referer) headerParts.push(`Referer: ${oneLine(firstWithHeaders.referer)}`);
+    if (firstWithHeaders.userAgent) headerParts.push(`User-Agent: ${oneLine(firstWithHeaders.userAgent)}`);
+    if (firstWithHeaders.cookie) headerParts.push(`Cookie: ${oneLine(firstWithHeaders.cookie)}`);
+    if (firstWithHeaders.origin) headerParts.push(`Origin: ${oneLine(firstWithHeaders.origin)}`);
 
     if (headerParts.length > 0) {
       lines.push(`# nre-headers: ${headerParts.join('\\n')}`);
@@ -97,10 +143,10 @@ export function toBatchList(streams) {
   for (const s of streams) {
     if (!s || !s.url) continue;
     if (s.title) {
-      const cleanTitle = s.title.replace(/,/g, ' ').trim();
-      lines.push(`${cleanTitle},${s.url}`);
+      const cleanTitle = oneLine(s.title).replace(/,/g, ' ').trim();
+      lines.push(`${cleanTitle},${oneLine(s.url)}`);
     } else {
-      lines.push(s.url);
+      lines.push(oneLine(s.url));
     }
   }
 

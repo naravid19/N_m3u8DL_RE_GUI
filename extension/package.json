@@ -1,6 +1,9 @@
 {
   "name": "n-re-stream-bridge",
-  "version": "1.3.0",
+  "version": "1.4.5",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
 }

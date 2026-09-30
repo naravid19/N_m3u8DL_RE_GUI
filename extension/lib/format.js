@@ -65,6 +65,33 @@ export function formatRelativeTime(ts) {
 }
 
 /**
+ * Formats bandwidth (bits per second) into a clean Mbps / kbps string.
+ */
+export function formatBitrate(bps) {
+  if (!bps || typeof bps !== 'number' || bps <= 0) return '';
+  if (bps >= 1000000) {
+    const mbps = bps / 1000000;
+    return `${mbps >= 10 ? Math.round(mbps) : mbps.toFixed(1)} Mbps`;
+  }
+  const kbps = Math.round(bps / 1000);
+  return `${kbps} kbps`;
+}
+
+/**
+ * Formats duration in seconds into mm:ss or hh:mm:ss string.
+ */
+export function formatDuration(seconds) {
+  if (!seconds || typeof seconds !== 'number' || seconds <= 0) return '';
+  const totalSec = Math.floor(seconds);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+}
+
+/**
  * Elides long URLs preserving the head (origin/scheme) and tail (filename/extension).
  */
 export function elideUrl(url, max = 40) {
@@ -95,7 +122,7 @@ export function describeRole(item) {
     case 'Audio':
       return 'Audio only';
     case 'Abyss':
-      return 'Player page · try Copy as cURL';
+      return 'Player page · full video';
     default:
       return 'Stream';
   }
@@ -112,3 +139,27 @@ export function describeStream(item) {
 
   return [role, size].filter(Boolean).join(' · ');
 }
+
+/**
+ * Splits a raw stream URL into logical components:
+ * - filename: the final path segment (e.g. "chunk.m3u8"), without query parameters.
+ * - queryParams: the query string if present (e.g. "?token=abc"), else "".
+ * - hostAndPath: origin and pathname combined.
+ */
+export function splitUrl(rawUrl) {
+  try {
+    const u = new URL(rawUrl);
+    const pathParts = u.pathname.split('/').filter(Boolean);
+    const filename = pathParts.length > 0 ? pathParts[pathParts.length - 1] : u.hostname;
+    const hostAndPath = `${u.origin}${u.pathname}`;
+    return {
+      filename,
+      queryParams: u.search || '',
+      hostAndPath
+    };
+  } catch {
+    return { filename: rawUrl || '', queryParams: '', hostAndPath: '' };
+  }
+}
+
+

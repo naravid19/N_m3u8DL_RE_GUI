@@ -95,3 +95,43 @@ test('filenames break at boundaries before breaking mid-token', () => {
   assert.doesNotMatch(rule[1], /word-break:\s*break-all/);
   assert.match(rule[1], /overflow-wrap:\s*anywhere/);
 });
+
+test('the popup never instructs a flow it does not lead with', () => {
+  // The footer hint used to teach "Copy as cURL then Paste from browser" as
+  // THE instruction while the accent button beside it said Download, and an
+  // Abyss card's subtitle said "try Copy as cURL" directly above its own
+  // Download button. In Operate mode the copy is the affordance.
+  const format = readFileSync(join(import.meta.dirname, '..', 'lib', 'format.js'), 'utf8');
+  assert.doesNotMatch(format, /try Copy as cURL/);
+
+  const hint = html.match(/class="helper-hint">([\s\S]*?)<\/div>/)?.[1] ?? '';
+  assert.ok(hint.length > 0, 'the footer hint should still exist');
+  assert.match(hint, /Download/, 'the hint must acknowledge the primary action it is a fallback for');
+});
+
+test('[hidden] rule overrides display declarations with !important', () => {
+  assert.match(css, /\[hidden\]\s*\{[\s\S]*?display:\s*none\s*!important/);
+});
+
+test('action buttons prevent text wrapping across lines', () => {
+  assert.match(css, /\.btn\s*\{[\s\S]*?white-space:\s*nowrap/);
+});
+
+test('qualities skeleton defines shimmer animation and nth-child widths', () => {
+  assert.match(css, /\.qualities-skeleton/);
+  assert.match(css, /@keyframes\s+shimmer/);
+  assert.match(css, /\.skeleton-row:nth-child\(1\)\s+\.skeleton-bar\s*\{\s*width:\s*70%;\s*\}/);
+  assert.match(css, /\.skeleton-row:nth-child\(2\)\s+\.skeleton-bar\s*\{\s*width:\s*50%;\s*\}/);
+  assert.match(css, /\.skeleton-row:nth-child\(3\)\s+\.skeleton-bar\s*\{\s*width:\s*60%;\s*\}/);
+});
+
+test('primary stream card uses uniform 1px accent-dim border', () => {
+  assert.match(css, /\.stream-card\.is-primary\s*\{[\s\S]*?border-color:\s*var\(--accent-dim\);/);
+});
+
+test('secondary action buttons use flex: 1 and qualities button does not override', () => {
+  assert.match(css, /\.actions-secondary\s+\.btn\s*\{[\s\S]*?flex:\s*1;/);
+  const qualRule = css.match(/\.btn-qualities\s*\{([^}]*)\}/)?.[1] || '';
+  assert.doesNotMatch(qualRule, /flex:\s*0\.85/);
+});
+

@@ -386,3 +386,53 @@ test('a failed check is cached only briefly so a blip is not sticky', async () =
 test('an empty cache reports nothing rather than throwing', async () => {
   assert.equal(await getCachedUpdateResult(), null);
 });
+
+test('a dismissal stored without a timestamp stops suppressing', async () => {
+  // The shape written before dismissals carried a TTL. Treating it as expired
+  // is what releases anyone already stuck behind a permanent dismissal --
+  // pressing the trash button used to make a stream unrecoverable for that
+  // tab, because clearTabView never removes the dismissed key.
+  const item = stream('https://cdn.example.com/legacy.m3u8', 'HLS');
+  await chrome.storage.session.set({ [`dismissed_${TAB}`]: [item.url] });
+
+  await addStream(TAB, item);
+
+  assert.deepEqual((await getTabStreams(TAB)).map((s) => s.url), [item.url]);
+});
+
+test('a dismissal stops suppressing once its TTL has passed', async () => {
+  const item = stream('https://cdn.example.com/expired.m3u8', 'HLS');
+  await chrome.storage.session.set({
+    [`dismissed_${TAB}`]: [{ u: item.url, at: Date.now() - 60000 }]
+  });
+
+  await addStream(TAB, item);
+
+  assert.deepEqual((await getTabStreams(TAB)).map((s) => s.url), [item.url]);
+});
+
+test('a cleared stream stays cleared for the thirty seconds the clear spec promises', async () => {
+  // Both clear plans say playback may continue for thirty seconds with the list
+  // staying empty; a 20 s hold let the stream reappear partway through that.
+  const item = stream('https://cdn.example.com/thirty.m3u8', 'HLS');
+  await chrome.storage.session.set({
+    [`dismissed_${TAB}`]: [{ u: item.url, at: Date.now() - 29000 }]
+  });
+
+  await addStream(TAB, item);
+
+  assert.deepEqual(await getTabStreams(TAB), []);
+});
+
+test('a dismissal within its TTL still suppresses', async () => {
+  // The other half of the trade: expiry must not mean the trash button stops
+  // working, or a page still fetching refills the list immediately.
+  const item = stream('https://cdn.example.com/fresh.m3u8', 'HLS');
+  await chrome.storage.session.set({
+    [`dismissed_${TAB}`]: [{ u: item.url, at: Date.now() }]
+  });
+
+  await addStream(TAB, item);
+
+  assert.deepEqual(await getTabStreams(TAB), []);
+});

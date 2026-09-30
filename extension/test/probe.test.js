@@ -56,6 +56,14 @@ test('a success is served from cache on the second call', async () => {
   assert.equal(second.variants.length, 1);
 });
 
+test('a retry probes again instead of replaying a cached failure', async () => {
+  await probeVariants(stream, 7, { fetchFromPage: fail(500), fetchDirect: fail(500) });
+  const retried = await probeVariants(stream, 7, { fetchFromPage: ok(MASTER), fetchDirect: never(), fresh: true });
+
+  assert.equal(retried.error, null);
+  assert.equal(retried.variants.length, 1);
+});
+
 test('a failure is cached too, so a dead host is not retried on every expand', async () => {
   await probeVariants(stream, 7, { fetchFromPage: fail(500), fetchDirect: fail(500) });
   const second = await probeVariants(stream, 7, { fetchFromPage: never(), fetchDirect: never() });
@@ -100,4 +108,13 @@ test('two different URLs do not share a cache entry', async () => {
   );
 
   assert.equal(other.variants.length, 1);
+});
+
+test('handles TooLarge fetch error by reporting error', async () => {
+  const result = await probeVariants(stream, 7, {
+    fetchFromPage: async () => ({ ok: false, status: 200, error: 'TooLarge' }),
+    fetchDirect: async () => ({ ok: false, status: 200, error: 'TooLarge' })
+  });
+  assert.equal(result.variants.length, 0);
+  assert.ok(result.error);
 });

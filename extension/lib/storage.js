@@ -15,6 +15,36 @@ const SUCCESS_TTL_MS = 60 * 60 * 1000; // 1 hour for successful probes
 const MAX_PER_TAB = 25;
 const MAX_RECENT = 30;
 const MAX_DISMISSED_PER_TAB = 200;
+/**
+ * A dismissal suppresses a URL for this long, not forever.
+ *
+ * The trash button dismisses everything it clears, so that a page still
+ * fetching cannot refill the list milliseconds later. Storing that with no
+ * expiry made the cure permanent: clearTabView never removes a dismissed key
+ * (only clearTab does, on tab close or an origin change), so the stream the
+ * user cleared could never come back for that tab -- reloading the page did
+ * not help, because the URL and the tab id were unchanged.
+ */
+// Thirty seconds, as both clear specs promise: playback may continue that long
+// with the cleared list staying empty.
+const DISMISS_TTL_MS = 30 * 1000;
+
+/**
+ * The still-suppressed URLs from a stored dismissed list.
+ *
+ * Entries written before this had a TTL are bare strings with no timestamp.
+ * They are treated as expired, which is both the safe default and what
+ * releases anyone currently stuck behind a permanent dismissal.
+ */
+function activeDismissedUrls(raw, now = Date.now()) {
+  const active = new Set();
+  for (const entry of raw || []) {
+    if (entry && typeof entry === 'object' && typeof entry.u === 'string') {
+      if (now - (entry.at || 0) <= DISMISS_TTL_MS) active.add(entry.u);
+    }
+  }
+  return active;
+}
 
 const tabKeyFor = (tabId) => `tab_${tabId}`;
 const dismissedKeyFor = (tabId) => (tabId && tabId > 0 ? `${DISMISSED_PREFIX}${tabId}` : `${DISMISSED_PREFIX}none`);
@@ -40,13 +70,22 @@ function serialize(task) {
   return result;
 }
 
+async function safeStorageSet(patch) {
+  if (!patch || Object.keys(patch).length === 0) return;
+  try {
+    await chrome.storage.session.set(patch);
+  } catch (err) {
+    console.warn('chrome.storage.session.set failed:', err);
+  }
+}
+
 /**
  * Returns the set of dismissed URLs for a tab (or for orphan/no-tab streams when null).
  */
 export async function getDismissed(tabId) {
   const key = dismissedKeyFor(tabId);
   const data = await chrome.storage.session.get([key]);
-  return new Set(data[key] || []);
+  return activeDismissedUrls(data[key]);
 }
 
 /**
@@ -78,16 +117,21 @@ export function dismissMany(items) {
 
     for (const [tid, urls] of byTab) {
       const dKey = dismissedKeyFor(tid);
-      const existingDismissed = data[dKey] || [];
-      const set = new Set(existingDismissed);
+      const now = Date.now();
       const urlSet = new Set();
+      const byUrl = new Map();
+      for (const entry of data[dKey] || []) {
+        if (entry && typeof entry === 'object' && typeof entry.u === 'string') {
+          if (now - (entry.at || 0) <= DISMISS_TTL_MS) byUrl.set(entry.u, entry);
+        }
+      }
       for (const u of urls) {
         if (u) {
-          set.add(u);
+          byUrl.set(u, { u, at: now });
           urlSet.add(u);
         }
       }
-      let array = Array.from(set);
+      let array = Array.from(byUrl.values());
       if (array.length > MAX_DISMISSED_PER_TAB) {
         array = array.slice(-MAX_DISMISSED_PER_TAB);
       }
@@ -108,7 +152,7 @@ export function dismissMany(items) {
     }
 
     patch[RECENT_KEY] = currentRecent;
-    await chrome.storage.session.set(patch);
+    await safeStorageSet(patch);
   });
 }
 
@@ -144,11 +188,14 @@ export function undismissMany(items) {
       const dKey = dismissedKeyFor(tid);
       const current = data[dKey] || [];
       const urlSet = new Set(urls);
-      patch[dKey] = current.filter((u) => !urlSet.has(u));
+      patch[dKey] = current.filter((entry) => {
+        const url = entry && typeof entry === 'object' ? entry.u : entry;
+        return !urlSet.has(url);
+      });
     }
 
     if (Object.keys(patch).length > 0) {
-      await chrome.storage.session.set(patch);
+      await safeStorageSet(patch);
     }
   });
 }
@@ -170,7 +217,7 @@ export function addStream(tabId, item) {
     const patch = {};
     let tabCount = 0;
 
-    const dismissed = new Set(data[dismissedKey] || []);
+    const dismissed = activeDismissedUrls(data[dismissedKey]);
     if (dismissed.has(item.url)) {
       if (effectiveTabId) {
         const currentList = data[tabKeyFor(effectiveTabId)] || [];
@@ -222,7 +269,7 @@ export function addStream(tabId, item) {
     patch[RECENT_KEY] = recent;
 
     if (Object.keys(patch).length > 0) {
-      await chrome.storage.session.set(patch);
+      await safeStorageSet(patch);
     }
 
     return tabCount;
@@ -253,12 +300,12 @@ export function clearTabView(tabId) {
   if (!tabId || tabId <= 0) return Promise.resolve();
   return serialize(async () => {
     const tabKey = tabKeyFor(tabId);
-    const all = await chrome.storage.session.get(null);
-    const currentRecent = all[RECENT_KEY] || [];
+    const data = await chrome.storage.session.get([RECENT_KEY]);
+    const currentRecent = data[RECENT_KEY] || [];
     const filteredRecent = currentRecent.filter((s) => s.tabId !== tabId);
 
     await chrome.storage.session.remove([tabKey]);
-    await chrome.storage.session.set({ [RECENT_KEY]: filteredRecent });
+    await safeStorageSet({ [RECENT_KEY]: filteredRecent });
   });
 }
 
@@ -292,7 +339,7 @@ export function setCachedVariants(url, result, now = Date.now()) {
     timestamp: now
   };
   return serialize(async () => {
-    await chrome.storage.session.set({ [key]: entry });
+    await safeStorageSet({ [key]: entry });
   });
 }
 

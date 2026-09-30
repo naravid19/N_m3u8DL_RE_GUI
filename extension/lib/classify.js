@@ -1,7 +1,5 @@
-/**
- * Pure stream classification. No chrome.* access, so this module imports
- * cleanly under `node --test`.
- */
+import { isAdCdnUrl } from './ad-blocklist.js';
+
 
 /** Expansions shown on hover. The badge is the loudest element on a card and
  *  currently the least explained. */
@@ -29,10 +27,13 @@ const MANIFEST_EXTENSIONS = new Map([
 ]);
 
 const MEDIA_EXTENSIONS = new Set([
-  '.mp4', '.m4v', '.webm', '.mkv', '.mov', '.flv', '.ogv', '.3gp'
+  '.mp4', '.m4v', '.webm', '.mkv', '.mov', '.flv', '.ogv', '.3gp',
+  // ASF family, MPEG program streams and AVI derivatives: still served by
+  // older and regional CDNs, and previously dropped without a trace.
+  '.avi', '.divx', '.f4v', '.asf', '.wmv', '.mpeg', '.mpg'
 ]);
 
-const AUDIO_EXTENSIONS = new Set(['.m4a', '.opus', '.flac', '.wav', '.oga']);
+const AUDIO_EXTENSIONS = new Set(['.m4a', '.opus', '.flac', '.wav', '.oga', '.weba', '.wma']);
 const CONDITIONAL_AUDIO_EXTENSIONS = new Set(['.aac', '.mp3']);
 
 /** Format hints a CDN may put in the query when the path carries no extension. */
@@ -50,15 +51,17 @@ const low = (kind) => ({ kind, confidence: 'low' });
 
 function classifyByMime(mime) {
   if (mime.includes('mpegurl')) return 'HLS';
-  if (mime.includes('dash+xml') || mime.includes('dash.mpd')) return 'DASH';
-  if (mime.includes('sstr+xml')) return 'MSS';
+  if (mime.includes('dash+xml') || mime.includes('dash.mpd') || mime.includes('vnd.mpeg.dash')) return 'DASH';
+  if (mime.includes('sstr+xml') || mime.includes('ms-sstr')) return 'MSS';
   return null;
 }
 
 /** Parameter names that plausibly carry a format or a filename. Reading every
  *  parameter means ?theme=dash classifies as DASH. */
 const FORMAT_PARAM_NAMES = new Set([
-  'type', 'format', 'fmt', 'file', 'filename', 'url', 'src', 'stream', 'manifest', 'playlist'
+  'type', 'format', 'fmt', 'file', 'filename', 'url', 'src', 'stream', 'manifest', 'playlist',
+  'source', 'video', 'vid', 'v', 'link', 'target', 'm3u8', 'mpd', 'hls', 'dash', 'stream_url',
+  'video_url', 'file_url', 'play', 'media', 'uri', 'path', 'feed', 'input'
 ]);
 
 /**
@@ -75,7 +78,7 @@ function classifyByQuery(searchParams) {
     const lower = value.toLowerCase();
 
     for (const [ext, kind] of MANIFEST_EXTENSIONS) {
-      if (lower.endsWith(ext)) return kind;
+      if (lower.includes(ext)) return kind;
     }
 
     const hint = QUERY_HINTS.get(lower);
@@ -116,11 +119,28 @@ export function parseUrlParts(url) {
 
 /** Statuses that mean the server actually served the thing. 0 is the
  *  content-script path, where no HTTP exchange was observed. */
-const USABLE_STATUSES = new Set([0, 200, 206]);
+const USABLE_STATUSES = new Set([0, 200, 204, 206, 301, 302, 303, 304, 307, 308]);
 
-export function classify(url, mimeType, status, type) {
+export function extractDispositionFilename(headerValue) {
+  if (!headerValue || typeof headerValue !== 'string') return null;
+  const matchUtf8 = headerValue.match(/filename\*\s*=\s*(?:UTF-8''|utf-8'')([^;]+)/i);
+  if (matchUtf8 && matchUtf8[1]) {
+    try {
+      return decodeURIComponent(matchUtf8[1].trim().replace(/^["']|["']$/g, ''));
+    } catch {}
+  }
+  const matchStandard = headerValue.match(/filename\s*=\s*(?:"([^"]+)"|'([^']+)'|([^;\s]+))/i);
+  if (matchStandard) {
+    return matchStandard[1] || matchStandard[2] || matchStandard[3] || null;
+  }
+  return null;
+}
+
+export function classify(url, mimeType, status, type, dispositionFilename = null) {
   const parts = parseUrlParts(url);
   if (!parts) return null;
+
+  if (isAdCdnUrl(url)) return null;
 
   const lowerUrl = url.toLowerCase();
 
@@ -151,6 +171,12 @@ export function classify(url, mimeType, status, type) {
   const byExtension = MANIFEST_EXTENSIONS.get(parts.ext);
   if (byExtension) return high(byExtension);
 
+  // Path-level manifest check (e.g. /hls/master.m3u8/index or /video.mpd/manifest)
+  if (/\.m3u8(\/|$)/i.test(parts.path)) return high('HLS');
+  if (/\.m3u(\/|$)/i.test(parts.path)) return high('HLS');
+  if (/\.mpd(\/|$)/i.test(parts.path)) return high('DASH');
+  if (/\.isml?(\/|$)/i.test(parts.path)) return high('MSS');
+
   const byMime = classifyByMime(mime);
   if (byMime) return high(byMime);
 
@@ -173,6 +199,20 @@ export function classify(url, mimeType, status, type) {
   if (MEDIA_EXTENSIONS.has(parts.ext)) return high('Media');
   if (mime.startsWith('video/')) return high('Media');
   if (mime.startsWith('audio/')) return high('Audio');
+
+  // Content-Disposition fallback when the URL pathname has no recognisable extension
+  if (dispositionFilename && typeof dispositionFilename === 'string') {
+    const rawOrParsed = extractDispositionFilename(dispositionFilename) || dispositionFilename;
+    const dLower = rawOrParsed.toLowerCase();
+    const dDot = dLower.lastIndexOf('.');
+    const dExt = dDot >= 0 ? dLower.slice(dDot) : '';
+    if (dExt) {
+      const dManifest = MANIFEST_EXTENSIONS.get(dExt);
+      if (dManifest) return high(dManifest);
+      if (AUDIO_EXTENSIONS.has(dExt)) return high('Audio');
+      if (MEDIA_EXTENSIONS.has(dExt)) return high('Media');
+    }
+  }
 
   // Below here we are guessing. Manifest kinds only.
   const byQuery = classifyByQuery(parts.search);

@@ -76,7 +76,77 @@ test('the directive line does not disturb the cURL command above it', () => {
   assert.ok(out.startsWith("curl 'https://cdn.example.com/hls/master.m3u8'"));
 });
 
+test('appends a save-name directive when saveName is provided', () => {
+  const out = toCurl(base, { saveName: 'My Awesome Video' });
+
+  assert.ok(out.endsWith('\n# nre-save-name: My Awesome Video'));
+});
+
+test('appends both select-video and save-name directives when both are provided', () => {
+  const out = toCurl(base, { selectVideo: 'res="1080*"', saveName: 'Episode 1' });
+
+  assert.ok(out.includes('\n# nre-select-video: res="1080*"'));
+  assert.ok(out.includes('\n# nre-save-name: Episode 1'));
+});
+
+test('emits wire format v3 directives for page-url, impersonate, and cf', () => {
+  const out = toCurl({
+    ...base,
+    pageUrl: 'https://site.example.com/watch/123',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36',
+    isCloudflare: true
+  }, {
+    selectAudio: 'for="eng"',
+    selectSubtitle: 'lang="en"'
+  });
+
+  assert.ok(out.includes('\n# nre-page-url: https://site.example.com/watch/123'));
+  assert.ok(out.includes('\n# nre-impersonate: chrome131'));
+  assert.ok(out.includes('\n# nre-cf: 1'));
+  assert.ok(out.includes('\n# nre-select-audio: for="eng"'));
+  assert.ok(out.includes('\n# nre-select-subtitle: lang="en"'));
+});
+
+test('toCurl formats stream.headers array while filtering dropped transport headers', () => {
+  const stream = {
+    url: 'https://cdn.example.com/hls/master.m3u8',
+    headers: [
+      { name: 'Referer', value: 'https://site.example.com/' },
+      { name: 'Authorization', value: 'Bearer token123' },
+      { name: 'accept-encoding', value: 'gzip, deflate, br' },
+      { name: 'range', value: 'bytes=0-1000' },
+      { name: 'sec-fetch-mode', value: 'cors' }
+    ]
+  };
+
+  const out = toCurl(stream);
+  assert.match(out, /-H 'Referer: https:\/\/site\.example\.com\/'/);
+  assert.match(out, /-H 'Authorization: Bearer token123'/);
+  assert.doesNotMatch(out, /accept-encoding/);
+  assert.doesNotMatch(out, /range/);
+  assert.doesNotMatch(out, /sec-fetch/);
+});
+
 // --- Batch export list (Task 5) ---
+
+test('a newline in any captured value cannot start a directive line of its own', () => {
+  // The GUI reads every "# nre-*" line as an instruction, so a page URL, header or
+  // title carrying a newline must not be able to add one.
+  const evil = 'x\n# nre-save-name: evil';
+  const out = toCurl(
+    { ...base, pageUrl: evil, referer: evil, headers: [{ name: 'X-Test', value: evil }] },
+    { saveName: evil, selectVideo: evil, warn: evil }
+  );
+
+  assert.equal(out.split('\n').filter((l) => l.startsWith('# nre-save-name')).length, 1);
+});
+
+test('toBatchList keeps every captured value on its own line', () => {
+  const evil = 'x\n# nre-save-name: evil';
+  const out = toBatchList([{ url: 'https://cdn.example.com/a.m3u8', title: evil, referer: evil, cookie: evil }]);
+
+  assert.ok(!out.split('\n').some((l) => l.startsWith('# nre-save-name')));
+});
 
 test('toBatchList emits one URL per line', () => {
   const out = toBatchList([
@@ -132,7 +202,7 @@ test('toBatchList warns when entries disagree on Referer', () => {
     { url: 'https://b/y.m3u8', referer: 'https://b/' }
   ]);
 
-  assert.ok(out.includes('# note:'));
+  assert.ok(out.includes('# nre-warn: Referer mismatch'));
 });
 
 test('toBatchList returns empty for an empty selection', () => {
@@ -205,5 +275,5 @@ test('toBatchList and the UI check agree', () => {
   ];
 
   assert.equal(findRefererMismatch(streams).mismatched, true);
-  assert.ok(toBatchList(streams).includes('# note:'));
+  assert.ok(toBatchList(streams).includes('# nre-warn: Referer mismatch'));
 });

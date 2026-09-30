@@ -14,8 +14,8 @@
     </div>
     <div class="header-actions">
       <span id="stream-count" class="badge" aria-label="Streams detected">0</span>
-      <button id="btn-refresh" class="icon-btn" title="Refresh stream list" aria-label="Refresh stream list">🔄</button>
-      <button id="btn-clear" class="icon-btn" title="Clear detected streams" aria-label="Clear detected streams">🗑️</button>
+      <button id="btn-refresh" class="icon-btn" title="Refresh stream list" aria-label="Refresh stream list"><span data-icon="refresh" data-icon-size="15"></span></button>
+      <button id="btn-clear" class="icon-btn" title="Clear detected streams" aria-label="Clear detected streams"><span data-icon="trash" data-icon-size="15"></span></button>
     </div>
   </header>
 
@@ -31,7 +31,7 @@
         <span id="selected-count">0 selected</span>
       </div>
       <div class="bulk-actions">
-        <button id="btn-bulk-copy" class="btn btn-sm">📋 Copy as list</button>
+        <button id="btn-bulk-copy" class="btn btn-sm"><span data-icon="clipboard" data-icon-size="14"></span> Copy as list</button>
       </div>
       <p id="bulk-warning" class="bulk-warning" role="status" hidden></p>
     </div>
@@ -41,7 +41,7 @@
     </div>
 
     <div id="empty-state" class="empty-state">
-      <div class="empty-icon">📡</div>
+      <div class="empty-icon" data-icon="signal" data-icon-size="26"></div>
       <p class="empty-title">Waiting for video stream...</p>
       <ol class="empty-steps" id="hint-default">
         <li>Play or seek the video on this page.</li>
@@ -64,14 +64,14 @@
 
   <footer class="footer">
     <div id="toast" class="toast" role="status" aria-live="polite">
-      <span id="toast-text">Copied as cURL! Switch to GUI & click "Paste from browser"</span>
+      <span id="toast-text"></span>
       <button id="toast-action" class="toast-action" hidden></button>
     </div>
     <div class="footer-info">
       <span id="ext-version" class="ext-version" aria-label="Extension version"></span>
       <a id="ext-update-badge" class="ext-update-badge" target="_blank" rel="noopener" hidden aria-label="Extension update available"></a>
     </div>
-    <div class="helper-hint">💡 Click <strong>"Copy as cURL"</strong> then press <strong>"📋 Paste from browser"</strong> in GUI</div>
+    <div class="helper-hint"><span data-icon="lightbulb" data-icon-size="12"></span> No <strong>Download</strong> button? <strong>Copy as cURL</strong>, then <strong>Paste from browser</strong>.</div>
   </footer>
 
   <script type="module" src="popup.js"></script>

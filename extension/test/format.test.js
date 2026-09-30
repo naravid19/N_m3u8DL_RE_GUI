@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatBytes, formatRelativeTime, elideUrl, describeRole, describeStream } from '../lib/format.js';
+import { formatBytes, formatRelativeTime, elideUrl, describeRole, describeStream, formatBitrate, formatDuration, splitUrl } from '../lib/format.js';
 
 test('formatBytes scales through the units', () => {
   assert.equal(formatBytes(0), '0 B');
@@ -64,7 +64,7 @@ test('a low-confidence result leads with the doubt', () => {
 });
 
 test('an Abyss player page is described as a page, not a stream', () => {
-  assert.equal(describeRole({ kind: 'Abyss' }), 'Player page · try Copy as cURL');
+  assert.equal(describeRole({ kind: 'Abyss' }), 'Player page · full video');
 });
 
 test('an unknown kind falls back rather than throwing', () => {
@@ -94,3 +94,41 @@ test('describeStream keeps the approximate marker on a partial size', () => {
     'Video only · one quality · ~5.0 MB'
   );
 });
+
+test('formatBitrate formats bps into Mbps and kbps', () => {
+  assert.equal(formatBitrate(5000000), '5.0 Mbps');
+  assert.equal(formatBitrate(12000000), '12 Mbps');
+  assert.equal(formatBitrate(128000), '128 kbps');
+  assert.equal(formatBitrate(0), '');
+  assert.equal(formatBitrate(null), '');
+});
+
+test('formatDuration formats seconds into mm:ss and hh:mm:ss', () => {
+  assert.equal(formatDuration(65), '1:05');
+  assert.equal(formatDuration(3665), '1:01:05');
+  assert.equal(formatDuration(0), '');
+  assert.equal(formatDuration(null), '');
+});
+
+test('splitUrl cleanly separates filename, queryParams, and hostAndPath', () => {
+  const res = splitUrl('https://example.com:8443/video/chunk.m3u8?nimblesessionid=203966360');
+  assert.equal(res.filename, 'chunk.m3u8');
+  assert.equal(res.queryParams, '?nimblesessionid=203966360');
+  assert.equal(res.hostAndPath, 'https://example.com:8443/video/chunk.m3u8');
+});
+
+test('splitUrl handles URLs without query parameters', () => {
+  const res = splitUrl('https://example.com/media/stream.mpd');
+  assert.equal(res.filename, 'stream.mpd');
+  assert.equal(res.queryParams, '');
+  assert.equal(res.hostAndPath, 'https://example.com/media/stream.mpd');
+});
+
+test('splitUrl tolerates invalid URLs gracefully', () => {
+  const res = splitUrl('invalid-url-string');
+  assert.equal(res.filename, 'invalid-url-string');
+  assert.equal(res.queryParams, '');
+  assert.equal(res.hostAndPath, '');
+});
+
+

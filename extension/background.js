@@ -5,38 +5,21 @@
  * and messages from the content script for DOM media elements.
  */
 
-import { classify } from './lib/classify.js';
+import { classify, extractDispositionFilename } from './lib/classify.js';
 import { addStream, clearTab } from './lib/storage.js';
 import { totalSizeFrom } from './lib/format.js';
+import { buildHeaderPayload, pruneInflight } from './lib/inflight-headers.js';
 
 const MAX_INFLIGHT = 300;
 const INFLIGHT_TTL_MS = 120000;
 
-// requestUrl -> { referer, userAgent, cookie, origin, at }
+// requestId -> { referer, userAgent, cookie, origin, headersArray, at }
 // Deliberately in-memory and deliberately lossy: writing this to storage on
 // every request on the internet would cost far more than the rare miss when
-// the service worker restarts between the two listeners.
+// the service worker restarts between the two listeners. Keyed by requestId,
+// not URL — two tabs requesting the same manifest at once must not overwrite
+// each other's headers (M3).
 const inFlightHeaders = new Map();
-
-/**
- * Bounds the cache. A TTL sweep alone cannot help when 300+ requests are in
- * flight inside the TTL window, so a size backstop follows it. Map iterates in
- * insertion order, so the front is always the oldest entry.
- */
-function pruneInFlight() {
-  if (inFlightHeaders.size <= MAX_INFLIGHT) return;
-
-  const cutoff = Date.now() - INFLIGHT_TTL_MS;
-  for (const [key, value] of inFlightHeaders) {
-    if (value.at < cutoff) inFlightHeaders.delete(key);
-  }
-
-  while (inFlightHeaders.size > MAX_INFLIGHT) {
-    const oldest = inFlightHeaders.keys().next();
-    if (oldest.done) break;
-    inFlightHeaders.delete(oldest.value);
-  }
-}
 
 function updateBadge(tabId, count) {
   if (!tabId || tabId <= 0) return;
@@ -65,23 +48,71 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
-async function register(tabId, streamData) {
-  try {
-    await addStream(tabId, {
-      url: streamData.url,
-      kind: streamData.kind,
-      confidence: streamData.confidence || 'high',
-      sizeBytes: streamData.sizeBytes ?? null,
-      isPartial: Boolean(streamData.isPartial),
-      referer: streamData.referer || null,
-      userAgent: streamData.userAgent || null,
-      cookie: streamData.cookie || null,
-      origin: streamData.origin || null,
-      tabId: tabId && tabId > 0 ? tabId : null,
-      timestamp: Date.now()
-    });
-  } catch (err) {
-    console.error('[N-RE Stream Bridge] Error storing stream:', err);
+const tabOrigins = new Map();
+const tabPages = new Map();
+
+const pendingStreams = [];
+let flushTimer = null;
+
+async function flushPending() {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  if (pendingStreams.length === 0) return;
+  const batch = pendingStreams.splice(0, pendingStreams.length);
+  for (const item of batch) {
+    try {
+      await addStream(item.tabId, item.payload);
+    } catch (err) {
+      console.error('[N-RE Stream Bridge] Error storing stream:', err);
+    }
+  }
+}
+
+// Queued detections live only in memory. Best effort: write them before MV3 suspends
+// the worker -- Chrome does not promise async work started here will finish.
+// ponytail: a worker killed without firing onSuspend still loses the batch; write
+// each detection straight to storage if that is ever actually observed.
+chrome.runtime.onSuspend.addListener(flushPending);
+
+function queueStream(tabId, streamData) {
+  const payload = {
+    url: streamData.url,
+    kind: streamData.kind,
+    confidence: streamData.confidence || 'high',
+    sizeBytes: streamData.sizeBytes ?? null,
+    isPartial: Boolean(streamData.isPartial),
+    referer: streamData.referer || null,
+    userAgent: streamData.userAgent || null,
+    cookie: streamData.cookie || null,
+    origin: streamData.origin || null,
+    headers: Array.isArray(streamData.headers) ? streamData.headers : [],
+    pageUrl: streamData.pageUrl || (tabId ? tabPages.get(tabId) : null) || null,
+    pageTitle: streamData.pageTitle || null,
+    isCloudflare: Boolean(streamData.isCloudflare),
+    tabId: tabId && tabId > 0 ? tabId : null,
+    timestamp: Date.now()
+  };
+
+  // High-priority targets (manifests/abyss) flush immediately so the user
+  // sees them on popup open without delay.
+  if (payload.kind === 'HLS' || payload.kind === 'DASH' || payload.kind === 'MSS' || payload.kind === 'Abyss') {
+    pendingStreams.push({ tabId, payload });
+    flushPending();
+    return;
+  }
+
+  pendingStreams.push({ tabId, payload });
+  if (pendingStreams.length >= 5) {
+    flushPending();
+  } else if (!flushTimer) {
+    // Armed once and never restarted. Resetting it on every arrival turned a
+    // capped delay into a debounce that a page fetching media steadily could
+    // push back for as long as it kept fetching, so nothing reached the popup
+    // until five had piled up. Manifests skip this path entirely; Media does
+    // not, which is why an .mp4 page was the one that looked stuck.
+    flushTimer = setTimeout(flushPending, 1500);
   }
 }
 
@@ -90,21 +121,12 @@ chrome.webRequest.onSendHeaders.addListener(
   (details) => {
     if (!details.requestHeaders) return;
 
-    let referer = null;
-    let userAgent = null;
-    let cookie = null;
-    let origin = null;
-
-    for (const header of details.requestHeaders) {
-      const name = header.name.toLowerCase();
-      if (name === 'referer') referer = header.value;
-      else if (name === 'user-agent') userAgent = header.value;
-      else if (name === 'cookie') cookie = header.value;
-      else if (name === 'origin') origin = header.value;
-    }
-
-    inFlightHeaders.set(details.url, { referer, userAgent, cookie, origin, at: Date.now() });
-    pruneInFlight();
+    // requestId is unique per request and, unlike the URL, cannot collide
+    // between two tabs requesting the same manifest at once (M3) — Chrome
+    // guarantees it is present on every webRequest event, so there is no
+    // fallback key worth keeping a second, cross-tab-collidable copy for.
+    inFlightHeaders.set(details.requestId, buildHeaderPayload(details.requestHeaders));
+    pruneInflight(inFlightHeaders, { maxInflight: MAX_INFLIGHT, ttlMs: INFLIGHT_TTL_MS });
   },
   { urls: ['<all_urls>'] },
   ['requestHeaders', 'extraHeaders']
@@ -116,22 +138,29 @@ chrome.webRequest.onHeadersReceived.addListener(
     let contentType = null;
     let contentLength = null;
     let contentRange = null;
+    let contentDisposition = null;
+    let isCloudflare = false;
+
     if (details.responseHeaders) {
       for (const header of details.responseHeaders) {
         const name = header.name.toLowerCase();
         if (name === 'content-type') contentType = header.value;
         else if (name === 'content-length') contentLength = header.value;
         else if (name === 'content-range') contentRange = header.value;
+        else if (name === 'content-disposition') contentDisposition = header.value;
+        else if (name === 'cf-ray') isCloudflare = true;
+        else if (name === 'server' && header.value && header.value.toLowerCase().includes('cloudflare')) isCloudflare = true;
       }
     }
 
-    const result = classify(details.url, contentType, details.statusCode, details.type);
+    const dispositionFilename = extractDispositionFilename(contentDisposition);
+    const result = classify(details.url, contentType, details.statusCode, details.type, dispositionFilename);
     if (!result) return;
 
-    const headers = inFlightHeaders.get(details.url) || {};
+    const headers = inFlightHeaders.get(details.requestId) || {};
     const { sizeBytes, isPartial } = totalSizeFrom(contentLength, contentRange, details.statusCode);
 
-    register(details.tabId, {
+    queueStream(details.tabId, {
       url: details.url,
       kind: result.kind,
       confidence: result.confidence,
@@ -140,42 +169,59 @@ chrome.webRequest.onHeadersReceived.addListener(
       referer: headers.referer || (details.initiator ? details.initiator + '/' : null),
       userAgent: headers.userAgent || navigator.userAgent,
       cookie: headers.cookie || null,
-      origin: headers.origin || null
+      origin: headers.origin || null,
+      headers: headers.headersArray || [],
+      pageUrl: details.tabId ? tabPages.get(details.tabId) : null,
+      isCloudflare
     });
   },
   { urls: ['<all_urls>'] },
   ['responseHeaders', 'extraHeaders']
 );
 
-// 3. DOM media elements reported by the content script. Status 0 means "found
-//    in the page", not "server returned 0".
+// 3. Messages reported by content scripts (DOM elements, deep detector).
+// A Map, not an object literal: message.type arrives from a content script and
+// is therefore page-influenced, and a plain object would resolve 'constructor',
+// '__proto__', 'toString', 'valueOf' and 'hasOwnProperty' to truthy
+// Object.prototype members -- letting any page enter this branch with a key
+// that is not a detection message at all.
+const DETECTION_SOURCES = new Map([
+  ['MEDIA_ELEMENT_DETECTED', { confidence: 0, resourceType: 'media' }],
+  ['DEEP_MANIFEST_DETECTED', { confidence: 200, resourceType: 'xmlhttprequest' }]
+]);
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message && message.type === 'MEDIA_ELEMENT_DETECTED') {
-    const tabId = sender.tab ? sender.tab.id : null;
-    const result = classify(message.url, null, 0, 'media');
+  if (!message || typeof message.type !== 'string') return;
+
+  const tabId = sender.tab ? sender.tab.id : null;
+
+  const source = DETECTION_SOURCES.get(message.type);
+  if (source) {
+    const result = classify(message.url, null, source.confidence, source.resourceType);
     if (!result) {
       sendResponse({ ok: false });
       return true;
     }
 
-    register(tabId, {
+    if (sender.tab && sender.tab.url) {
+      tabPages.set(tabId, sender.tab.url);
+    }
+
+    queueStream(tabId, {
       url: message.url,
       kind: result.kind,
       confidence: result.confidence,
       sizeBytes: null,
       referer: message.referer || (sender.tab ? sender.tab.url : null),
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
+      pageUrl: sender.tab ? sender.tab.url : null,
+      pageTitle: message.pageTitle || null
     });
 
     sendResponse({ ok: true });
     return true;
   }
 });
-
-// Per-tab origin, so a hash or query change during playback is not mistaken
-// for a navigation. v1.0.1 cleared on any URL change and wiped streams the
-// moment a player rewrote the hash.
-const tabOrigins = new Map();
 
 function originOf(url) {
   try {
@@ -188,6 +234,7 @@ function originOf(url) {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!changeInfo.url) return;
 
+  tabPages.set(tabId, changeInfo.url);
   const nextOrigin = originOf(changeInfo.url);
   if (!nextOrigin) return;
 
@@ -200,9 +247,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   }
 });
 
-// 4. Best-effort cleanup. The popup sweeps whatever this misses.
+// 4. Best-effort cleanup.
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabOrigins.delete(tabId);
+  tabPages.delete(tabId);
   clearTab(tabId);
   updateBadge(tabId, 0);
 });

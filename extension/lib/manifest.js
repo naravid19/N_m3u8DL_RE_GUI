@@ -2,6 +2,7 @@
  * Pure manifest parsers for HLS master playlists and DASH MPD manifests.
  * Runs in both browser popup and node --test (pure JS, zero DOMParser dependency).
  */
+import { formatBitrate } from './format.js';
 
 /**
  * Parses an HLS attribute list (e.g. BANDWIDTH=5000000,CODECS="avc1,mp4a",AUDIO="aud").
@@ -44,19 +45,6 @@ export function parseAttributeList(attrStr) {
   }
 
   return result;
-}
-
-/**
- * Formats bandwidth (bits per second) into a clean Mbps / kbps string.
- */
-function formatBitrate(bps) {
-  if (!bps || typeof bps !== 'number' || bps <= 0) return '';
-  if (bps >= 1000000) {
-    const mbps = bps / 1000000;
-    return `${mbps >= 10 ? Math.round(mbps) : mbps.toFixed(1)} Mbps`;
-  }
-  const kbps = Math.round(bps / 1000);
-  return `${kbps} kbps`;
 }
 
 /**
