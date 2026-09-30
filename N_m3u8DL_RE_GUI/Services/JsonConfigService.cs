@@ -27,12 +27,21 @@ public sealed class JsonConfigService : IConfigService
     private const string JsonConfigFileName = "config.json";
     private const string LegacyConfigFileName = "config.txt";
 
+    /// <summary>
+    /// Config keys whose values are encrypted at rest with Windows DPAPI.
+    /// Includes the legacy Chinese key names that MainWindowConfigMapper persists,
+    /// and the legacy "IV" duplicate of CustomHLSIv. Renaming persisted keys would
+    /// orphan existing user configs, so the set carries both spellings.
+    /// </summary>
     private static readonly HashSet<string> SecretKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "Headers",
+        "请求头",
         "Proxy",
+        "代理",
         "CustomHLSKey",
         "CustomHLSIv",
+        "IV",
         "Key"
     };
 
@@ -122,9 +131,9 @@ public sealed class JsonConfigService : IConfigService
         {
             Debug.WriteLine($"JSON config parse error: {ex.Message}");
         }
-        catch (IOException ex)
+        catch (Exception ex)
         {
-            Debug.WriteLine($"JSON config IO error: {ex.Message}");
+            Debug.WriteLine($"JSON config load error: {ex.Message}");
         }
 
         return state;
@@ -152,9 +161,9 @@ public sealed class JsonConfigService : IConfigService
         {
             Debug.WriteLine($"JSON config serialize error: {ex.Message}");
         }
-        catch (IOException ex)
+        catch (Exception ex)
         {
-            Debug.WriteLine($"JSON config save IO error: {ex.Message}");
+            Debug.WriteLine($"JSON config save error: {ex.Message}");
         }
     }
 
@@ -185,7 +194,7 @@ public sealed class JsonConfigService : IConfigService
             return value;
 
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return string.Empty;
+            return value;
 
         try
         {
@@ -196,8 +205,14 @@ public sealed class JsonConfigService : IConfigService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"DPAPI unprotect failed: {ex.Message}");
-            return string.Empty;
+            // Return the ciphertext untouched rather than an empty string. ProtectSecret
+            // no-ops on values already prefixed "dpapi:", so the blob survives the next
+            // save and stays recoverable on the machine that encrypted it. Returning
+            // string.Empty here silently deleted the user's secret on the next save.
+            // ponytail: the raw blob is visible in the textbox; a "could not decrypt"
+            // placeholder needs UI state this service does not own.
+            Debug.WriteLine($"DPAPI unprotect failed, preserving ciphertext: {ex.Message}");
+            return value;
         }
     }
 }

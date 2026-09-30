@@ -22,6 +22,9 @@ using Media = System.Windows.Media;
 using MediaColor = System.Windows.Media.Color;
 using Anim = System.Windows.Media.Animation;
 using N_m3u8DL_RE_GUI.Core;
+using N_m3u8DL_RE_GUI.Core.Abyss;
+using N_m3u8DL_RE_GUI.Core.Capture;
+using N_m3u8DL_RE_GUI.Core.Resume;
 using Services = N_m3u8DL_RE_GUI.Services;
 
 namespace N_m3u8DL_RE_GUI
@@ -60,15 +63,90 @@ namespace N_m3u8DL_RE_GUI
         private readonly Services.IDownloadService _downloadService;
         private bool _suspendParameterRefresh;
         private bool _isCheckingUpdate;
-        private System.Threading.CancellationTokenSource? _cfPrepCts;
-        private System.Threading.CancellationTokenSource? _titleLookupCts;
-        private static readonly Media.SolidColorBrush ErrorBorderBrush = new(MediaColor.FromRgb(231, 76, 60));
-        private static readonly Media.SolidColorBrush DefaultBorderBrush = new(MediaColor.FromRgb(63, 63, 70));
+        // One token source for whatever long-running operation is currently cancellable.
+        // Each operation creates its own, publishes it here for Button_Stop, and clears
+        // the field only if it is still the owner. Sharing a single field across the
+        // async void handlers previously let one flow dispose another's live token.
+        private System.Threading.CancellationTokenSource? _activeOperationCts;
+        private ResumeJob? _activeResumeJob;
+        // Captured from the XAML so the batch flow can restore the real label (icon and
+        // access key included) instead of hard-coding a second, drifting copy of it.
+        private object? _downloadButtonLabel;
+        private static readonly Media.SolidColorBrush ErrorBorderBrush = CreateFrozenBrush(MediaColor.FromRgb(231, 76, 60));
+        // DefaultBorderBrush is gone: the resting border now comes from TextBoxStyle, which
+        // is the only place it should ever have been defined.
+
+        /// <summary>
+        /// Creates a token source for a new cancellable operation and publishes it so
+        /// Button_Stop can reach it. Cancels any operation already in flight.
+        /// </summary>
+        private System.Threading.CancellationTokenSource BeginCancellableOperation()
+        {
+            var previous = _activeOperationCts;
+            var cts = new System.Threading.CancellationTokenSource();
+            _activeOperationCts = cts;
+
+            if (previous != null)
+            {
+                try { previous.Cancel(); } catch (ObjectDisposedException) { }
+                try { previous.Dispose(); } catch (ObjectDisposedException) { }
+            }
+
+            return cts;
+        }
+
+        /// <summary>Retires a token source, clearing the shared field only if we still own it.</summary>
+        private void EndCancellableOperation(System.Threading.CancellationTokenSource cts)
+        {
+            if (ReferenceEquals(_activeOperationCts, cts))
+                _activeOperationCts = null;
+
+            try { cts.Dispose(); } catch (ObjectDisposedException) { }
+        }
+
+        /// <summary>Alt+S / Enter — routed to Button_GO_Click, the real download path.</summary>
+        public static readonly RoutedUICommand StartDownloadRoutedCommand =
+            new("Start Download", nameof(StartDownloadRoutedCommand), typeof(MainWindow));
+
+        /// <summary>Escape — routed to Button_Stop_Click.</summary>
+        public static readonly RoutedUICommand StopDownloadRoutedCommand =
+            new("Stop Download", nameof(StopDownloadRoutedCommand), typeof(MainWindow));
+
+        private static Media.SolidColorBrush CreateFrozenBrush(MediaColor color)
+        {
+            var brush = new Media.SolidColorBrush(color);
+            if (brush.CanFreeze) brush.Freeze();
+            return brush;
+        }
 
         public MainWindow()
         {
             InitializeComponent();
+            _downloadButtonLabel = Button_GO.Content;
+
+            var appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            if (appVersion != null)
+            {
+                var verString = $"v{appVersion.Major}.{appVersion.Minor}.{Math.Max(0, appVersion.Build)}";
+                Title = $"N_m3u8DL-RE GUI {verString}";
+                if (TextBlock_AppVersion != null)
+                {
+                    TextBlock_AppVersion.Text = verString;
+                }
+            }
+
+            CommandBindings.Add(new CommandBinding(
+                StartDownloadRoutedCommand,
+                (_, _) => Button_GO_Click(Button_GO, new RoutedEventArgs()),
+                (_, e) => e.CanExecute = IsEnabled && Button_GO.IsEnabled));
+
+            CommandBindings.Add(new CommandBinding(
+                StopDownloadRoutedCommand,
+                (_, _) => Button_Stop_Click(Button_Stop, new RoutedEventArgs()),
+                (_, e) => e.CanExecute = Button_Stop.Visibility == Visibility.Visible));
+
             TextBox_URL.Focus();
+            System.Windows.DataObject.AddPastingHandler(TextBox_URL, TextBox_URL_Pasting);
             var serviceProvider = ViewModels.ViewModelLocator.ServiceProvider;
             _utilityService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IUtilityService>(serviceProvider);
             _configService = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<Services.IConfigService>(serviceProvider);
@@ -79,7 +157,7 @@ namespace N_m3u8DL_RE_GUI
 
         private void Button_SelectDir_Click(object sender, RoutedEventArgs e)
         {
-            var selectedPath = _utilityService.SelectFolder(Properties.Resources.String1);
+            var selectedPath = _utilityService.SelectFolder("Choose a folder — downloads will be saved here");
             if (!string.IsNullOrEmpty(selectedPath))
             {
                 TextBox_WorkDir.Text = selectedPath;
@@ -93,7 +171,7 @@ namespace N_m3u8DL_RE_GUI
             if (_suspendParameterRefresh || TextBox_Parameter == null) return;
             // In Cloudflare bypass mode, preview the python command instead of N_m3u8DL-RE args
             if (CheckBox_BypassCF?.IsChecked == true)
-                TextBox_Parameter.Text = BuildCfCommand();
+                TextBox_Parameter.Text = CfCommandBuilder.BuildCommand(BuildCfOptions());
             else
                 TextBox_Parameter.Text = BuildArgsRE(TextBox_URL.Text);
         }
@@ -102,25 +180,40 @@ namespace N_m3u8DL_RE_GUI
         {
             if (textBox == null)
                 return;
-            textBox.BorderBrush = isValid ? DefaultBorderBrush : ErrorBorderBrush;
+            // Tag, not BorderBrush: see the "invalid" trigger in TextBoxStyle. Writing
+            // BorderBrush here set a local value that outranked the style's IsFocused
+            // trigger forever, leaving the primary URL field with no focus indicator.
+            textBox.Tag = isValid ? null : "invalid";
         }
 
-        private void RefreshValidationState()
+        private void RefreshValidationState(object? sender = null)
         {
-            ApplyValidationState(TextBox_URL, TextBox_URL == null || InputValidation.IsLikelyValidInput(TextBox_URL.Text));
-            ApplyValidationState(TextBox_Proxy, TextBox_Proxy == null || InputValidation.IsValidProxy(TextBox_Proxy.Text));
-            ApplyValidationState(TextBox_EXE, TextBox_EXE == null || string.IsNullOrWhiteSpace(TextBox_EXE.Text) || File.Exists(TextBox_EXE.Text));
+            if (sender == null || sender == TextBox_URL)
+                ApplyValidationState(TextBox_URL, TextBox_URL == null || InputValidation.IsLikelyValidInput(TextBox_URL.Text));
+            if (sender == null || sender == TextBox_Proxy)
+                ApplyValidationState(TextBox_Proxy, TextBox_Proxy == null || InputValidation.IsValidProxy(TextBox_Proxy.Text));
+            if (sender == null || sender == TextBox_EXE)
+                ApplyValidationState(TextBox_EXE, TextBox_EXE == null || string.IsNullOrWhiteSpace(TextBox_EXE.Text) || File.Exists(TextBox_EXE.Text));
         }
 
         string BuildArgsRE(string? inputOverride = null)
         {
+            var saveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text);
+            var saveName = TextBox_Title.Text;
+            var tmpDir = ResumePaths.ResolveTmpDir(
+                TextBox_TmpDir?.Text,
+                _activeResumeJob?.TmpDir,
+                _activeResumeJob?.SaveName,
+                saveDir,
+                saveName);
+
             var options = new DownloadOptions
             {
                 // Basic Settings
                 Input = string.IsNullOrWhiteSpace(inputOverride) ? TextBox_URL.Text : inputOverride,
-                SaveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text),
-                TmpDir = TextBox_TmpDir?.Text?.Trim(),
-                SaveName = TextBox_Title.Text,
+                SaveDir = saveDir,
+                TmpDir = tmpDir,
+                SaveName = saveName,
                 Headers = TextBox_Headers.Text,
                 BaseUrl = TextBox_Baseurl.Text,
                 MuxImport = TextBox_MuxJson.Text?.Trim(),
@@ -210,7 +303,10 @@ namespace N_m3u8DL_RE_GUI
                 UseFFmpegConcatDemuxer = CheckBox_UseFFmpegConcat?.IsChecked == true,
                 AllowHlsMultiExtMap = CheckBox_AllowHlsMultiExtMap?.IsChecked == true,
                 ForceAnsiConsole = CheckBox_ForceAnsiConsole?.IsChecked == true,
-                NoAnsiColor = CheckBox_NoAnsiColor?.IsChecked == true,
+                // Forced on: the GUI parses redirected output, and escape sequences make
+                // it unreadable. ponytail: CheckBox_NoAnsiColor is now vestigial — remove
+                // it from the XAML in the IA pass.
+                NoAnsiColor = true,
                 DisableUpdateCheck = CheckBox_DisableUpdateCheck?.IsChecked == true,
             };
 
@@ -223,6 +319,15 @@ namespace N_m3u8DL_RE_GUI
         /// </summary>
         private DownloadOptions BuildDownloadOptions()
         {
+            var saveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text);
+            var saveName = TextBox_Title.Text;
+            var tmpDir = ResumePaths.ResolveTmpDir(
+                TextBox_TmpDir?.Text,
+                _activeResumeJob?.TmpDir,
+                _activeResumeJob?.SaveName,
+                saveDir,
+                saveName);
+
             return new DownloadOptions
             {
                 // EXE path — lets DownloadService use the GUI-configured binary
@@ -230,9 +335,9 @@ namespace N_m3u8DL_RE_GUI
 
                 // Basic Settings
                 Input = TextBox_URL.Text,
-                SaveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text),
-                TmpDir = TextBox_TmpDir?.Text?.Trim(),
-                SaveName = TextBox_Title.Text,
+                SaveDir = saveDir,
+                TmpDir = tmpDir,
+                SaveName = saveName,
                 Headers = TextBox_Headers.Text,
                 BaseUrl = TextBox_Baseurl.Text,
                 MuxImport = TextBox_MuxJson.Text?.Trim(),
@@ -321,8 +426,10 @@ namespace N_m3u8DL_RE_GUI
                 WriteMetaJson = CheckBox_WriteMetaJson?.IsChecked != false,
                 UseFFmpegConcatDemuxer = CheckBox_UseFFmpegConcat?.IsChecked == true,
                 AllowHlsMultiExtMap = CheckBox_AllowHlsMultiExtMap?.IsChecked == true,
-                ForceAnsiConsole = CheckBox_ForceAnsiConsole?.IsChecked == true,
-                NoAnsiColor = CheckBox_NoAnsiColor?.IsChecked == true,
+                // Forced on: the GUI parses redirected output, and escape sequences make
+                // it unreadable. ponytail: CheckBox_NoAnsiColor is now vestigial — remove
+                // it from the XAML in the IA pass.
+                NoAnsiColor = true,
                 DisableUpdateCheck = CheckBox_DisableUpdateCheck?.IsChecked == true,
             };
         }
@@ -339,13 +446,50 @@ namespace N_m3u8DL_RE_GUI
 
         private void TextChanged(object sender, TextChangedEventArgs e)
         {
-            RefreshValidationState();
+            RefreshValidationState(sender);
             GetParameter();
         }
 
         private void CheckBoxChanged(object sender, RoutedEventArgs e)
         {
+            SyncDependentControlStates();
             GetParameter();
+        }
+
+        /// <summary>
+        /// Reflects option dependencies in the UI instead of silently overriding them at
+        /// build time. Every field disabled here is one BuildArgsRE would otherwise
+        /// discard while the user kept looking at the value they typed.
+        /// </summary>
+        private void SyncDependentControlStates()
+        {
+            var audioOnly = CheckBox_AudioOnly?.IsChecked == true;
+            if (TextBox_SelectAudio != null)
+            {
+                TextBox_SelectAudio.IsEnabled = !audioOnly;
+                TextBox_SelectAudio.ToolTip = audioOnly
+                    ? "Overridden by Audio Only, which forces the best audio track."
+                    : "Regex selecting which audio track to download";
+            }
+            if (TextBox_DropVideo != null)
+            {
+                TextBox_DropVideo.IsEnabled = !audioOnly;
+                TextBox_DropVideo.ToolTip = audioOnly
+                    ? "Overridden by Audio Only, which drops every video track."
+                    : "Regex selecting which video tracks to discard";
+            }
+
+            var bypassCf = CheckBox_BypassCF?.IsChecked == true;
+            if (Border_CfScopeWarning != null)
+                Border_CfScopeWarning.Visibility = bypassCf ? Visibility.Visible : Visibility.Collapsed;
+
+            // The dependent CF fields are meaningless until the mode is on.
+            foreach (var control in new System.Windows.Controls.Control?[]
+                     { Combo_CFImpersonate, TextBox_CFReferer, TextBox_CFCookie, CheckBox_CFKeepSegs })
+            {
+                if (control != null)
+                    control.IsEnabled = bypassCf;
+            }
         }
 
         private void Combo_SubFormat_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
@@ -416,19 +560,17 @@ namespace N_m3u8DL_RE_GUI
 
             if (InputValidation.IsHttpUrl(input))
             {
-                _titleLookupCts?.Dispose();
-                _titleLookupCts = new System.Threading.CancellationTokenSource();
+                var cts = BeginCancellableOperation();
                 try
                 {
-                    TextBox_Title.Text = await _utilityService.GetTitleFromUrlAsync(input, _titleLookupCts.Token);
+                    TextBox_Title.Text = await _utilityService.GetTitleFromUrlAsync(input, cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
                 }
                 finally
                 {
-                    _titleLookupCts?.Dispose();
-                    _titleLookupCts = null;
+                    EndCancellableOperation(cts);
                 }
                 return;
             }
@@ -482,7 +624,18 @@ namespace N_m3u8DL_RE_GUI
 
         private void TextBox_URL_PreviewDrop(object sender, System.Windows.DragEventArgs e)
         {
-            if (TryGetFirstDroppedPath(e, out var path) && DropInputRules.IsSupportedUrlInputPath(path))
+            if (!TryGetFirstDroppedPath(e, out var path))
+                return;
+
+            // Must come first: a .har is a source to extract from, never a stream input.
+            if (DropInputRules.IsHarPath(path))
+            {
+                ImportFromHar(path);
+                e.Handled = true;
+                return;
+            }
+
+            if (DropInputRules.IsSupportedUrlInputPath(path))
             {
                 MarkDragCopy(e);
                 if (TextBox_URL.Text != path) FlashTextBox(TextBox_URL);
@@ -490,6 +643,37 @@ namespace N_m3u8DL_RE_GUI
                 if (DropInputRules.ShouldAutoFillTitleFromFileName(path))
                     TextBox_Title.Text = Path.GetFileNameWithoutExtension(path);
             }
+        }
+
+        private void ImportFromHar(string path)
+        {
+            IReadOnlyList<CapturedRequest> candidates;
+            try
+            {
+                candidates = HarStreamExtractor.ExtractFromFile(path);
+            }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                SetStatus(ex.Message, isError: true);
+                return;
+            }
+
+            if (candidates.Count == 0)
+            {
+                SetStatus("No stream was found in that capture. Clear the network log, press play, " +
+                          "let it run a few seconds, then save the HAR again.", isError: true);
+                return;
+            }
+
+            if (candidates.Count == 1)
+            {
+                TryApplyCapturedRequest(candidates[0]);
+                return;
+            }
+
+            var picker = new Views.StreamPickerWindow(candidates) { Owner = this };
+            if (picker.ShowDialog() == true)
+                TryApplyCapturedRequest(picker.Selected);
         }
 
         private void TextBox_MuxJson_PreviewDragEnter(object sender, System.Windows.DragEventArgs e)
@@ -567,13 +751,120 @@ namespace N_m3u8DL_RE_GUI
             {
                 _suspendParameterRefresh = false;
                 RefreshValidationState();
+                SyncDependentControlStates();
+                ClampToWorkArea();
                 GetParameter();
 
-                CleanStaleTempBatchFiles();
+                _ = Task.Run(() => CleanStaleTempBatchFiles());
 
                 if (CheckBox_AutoCheckGuiUpdate?.IsChecked == true)
                 {
                     _ = CheckGuiUpdateAsync(isManual: false);
+                }
+
+                CheckForResumableJob();
+            }
+        }
+
+        private void CheckForResumableJob()
+        {
+            try
+            {
+                var job = Services.ResumeJobStore.Default.TryFindResumable();
+                if (job != null && job.ExistingBytes > 0)
+                {
+                    _activeResumeJob = job;
+                    var title = string.IsNullOrWhiteSpace(job.SaveName) ? "Unfinished download" : $"Unfinished download — \"{job.SaveName}\"";
+                    TextBlock_ResumeTitle.Text = $"⏸  {title}";
+
+                    var size = FormatByteSize(job.ExistingBytes);
+                    var timeAgo = FormatTimeAgo(job.StartedAt);
+                    var host = string.IsNullOrWhiteSpace(job.SourceHost) ? string.Empty : $" · from {job.SourceHost}";
+                    TextBlock_ResumeDetail.Text = $"{size} already saved · stopped {timeAgo}{host}";
+
+                    Border_ResumeBanner.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    _activeResumeJob = null;
+                    Border_ResumeBanner.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainWindow] CheckForResumableJob error: {ex.Message}");
+                _activeResumeJob = null;
+                Border_ResumeBanner.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private static string FormatByteSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+            if (bytes < 1024L * 1024L * 1024L) return $"{bytes / (1024.0 * 1024.0):F0} MB";
+            return $"{bytes / (1024.0 * 1024.0 * 1024.0):F1} GB";
+        }
+
+        private static string FormatTimeAgo(DateTimeOffset startedAt)
+        {
+            var elapsed = DateTimeOffset.UtcNow - startedAt;
+            if (elapsed.TotalMinutes < 1) return "just now";
+            if (elapsed.TotalMinutes < 60)
+            {
+                var m = Math.Max(1, (int)elapsed.TotalMinutes);
+                return $"{m} minute{(m == 1 ? "" : "s")} ago";
+            }
+            if (elapsed.TotalHours < 24)
+            {
+                var h = (int)elapsed.TotalHours;
+                return $"{h} hour{(h == 1 ? "" : "s")} ago";
+            }
+            var d = (int)elapsed.TotalDays;
+            return $"{d} day{(d == 1 ? "" : "s")} ago";
+        }
+
+        private void Button_ResumeJob_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeResumeJob != null)
+            {
+                if (!string.IsNullOrWhiteSpace(_activeResumeJob.SaveName))
+                    TextBox_Title.Text = _activeResumeJob.SaveName;
+                if (!string.IsNullOrWhiteSpace(_activeResumeJob.SaveDir))
+                    TextBox_WorkDir.Text = _activeResumeJob.SaveDir;
+
+                TextBox_URL.Text = string.Empty;
+                TextBox_URL.Focus();
+
+                Border_ResumeBanner.Visibility = Visibility.Collapsed;
+                SetStatus("Paste a fresh link for this video. The original link has expired — that is normal, and everything already downloaded will be kept.");
+            }
+        }
+
+        private void Button_DiscardJob_Click(object sender, RoutedEventArgs e)
+        {
+            if (_activeResumeJob != null)
+            {
+                var size = FormatByteSize(_activeResumeJob.ExistingBytes);
+                var targetName = string.IsNullOrWhiteSpace(_activeResumeJob.SaveName) ? "this download" : $"\"{_activeResumeJob.SaveName}\"";
+                var message = $"Delete {size} of partial download for {targetName}? This cannot be undone.";
+
+                var result = MessageBox.Show(message, "Discard Interrupted Download", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    var success = Services.ResumeJobStore.Default.Discard();
+                    if (success)
+                    {
+                        Border_ResumeBanner.Visibility = Visibility.Collapsed;
+                        _activeResumeJob = null;
+                        SetStatus("Partial download discarded.");
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Could not delete partial files. A file may still be in use by another process.",
+                            "Discard Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
             }
         }
@@ -597,37 +888,231 @@ namespace N_m3u8DL_RE_GUI
                 Environment.CurrentDirectory = legacyDirectory;
         }
 
+        /// <summary>
+        /// Keeps the window inside the desktop work area. At 150% scaling on a 1080p
+        /// display the default height would otherwise put Zone D behind the taskbar.
+        /// </summary>
+        private void ClampToWorkArea()
+        {
+            var work = SystemParameters.WorkArea;
+            if (ActualHeight > work.Height)
+                Height = work.Height;
+            if (ActualWidth > work.Width)
+                Width = work.Width;
+            if (Top + Height > work.Bottom)
+                Top = Math.Max(work.Top, work.Bottom - Height);
+        }
+
+        private readonly System.Text.StringBuilder _logBuffer = new();
+        private string? _lastOutputDirectory;
+
+        private void Button_PasteCurl_Click(object sender, RoutedEventArgs e)
+        {
+            string clipboardText;
+            try
+            {
+                clipboardText = Clipboard.GetText();
+            }
+            catch (Exception ex)
+            {
+                // The clipboard is a shared OS resource; another process can hold it locked.
+                SetStatus($"Could not read the clipboard: {ex.Message}", isError: true);
+                return;
+            }
+
+            if (TryApplyCapturedRequest(CurlCommandParser.Parse(clipboardText)))
+                return;
+
+            if (BatchPasteHelper.LooksLikeBatchList(clipboardText))
+            {
+                var directives = CaptureDirectives.Parse(clipboardText);
+                if (directives.TryGetValue("headers", out var headers) && !string.IsNullOrWhiteSpace(headers))
+                {
+                    TextBox_Headers.Text = headers;
+                }
+
+                var batchFile = BatchPasteHelper.WriteTempBatchFile(clipboardText);
+                TextBox_URL.Text = batchFile;
+                SetStatus("Imported batch list — click GO to download.");
+                return;
+            }
+
+            SetStatus("Clipboard does not contain a cURL command or multi-stream batch list. " +
+                      "In your browser extension: click 'Copy as cURL' or 'Copy as list'.", isError: true);
+        }
+
+        private void TextBox_URL_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (!e.DataObject.GetDataPresent(DataFormats.UnicodeText))
+                return;
+
+            var pasted = e.DataObject.GetData(DataFormats.UnicodeText) as string;
+            if (string.IsNullOrWhiteSpace(pasted))
+                return;
+
+            if (CurlCommandParser.LooksLikeCurl(pasted))
+            {
+                if (TryApplyCapturedRequest(CurlCommandParser.Parse(pasted)))
+                    e.CancelCommand();
+                return;
+            }
+
+            if (BatchPasteHelper.LooksLikeBatchList(pasted))
+            {
+                var directives = CaptureDirectives.Parse(pasted);
+                if (directives.TryGetValue("headers", out var headers) && !string.IsNullOrWhiteSpace(headers))
+                {
+                    TextBox_Headers.Text = headers;
+                }
+
+                var batchFile = BatchPasteHelper.WriteTempBatchFile(pasted);
+                TextBox_URL.Text = batchFile;
+                SetStatus("Imported batch list — click GO to download.");
+                e.CancelCommand();
+            }
+        }
+
+        /// <summary>
+        /// Fills the URL and header fields from a capture. Returns false when there was
+        /// nothing usable, so callers can report it their own way.
+        /// </summary>
+        private bool TryApplyCapturedRequest(CapturedRequest? captured)
+        {
+            if (captured is null)
+                return false;
+
+            TextBox_URL.Text = captured.Url;
+
+            if (captured.Headers.Count > 0)
+                TextBox_Headers.Text = captured.ToHeaderLines();
+
+            if (captured.Directives.TryGetValue("select-video", out var selectVideo) && !string.IsNullOrWhiteSpace(selectVideo))
+            {
+                TextBox_SelectVideo.Text = selectVideo;
+            }
+
+            var kind = captured.Kind == CapturedStreamKind.Unknown
+                ? "stream"
+                : captured.Kind.ToString().ToUpperInvariant();
+
+            var qualityMsg = captured.Directives.ContainsKey("select-video") ? $" (Quality: {captured.Directives["select-video"]})" : "";
+            SetStatus($"Imported {kind} — 1 URL, {captured.Headers.Count} header(s){qualityMsg}.");
+            return true;
+        }
+
+        private void SetStatus(string text, bool isError = false)
+        {
+            TextBlock_Status.Text = text;
+            TextBlock_Status.Foreground = isError ? ErrorBorderBrush : DefaultStatusBrush;
+        }
+
+        private static readonly Media.SolidColorBrush DefaultStatusBrush =
+            CreateFrozenBrush(MediaColor.FromRgb(0x88, 0x88, 0xA8));
+
+        private void AppendLog(string message)
+        {
+            _logBuffer.AppendLine(message);
+            TextBox_Log.Text = _logBuffer.ToString();
+            TextBox_Log.ScrollToEnd();
+        }
+
+        private void ResetRunState()
+        {
+            _logBuffer.Clear();
+            TextBox_Log.Text = string.Empty;
+            ProgressBar_Download.Value = 0;
+            Button_OpenFolder.Visibility = Visibility.Collapsed;
+        }
+
+        private void ToggleButton_Log_Changed(object sender, RoutedEventArgs e)
+        {
+            TextBox_Log.Visibility = ToggleButton_Log.IsChecked == true
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private void Button_OpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(_lastOutputDirectory) && Directory.Exists(_lastOutputDirectory))
+                StartShellTarget(_lastOutputDirectory);
+        }
+
         private async void Button_GO_Click(object sender, RoutedEventArgs e)
         {
             // Convert hex key to base64 if applicable
-            try
+            if (!string.IsNullOrWhiteSpace(TextBox_Key.Text))
             {
-                string hex = TextBox_Key.Text.Replace("0x", "", StringComparison.OrdinalIgnoreCase).Replace("-", "").Replace(" ", "");
-                if (hex.Length % 2 == 0 && Regex.IsMatch(hex, @"\A\b[0-9a-fA-F]+\b\Z"))
-                    TextBox_Key.Text = Convert.ToBase64String(Convert.FromHexString(hex));
-            }
-            catch (FormatException ex)
-            {
-                Debug.WriteLine($"Key conversion failed (invalid hex format): {ex.Message}");
-            }
-            catch (ArgumentException ex)
-            {
-                Debug.WriteLine($"Key conversion failed (invalid key input): {ex.Message}");
+                string rawKey = TextBox_Key.Text.Trim();
+                if (rawKey.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        string hex = rawKey.Substring(2).Replace("-", "").Replace(" ", "");
+                        TextBox_Key.Text = Convert.ToBase64String(Convert.FromHexString(hex));
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Key conversion failed (invalid hex format): {ex.Message}");
+                        MessageBox.Show("Invalid Hex Key format. Please check your key.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+                else
+                {
+                    string hex = rawKey.Replace("-", "").Replace(" ", "");
+                    if (hex.Length > 0 && hex.Length % 2 == 0 && Regex.IsMatch(hex, @"\A\b[0-9a-fA-F]+\b\Z") && !rawKey.Contains(':') && !rawKey.EndsWith("="))
+                    {
+                        try
+                        {
+                            TextBox_Key.Text = Convert.ToBase64String(Convert.FromHexString(hex));
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Key conversion failed: {ex.Message}");
+                            MessageBox.Show("Invalid Hex Key format. Please check your key.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                    }
+                }
             }
             // Skip the N_m3u8DL-RE.exe check when using Cloudflare bypass (Python m3u8_cf_bypass.py is used instead)
             if (CheckBox_BypassCF?.IsChecked != true && !File.Exists(TextBox_EXE.Text))
             {
-                MessageBox.Show(Properties.Resources.String2);
+                MessageBox.Show(
+                    "N_m3u8DL-RE.exe was not found.\n\n" +
+                    "Set its path on the Download tab, or right-click the Executable field and choose Get Downloader.",
+                    "Downloader Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (TextBox_URL.Text == "")
             {
-                MessageBox.Show(Properties.Resources.String3);
+                MessageBox.Show(
+                    "Enter a URL or file path first.",
+                    "Missing Input", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (!InputValidation.IsValidProxy(TextBox_Proxy.Text))
             {
-                MessageBox.Show(Properties.Resources.String7);
+                MessageBox.Show(
+                    "Proxy must start with http:// or socks5://.",
+                    "Invalid Proxy", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Abyss / Hydrax native download mode
+            if (AbyssMetadataFetcher.IsAbyssUrl(TextBox_URL.Text))
+            {
+                Button_GO.IsEnabled = false;
+                Button_Stop.Visibility = Visibility.Visible;
+                try
+                {
+                    await StartAbyssDownloadAsync(TextBox_URL.Text);
+                }
+                finally
+                {
+                    Button_GO.IsEnabled = true;
+                    Button_Stop.Visibility = Visibility.Collapsed;
+                }
                 return;
             }
 
@@ -635,13 +1120,12 @@ namespace N_m3u8DL_RE_GUI
             if (_batchScriptService.IsBatchInput(TextBox_URL.Text))
             {
                 this.IsEnabled = false;
-                Button_GO.Content = Properties.Resources.String4;
+                Button_GO.Content = "Working…";
                 Services.BatchScriptBuildResult? result = null;
-                _titleLookupCts?.Dispose();
-                _titleLookupCts = new System.Threading.CancellationTokenSource();
+                var cts = BeginCancellableOperation();
                 try
                 {
-                    var token = _titleLookupCts.Token;
+                    var token = cts.Token;
                     result = await _batchScriptService.BuildScriptAsync(
                         inputPath: TextBox_URL.Text,
                         exePath: TextBox_EXE.Text,
@@ -658,14 +1142,13 @@ namespace N_m3u8DL_RE_GUI
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message);
+                    MessageBox.Show(ex.Message, "Batch build failed", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
                 finally
                 {
-                    _titleLookupCts?.Dispose();
-                    _titleLookupCts = null;
-                    Button_GO.Content = "GO";
+                    EndCancellableOperation(cts);
+                    Button_GO.Content = _downloadButtonLabel;
                     this.IsEnabled = true;
                 }
 
@@ -673,13 +1156,36 @@ namespace N_m3u8DL_RE_GUI
                 {
                     Button_GO.IsEnabled = false;
                     Button_Stop.Visibility = Visibility.Visible;
+
+                    _lastOutputDirectory = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text)
+                                           ?? Environment.CurrentDirectory;
+                    ResetRunState();
+                    SetStatus("Running batch…");
+
+                    var batchProgress = new Progress<int>(p => ProgressBar_Download.Value = p);
+                    var batchLog = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
+
                     try
                     {
-                        await _downloadService.StartProcessAsync(result.FilePath, string.Empty);
+                        var batchOk = await _downloadService.StartProcessAsync(
+                            result.FilePath, string.Empty, batchLog, batchProgress);
+
+                        if (batchOk)
+                        {
+                            ProgressBar_Download.Value = 100;
+                            SetStatus($"Batch finished. Saved to {_lastOutputDirectory}");
+                            Button_OpenFolder.Visibility = Visibility.Visible;
+                        }
+                        else
+                        {
+                            SetStatus("Batch failed — open the Log for details.", isError: true);
+                            ToggleButton_Log.IsChecked = true;
+                        }
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(ex.Message);
+                        SetStatus($"Batch error: {ex.Message}", isError: true);
+                        ToggleButton_Log.IsChecked = true;
                     }
                     finally
                     {
@@ -709,19 +1215,47 @@ namespace N_m3u8DL_RE_GUI
                     }
                     else
                     {
-                        // Build options including the user-specified EXE path
                         var argsForPreview = BuildArgsRE();
                         TextBox_Parameter.Text = argsForPreview;
 
-                        // Use IDownloadService so Button_Stop can call StopDownload() and
-                        // actually kill the running process (and its children).
                         var options = BuildDownloadOptions();
-                        await _downloadService.StartDownloadAsync(options);
+                        _lastOutputDirectory = string.IsNullOrWhiteSpace(options.SaveDir)
+                            ? Environment.CurrentDirectory
+                            : options.SaveDir;
+
+                        ResetRunState();
+                        SetStatus("Downloading…");
+
+                        Services.ResumeJobStore.Default.Begin(
+                            options.Input,
+                            options.SaveName ?? string.Empty,
+                            options.SaveDir ?? string.Empty,
+                            options.TmpDir ?? string.Empty);
+
+                        var progress = new Progress<int>(p => ProgressBar_Download.Value = p);
+                        var log = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
+
+                        var succeeded = await _downloadService.StartDownloadAsync(options, progress, log);
+
+                        if (succeeded)
+                        {
+                            Services.ResumeJobStore.Default.Complete();
+                            _activeResumeJob = null;
+                            ProgressBar_Download.Value = 100;
+                            SetStatus($"Saved to {_lastOutputDirectory}");
+                            Button_OpenFolder.Visibility = Visibility.Visible;
+                        }
+                        else
+                        {
+                            SetStatus("Download failed — open the Log for details.", isError: true);
+                            ToggleButton_Log.IsChecked = true;
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message);
+                    SetStatus($"Download error: {ex.Message}", isError: true);
+                    ToggleButton_Log.IsChecked = true;
                 }
                 finally
                 {
@@ -733,8 +1267,12 @@ namespace N_m3u8DL_RE_GUI
 
         private void Button_Stop_Click(object sender, RoutedEventArgs e)
         {
-            _cfPrepCts?.Cancel();
-            _titleLookupCts?.Cancel();
+            var cts = _activeOperationCts;
+            if (cts != null)
+            {
+                try { cts.Cancel(); } catch (ObjectDisposedException) { }
+            }
+
             _downloadService.StopDownload();
             Button_Stop.Visibility = Visibility.Collapsed;
         }
@@ -792,78 +1330,122 @@ namespace N_m3u8DL_RE_GUI
             }
         }
 
-        // ============================================================
-        // Cloudflare Bypass via curl_cffi
-        // ============================================================
-
-        private static string EscapeBatchArg(string arg)
+        /// <summary>
+        /// Native C# downloader for Abyss/Hydrax video streams (abysscdn.com, playhydrax.com, short.ink, etc.).
+        /// Automatically parses metadata, selects optimal quality, downloads fragmented chunks, and reassembles into MP4.
+        /// </summary>
+        private async Task StartAbyssDownloadAsync(string url)
         {
-            if (string.IsNullOrEmpty(arg)) return string.Empty;
-            return arg.Replace("\"", "\\\"");
+            var cts = BeginCancellableOperation();
+            _lastOutputDirectory = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text)
+                                   ?? Environment.CurrentDirectory;
+
+            ResetRunState();
+            SetStatus("Fetching Abyss/Hydrax video metadata…");
+            AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Abyss/Hydrax video stream detected: {url}");
+
+            try
+            {
+                var customHeaders = HeaderParser.Parse(TextBox_Headers?.Text);
+                if (customHeaders.TryGetValue("Referer", out var refererVal))
+                {
+                    AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Custom Referer: {refererVal}");
+                }
+
+                var mp4 = await AbyssMetadataFetcher.FetchMetadataAsync(url, customHeaders: customHeaders, cancellationToken: cts.Token);
+                if (mp4.Sources == null || mp4.Sources.Count == 0)
+                {
+                    throw new InvalidOperationException("No downloadable video streams found in Abyss metadata.");
+                }
+
+                // Pick highest resolution/size available
+                var source = mp4.Sources.OrderByDescending(s => s.Size).First();
+
+                var titleClean = _utilityService.GetValidFileName(TextBox_Title.Text);
+                if (string.IsNullOrWhiteSpace(titleClean))
+                    titleClean = $"abyss_{mp4.Slug}_{source.Label}";
+                if (!titleClean.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
+                    titleClean += ".mp4";
+
+                string outputPath = Path.Combine(_lastOutputDirectory, titleClean);
+
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Video: {mp4.Slug} | Quality: {source.Label} | Size: {source.Size / (1024.0 * 1024.0):F1} MB | Codec: {source.Codec}");
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Output file: {outputPath}");
+                SetStatus($"Downloading Abyss stream: {source.Label}…");
+
+                var abyssService = new AbyssDownloadService();
+                var progress = new Progress<AbyssDownloadProgress>(p =>
+                {
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        ProgressBar_Download.Value = (int)p.Percentage;
+                        SetStatus($"Downloading Abyss: {p}");
+                    });
+                });
+
+                var logAction = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
+
+                await abyssService.DownloadAsync(
+                    mp4,
+                    source,
+                    outputPath,
+                    customHeaders: customHeaders,
+                    connections: 8,
+                    progress: progress,
+                    log: logAction,
+                    cancellationToken: cts.Token);
+
+                ProgressBar_Download.Value = 100;
+                SetStatus($"Saved to {outputPath}");
+                Button_OpenFolder.Visibility = Visibility.Visible;
+            }
+            catch (OperationCanceledException)
+            {
+                SetStatus("Download stopped by user.");
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} WARN : Download cancelled by user.");
+            }
+            catch (Exception ex)
+            {
+                SetStatus($"Download error: {ex.Message}", isError: true);
+                AppendLog($"{DateTime.Now:HH:mm:ss.fff} ERROR : {ex.Message}");
+                ToggleButton_Log.IsChecked = true;
+            }
+            finally
+            {
+                EndCancellableOperation(cts);
+            }
         }
 
         /// <summary>
-        /// Build the Python command that invokes m3u8_cf_bypass.py.
+        /// Build the CF options object for m3u8_cf_bypass.py.
         /// Uses dedicated CF bypass controls (TextBox_CFReferer, TextBox_CFCookie,
         /// Combo_CFImpersonate, CheckBox_CFKeepSegs) for a clean, predictable data path.
         /// </summary>
-        private string BuildCfCommand(string pythonExe = "python")
+        private CfCommandOptions BuildCfOptions(string pythonExe = "python")
         {
             string scriptPath = Path.Combine(AppContext.BaseDirectory, "m3u8_cf_bypass.py");
             if (!File.Exists(scriptPath))
                 scriptPath = Path.Combine(Environment.CurrentDirectory, "m3u8_cf_bypass.py");
 
-            string url = EscapeBatchArg(TextBox_URL.Text);
-            string titleClean = GetValidFileName(TextBox_Title.Text);
+            var titleClean = _utilityService.GetValidFileName(TextBox_Title.Text);
             if (string.IsNullOrWhiteSpace(titleClean)) titleClean = "output";
             if (!titleClean.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)) titleClean += ".mp4";
-            string title = EscapeBatchArg(titleClean);
 
-            string saveDirRaw = string.IsNullOrWhiteSpace(TextBox_WorkDir.Text)
-                ? Environment.CurrentDirectory
-                : TextBox_WorkDir.Text;
-            string saveDir = EscapeBatchArg(saveDirRaw);
-
-            // Segment temp directory next to GUI exe (doesn't pollute user save dir).
-            // Merged successfully → m3u8_cf_bypass.py auto-deletes it.
-            string segDir = EscapeBatchArg(Path.Combine(AppContext.BaseDirectory, "cf_segments"));
-
-            // --- CF-specific controls ---
-            // Referer: read from dedicated CF Referer field. If blank, auto-derive from input URL domain.
-            string referer = TextBox_CFReferer?.Text?.Trim() ?? string.Empty;
-            if (string.IsNullOrEmpty(referer) && !string.IsNullOrWhiteSpace(TextBox_URL.Text))
-            {
-                if (Uri.TryCreate(TextBox_URL.Text.Trim(), UriKind.Absolute, out var parsedUri))
-                {
-                    referer = parsedUri.GetLeftPart(UriPartial.Authority) + "/";
-                }
-            }
-
-            // Cookie: read from dedicated CF Cookie field.
-            string cookie = TextBox_CFCookie?.Text?.Trim() ?? string.Empty;
-
-            // Impersonation fingerprint: read from ComboBox selection.
-            string impersonate = "chrome";
-            if (Combo_CFImpersonate?.SelectedItem is ComboBoxItem cfi && cfi.Tag is string tag && !string.IsNullOrEmpty(tag))
-                impersonate = tag;
-
-            var cmd = $"\"{pythonExe}\" \"{scriptPath}\" \"{url}\" --referer \"{EscapeBatchArg(referer)}\" -o \"{title}\" --work-dir \"{saveDir}\" --seg-dir \"{segDir}\" --impersonate \"{impersonate}\"";
-            if (!string.IsNullOrEmpty(cookie))
-                cmd += $" --cookie \"{EscapeBatchArg(cookie)}\"";
-            // CheckBox_CFKeepSegs: when checked, keep segments after merge.
-            if (CheckBox_CFKeepSegs?.IsChecked == true)
-                cmd += " --keep-segs";
-            return cmd;
-        }
-
-        /// <summary>
-        /// Sanitise a string so it can be used as a Windows filename.
-        /// </summary>
-        private static string GetValidFileName(string name)
-        {
-            foreach (char c in Path.GetInvalidFileNameChars())
-                name = name.Replace(c, '_');
-            return name.Trim();
+            return new CfCommandOptions(
+                PythonExe: pythonExe,
+                ScriptPath: scriptPath,
+                Url: TextBox_URL.Text,
+                OutputName: titleClean,
+                WorkDir: string.IsNullOrWhiteSpace(TextBox_WorkDir.Text)
+                    ? Environment.CurrentDirectory
+                    : TextBox_WorkDir.Text,
+                SegDir: Path.Combine(AppContext.BaseDirectory, "cf_segments"),
+                Referer: CfCommandBuilder.DeriveReferer(TextBox_CFReferer?.Text, TextBox_URL.Text),
+                Cookie: TextBox_CFCookie?.Text?.Trim() ?? string.Empty,
+                Impersonate: (Combo_CFImpersonate?.SelectedItem is ComboBoxItem cfi && cfi.Tag is string tag && !string.IsNullOrEmpty(tag))
+                    ? tag
+                    : "chrome",
+                KeepSegments: CheckBox_CFKeepSegs?.IsChecked == true);
         }
 
         /// <summary>
@@ -983,7 +1565,7 @@ namespace N_m3u8DL_RE_GUI
         }
 
         /// <summary>
-        /// Clean up stale Cloudflare batch files from %TEMP% directory created in previous runs.
+        /// Clean up stale batch files and pasted lists from %TEMP% directory created in previous runs.
         /// </summary>
         private static void CleanStaleTempBatchFiles()
         {
@@ -991,12 +1573,17 @@ namespace N_m3u8DL_RE_GUI
             {
                 var tempDir = Path.GetTempPath();
                 var dirInfo = new DirectoryInfo(tempDir);
-                var staleFiles = dirInfo.GetFiles("cf_dl_*.bat")
-                    .Where(f => (DateTime.Now - f.LastWriteTime).TotalHours > 1);
+                var patterns = new[] { "cf_dl_*.bat", "batch_*.bat", "paste_*.txt" };
 
-                foreach (var file in staleFiles)
+                foreach (var pattern in patterns)
                 {
-                    try { file.Delete(); } catch { }
+                    var staleFiles = dirInfo.GetFiles(pattern)
+                        .Where(f => (DateTime.Now - f.LastWriteTime).TotalHours > 1);
+
+                    foreach (var file in staleFiles)
+                    {
+                        try { file.Delete(); } catch { }
+                    }
                 }
             }
             catch (Exception ex)
@@ -1023,13 +1610,11 @@ namespace N_m3u8DL_RE_GUI
                 return;
             }
 
-            _cfPrepCts?.Dispose();
-            _cfPrepCts = new System.Threading.CancellationTokenSource();
-
+            var cts = BeginCancellableOperation();
             string? pythonExe = null;
             try
             {
-                pythonExe = await FindPythonWithCurlCffiAsync(_cfPrepCts.Token);
+                pythonExe = await FindPythonWithCurlCffiAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -1037,8 +1622,7 @@ namespace N_m3u8DL_RE_GUI
             }
             finally
             {
-                _cfPrepCts?.Dispose();
-                _cfPrepCts = null;
+                EndCancellableOperation(cts);
             }
 
             if (string.IsNullOrEmpty(pythonExe))
@@ -1053,25 +1637,34 @@ namespace N_m3u8DL_RE_GUI
                 return;
             }
 
-            string cfCmd = BuildCfCommand(pythonExe);
+            string cfCmd = CfCommandBuilder.BuildCommand(BuildCfOptions(pythonExe));
             TextBox_Parameter.Text = cfCmd;
 
-            var sb = new StringBuilder();
-            sb.AppendLine("@echo off");
-            sb.AppendLine("title N_m3u8DL-RE (Cloudflare Bypass Mode)");
-            sb.AppendLine("chcp 65001 >nul");
-            sb.AppendLine("set PYTHONUTF8=1");
-            sb.AppendLine(cfCmd);
-            sb.AppendLine("echo.");
-            sb.AppendLine("pause");
-
             string bat = Path.Combine(Path.GetTempPath(), "cf_dl_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".bat");
-            // UTF-8 without BOM + chcp 65001 + PYTHONUTF8=1 avoids the '∩╗┐@echo' warning in CMD
-            File.WriteAllText(bat, sb.ToString(), new UTF8Encoding(false));
+            File.WriteAllText(bat, CfCommandBuilder.BuildBatchScript(cfCmd), new UTF8Encoding(false));
 
-            // Use IDownloadService so _currentProcess tracks the cmd.exe process handle,
-            // allowing Button_Stop to kill the process tree if the user cancels.
-            await _downloadService.StartProcessAsync(bat, "");
+            _lastOutputDirectory = string.IsNullOrWhiteSpace(TextBox_WorkDir.Text)
+                ? Environment.CurrentDirectory
+                : TextBox_WorkDir.Text;
+            ResetRunState();
+            SetStatus("Running Cloudflare bypass…");
+
+            var cfProgress = new Progress<int>(p => ProgressBar_Download.Value = p);
+            var cfLog = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
+
+            var cfOk = await _downloadService.StartProcessAsync(bat, string.Empty, cfLog, cfProgress);
+
+            if (cfOk)
+            {
+                ProgressBar_Download.Value = 100;
+                SetStatus($"Saved to {_lastOutputDirectory}");
+                Button_OpenFolder.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                SetStatus("Cloudflare bypass failed — open the Log for details.", isError: true);
+                ToggleButton_Log.IsChecked = true;
+            }
         }
 
         private static string SafeGetClipboardText()
@@ -1141,7 +1734,9 @@ namespace N_m3u8DL_RE_GUI
                 if (DropInputRules.IsValidKeyFilePath(path))
                     TextBox_Key.Text = path;
                 else
-                    MessageBox.Show(Properties.Resources.String6);
+                    MessageBox.Show(
+                        "That file is not a valid key file. A raw HLS key must be exactly 16 bytes.",
+                        "Invalid Key File", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1168,41 +1763,68 @@ namespace N_m3u8DL_RE_GUI
                 if (Button_CheckUpdate != null) Button_CheckUpdate.IsEnabled = false;
                 if (TextBlock_UpdateStatus != null) TextBlock_UpdateStatus.Text = "Checking...";
 
+                var currentVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                if (currentVer == null)
+                {
+                    // No safe guess exists: too low nags about the installed version, too
+                    // high hides every real update. Say nothing rather than mislead.
+                    if (isManual && TextBlock_UpdateStatus != null)
+                        TextBlock_UpdateStatus.Text = "Could not determine this app's version.";
+                    return;
+                }
+
                 var service = new N_m3u8DL_RE_GUI.Core.Services.GitHubUpdateCheckService();
-                var currentVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 1, 4);
                 var result = await service.CheckForUpdateAsync("naravid19", "N_m3u8DL_RE_GUI", currentVer);
 
-                if (result.HasUpdate)
+                switch (result.Status)
                 {
-                    Button_UpdateBadge.Content = $"🎉 {result.LatestVersion} Available!";
-                    Button_UpdateBadge.Tag = result.ReleaseUrl;
-                    Button_UpdateBadge.Visibility = Visibility.Visible;
-                    if (TextBlock_UpdateStatus != null)
-                        TextBlock_UpdateStatus.Text = $"{result.LatestVersion} available!";
-                }
-                else
-                {
-                    if (TextBlock_UpdateStatus != null)
-                    {
-                        if (isManual)
+                    case N_m3u8DL_RE_GUI.Core.Services.UpdateCheckStatus.UpdateAvailable:
+                        Button_UpdateBadge.Content = $"🎉 {result.LatestVersion} Available!";
+                        Button_UpdateBadge.Tag = result.ReleaseUrl;
+                        Button_UpdateBadge.Visibility = Visibility.Visible;
+                        if (TextBlock_UpdateStatus != null)
+                            TextBlock_UpdateStatus.Text = $"{result.LatestVersion} available!";
+                        break;
+
+                    case N_m3u8DL_RE_GUI.Core.Services.UpdateCheckStatus.UpToDate:
+                        Button_UpdateBadge.Visibility = Visibility.Collapsed;
+                        if (TextBlock_UpdateStatus != null)
                         {
-                            TextBlock_UpdateStatus.Text = "✓ Latest version";
-                            var timer = new System.Windows.Threading.DispatcherTimer
+                            if (isManual)
                             {
-                                Interval = TimeSpan.FromSeconds(3)
-                            };
-                            timer.Tick += (s, e) =>
+                                TextBlock_UpdateStatus.Text = "✓ Latest version";
+                                var timer = new System.Windows.Threading.DispatcherTimer
+                                {
+                                    Interval = TimeSpan.FromSeconds(3)
+                                };
+                                timer.Tick += (s, e) =>
+                                {
+                                    TextBlock_UpdateStatus.Text = "";
+                                    ((System.Windows.Threading.DispatcherTimer)s!).Stop();
+                                };
+                                timer.Start();
+                            }
+                            else
                             {
                                 TextBlock_UpdateStatus.Text = "";
-                                ((System.Windows.Threading.DispatcherTimer)s!).Stop();
-                            };
-                            timer.Start();
+                            }
                         }
-                        else
+                        break;
+
+                    case N_m3u8DL_RE_GUI.Core.Services.UpdateCheckStatus.CheckFailed:
+                    default:
+                        if (TextBlock_UpdateStatus != null)
                         {
-                            TextBlock_UpdateStatus.Text = "";
+                            if (isManual)
+                            {
+                                TextBlock_UpdateStatus.Text = "Could not check for updates — check your connection.";
+                            }
+                            else
+                            {
+                                TextBlock_UpdateStatus.Text = "";
+                            }
                         }
-                    }
+                        break;
                 }
             }
             finally

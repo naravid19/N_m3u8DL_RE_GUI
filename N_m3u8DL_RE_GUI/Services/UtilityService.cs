@@ -1,5 +1,6 @@
 #nullable enable
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,12 +13,17 @@ namespace N_m3u8DL_RE_GUI.Services;
 /// </summary>
 public class UtilityService : IUtilityService, IDisposable
 {
-    private readonly HttpClient _httpClient;
+    private static readonly HttpClient SharedHttpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly char[] _invalidPathChars = System.IO.Path.GetInvalidFileNameChars().Concat(System.IO.Path.GetInvalidPathChars()).Distinct().ToArray();
+    private static readonly HashSet<string> _reservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    };
 
     public UtilityService()
     {
-        _httpClient = new HttpClient();
-        _httpClient.Timeout = TimeSpan.FromSeconds(15);
     }
 
     public async Task<string> GetTitleFromUrlAsync(string url, CancellationToken cancellationToken = default)
@@ -34,15 +40,10 @@ public class UtilityService : IUtilityService, IDisposable
 
         try
         {
-            // Handle different URL patterns
-            if (url.Contains("iqiyi.com"))
-                return await GetIqiyiTitleAsync(url, token);
-            else if (url.Contains("v.qq.com"))
+            if (url.Contains("v.qq.com"))
                 return await GetQQTitleAsync(url, token);
-            else if (url.Contains("wetv.vip"))
-                return await GetWeTVTitleAsync(url, token);
             else
-                return await GetGenericTitleAsync(url, token);
+                return await GetHtmlTitleStreamingAsync(url, token);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -55,17 +56,42 @@ public class UtilityService : IUtilityService, IDisposable
         }
     }
 
-    private async Task<string> GetIqiyiTitleAsync(string url, CancellationToken cancellationToken)
+    private async Task<string> GetHtmlTitleStreamingAsync(string url, CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
-            var titleMatch = Regex.Match(response, @"<title[^>]*>([^<]+)</title>", RegexOptions.IgnoreCase);
-            if (titleMatch.Success)
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var response = await SharedHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            // Honour the charset the server declared. Defaulting to UTF-8 turned every
+            // GBK/Big5 page title into replacement characters.
+            var encoding = HtmlTitleExtractor.ResolveEncoding(response.Content.Headers.ContentType?.CharSet);
+
+            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(stream, encoding, detectEncodingFromByteOrderMarks: true);
+
+            var buffer = new char[8192];
+            var sb = new StringBuilder();
+            var carry = string.Empty;
+            int read;
+
+            while ((read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
             {
-                var title = titleMatch.Groups[1].Value.Trim();
-                return CleanTitle(title);
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var chunk = new string(buffer, 0, read);
+                sb.Append(chunk);
+
+                if (HtmlTitleExtractor.ContainsClosingTitleTag(chunk, ref carry))
+                    break;
+
+                // Bound allocations: stop buffering just past 256 KB.
+                if (sb.Length > 256 * 1024)
+                    break;
             }
+
+            return HtmlTitleExtractor.Extract(sb.ToString());
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -73,7 +99,7 @@ public class UtilityService : IUtilityService, IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to get iQiyi title: {ex.Message}");
+            Debug.WriteLine($"Failed to get HTML title from {url}: {ex.Message}");
         }
         return string.Empty;
     }
@@ -87,13 +113,13 @@ public class UtilityService : IUtilityService, IDisposable
             {
                 var vid = vidMatch.Groups[1].Value;
                 var apiUrl = $"https://vv.video.qq.com/getinfo?vids={vid}&platform=101001&charge=0&otype=json";
-                var response = await _httpClient.GetStringAsync(apiUrl, cancellationToken);
+                var response = await SharedHttpClient.GetStringAsync(apiUrl, cancellationToken);
                 
                 // Extract title from JSON response
                 var titleMatch = Regex.Match(response, @"""title"":""([^""]+)""");
                 if (titleMatch.Success)
                 {
-                    return CleanTitle(titleMatch.Groups[1].Value);
+                    return HtmlTitleExtractor.Clean(titleMatch.Groups[1].Value);
                 }
             }
         }
@@ -108,91 +134,39 @@ public class UtilityService : IUtilityService, IDisposable
         return string.Empty;
     }
 
-    private async Task<string> GetWeTVTitleAsync(string url, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
-            var titleMatch = Regex.Match(response, @"<title[^>]*>([^<]+)</title>", RegexOptions.IgnoreCase);
-            if (titleMatch.Success)
-            {
-                var title = titleMatch.Groups[1].Value.Trim();
-                return CleanTitle(title);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to get WeTV title: {ex.Message}");
-        }
-        return string.Empty;
-    }
-
-    private async Task<string> GetGenericTitleAsync(string url, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var response = await _httpClient.GetStringAsync(url, cancellationToken);
-            var titleMatch = Regex.Match(response, @"<title[^>]*>([^<]+)</title>", RegexOptions.IgnoreCase);
-            if (titleMatch.Success)
-            {
-                var title = titleMatch.Groups[1].Value.Trim();
-                return CleanTitle(title);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to get generic title: {ex.Message}");
-        }
-        return string.Empty;
-    }
-
-    private string CleanTitle(string title)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-            return string.Empty;
-
-        // Remove common suffixes
-        title = Regex.Replace(title, "[-_\\s]*(\\u7231\\u5947\\u827A).*?$", "", RegexOptions.IgnoreCase);
-        title = Regex.Replace(title, "[-_\\s]*(\\u817E\\u8BAF\\u89C6\\u9891).*?$", "", RegexOptions.IgnoreCase);
-        title = Regex.Replace(title, @"[-_\s]*WeTV.*$", "", RegexOptions.IgnoreCase);
-        title = Regex.Replace(title, "[-_\\s]*(\\u54D4\\u54E9\\u54D4\\u54E9).*?$", "", RegexOptions.IgnoreCase);
-        title = Regex.Replace(title, "[-_\\s]*(\\u4F18\\u9177).*?$", "", RegexOptions.IgnoreCase);
-
-        // Clean up special characters
-        title = Regex.Replace(title, @"[<>:""/\\|?*]", "");
-        title = title.Trim();
-
-        return title;
-    }
-
     public string GetValidFileName(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
             return string.Empty;
 
-        // Remove invalid characters
-        var invalidChars = System.IO.Path.GetInvalidFileNameChars();
-        foreach (var invalidChar in invalidChars)
+        string sanitized;
+        if (path.IndexOfAny(_invalidPathChars) < 0)
         {
-            path = path.Replace(invalidChar, '_');
+            sanitized = path.Trim();
+        }
+        else
+        {
+            sanitized = string.Create(path.Length, path, (span, p) => 
+            {
+                for (int i = 0; i < p.Length; i++)
+                {
+                    char c = p[i];
+                    span[i] = Array.IndexOf(_invalidPathChars, c) >= 0 ? '_' : c;
+                }
+            }).Trim();
         }
 
-        // Remove invalid characters for path
-        var invalidPathChars = System.IO.Path.GetInvalidPathChars();
-        foreach (var invalidChar in invalidPathChars)
+        // Windows matches DOS device names against the segment before the FIRST dot, so
+        // "CON.txt.bak" is still reserved. Path.GetFileNameWithoutExtension strips only the
+        // last extension and returned "CON.txt", which never matched.
+        var firstDot = sanitized.IndexOf('.');
+        var baseName = firstDot < 0 ? sanitized : sanitized[..firstDot];
+        if (_reservedDeviceNames.Contains(baseName))
         {
-            path = path.Replace(invalidChar, '_');
+            return $"_{sanitized}";
         }
 
-        return path.Trim();
+        return sanitized;
     }
 
     public string? SelectFolder(string description, string? initialPath = null)
@@ -237,6 +211,5 @@ public class UtilityService : IUtilityService, IDisposable
 
     public void Dispose()
     {
-        _httpClient?.Dispose();
     }
 }

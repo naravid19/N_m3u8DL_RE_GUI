@@ -13,16 +13,20 @@ public static class DropInputRules
     private static readonly HashSet<string> UrlInputExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".m3u8",
+        ".m3u",
         ".txt",
         ".json",
-        ".mpd"
+        ".mpd",
+        ".xml"
     };
 
     private static readonly HashSet<string> AutoTitleExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".m3u8",
+        ".m3u",
         ".json",
-        ".mpd"
+        ".mpd",
+        ".xml"
     };
 
     public static bool IsSupportedUrlInputPath(string? path)
@@ -63,21 +67,22 @@ public static class DropInputRules
         {
             return new FileInfo(path).Length == expectedBytes;
         }
-        catch (IOException)
+        catch
         {
             return false;
         }
-        catch (UnauthorizedAccessException)
-        {
+    }
+
+    /// <summary>
+    /// True for a browser HAR capture. Deliberately separate from
+    /// <see cref="IsSupportedUrlInputPath"/>: a HAR is a source to extract a stream
+    /// URL from, never a stream input to hand to the downloader.
+    /// </summary>
+    public static bool IsHarPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             return false;
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-        catch (NotSupportedException)
-        {
-            return false;
-        }
+
+        return Path.GetExtension(path).Equals(".har", StringComparison.OrdinalIgnoreCase);
     }
 }

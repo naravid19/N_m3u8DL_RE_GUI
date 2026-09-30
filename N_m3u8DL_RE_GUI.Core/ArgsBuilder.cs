@@ -35,7 +35,11 @@ public static class ArgsBuilder
         // Headers - RE supports multiple -H "key: value"
         if (!string.IsNullOrWhiteSpace(options.Headers))
         {
-            var headers = options.Headers.Split('|');
+            // '|' is the legacy separator kept for existing configs. Newline is the lossless
+            // one — it cannot occur inside an HTTP header value, unlike '|'.
+            var headers = options.Headers.Split(
+                new[] { '|', '\n', '\r' },
+                StringSplitOptions.RemoveEmptyEntries);
             foreach (var header in headers)
             {
                 if (!string.IsNullOrWhiteSpace(header))
@@ -75,7 +79,9 @@ public static class ArgsBuilder
         // ============================================
         if (options.HasTimeRange)
         {
-            sb.Append($" --custom-range \"{options.RangeStart}-{options.RangeEnd}\"");
+            var start = options.RangeStart!.Replace("\"", "\\\"");
+            var end = options.RangeEnd!.Replace("\"", "\\\"");
+            sb.Append($" --custom-range \"{start}-{end}\"");
         }
         
         // ============================================
@@ -165,7 +171,13 @@ public static class ArgsBuilder
                 muxOptions.Append($":muxer={options.Muxer.ToLower()}");
             
             if (!string.IsNullOrWhiteSpace(options.MuxBinPath))
-                muxOptions.Append($":bin_path=\"{options.MuxBinPath}\"");
+            {
+                // The whole mux option is appended without going through the escaper, so
+                // a quote inside the path would terminate bin_path early and spill the
+                // remainder into separate arguments.
+                var escapedBinPath = options.MuxBinPath.Replace("\"", "\\\"");
+                muxOptions.Append($":bin_path=\"{escapedBinPath}\"");
+            }
             
             if (options.MuxKeepFiles)
                 muxOptions.Append(":keep=true");
@@ -227,10 +239,19 @@ public static class ArgsBuilder
 /// </summary>
 public static class StringBuilderExtensions
 {
+    /// <summary>Cached so the fast path below really is allocation-free.</summary>
+    private static readonly char[] EscapeChars = { '\\', '"' };
+
     private static string QuoteForWindowsArgument(string value)
     {
+        // Fast path: if no quotes or backslashes are present, wrapping in quotes is sufficient.
+        if (value.IndexOfAny(EscapeChars) < 0)
+        {
+            return $"\"{value}\"";
+        }
+
         // Follow CommandLineToArgvW-compatible escaping rules.
-        var quoted = new StringBuilder(value.Length + 2);
+        var quoted = new StringBuilder(value.Length + 4);
         quoted.Append('"');
         var pendingBackslashes = 0;
 

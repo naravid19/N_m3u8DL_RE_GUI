@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static">
+  <Period>
+    <AdaptationSet mimeType="video/mp4" segmentAlignment="true">
+      <Representation id="v0" width="1920" height="1080" bandwidth="5000000" codecs="avc1.640028"/>
+      <Representation id="v1" width="1280" height="720" bandwidth="2500000" codecs="avc1.4d401f"/>
+    </AdaptationSet>
+    <AdaptationSet mimeType="audio/mp4" lang="en">
+      <Representation id="a0" bandwidth="128000" codecs="mp4a.40.2" audioSamplingRate="48000"/>
+    </AdaptationSet>
+  </Period>
+</MPD>

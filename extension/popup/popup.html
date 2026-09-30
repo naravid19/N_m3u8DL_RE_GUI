@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>N-RE Stream Bridge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="header">
+    <div class="logo">
+      <img src="../icons/48.png" alt="Logo" class="logo-img" width="18" height="18">
+      <span class="logo-text">N-RE Stream Bridge</span>
+    </div>
+    <div class="header-actions">
+      <span id="stream-count" class="badge" aria-label="Streams detected">0</span>
+      <button id="btn-refresh" class="icon-btn" title="Refresh stream list" aria-label="Refresh stream list">🔄</button>
+      <button id="btn-clear" class="icon-btn" title="Clear detected streams" aria-label="Clear detected streams">🗑️</button>
+    </div>
+  </header>
+
+  <div class="tabs-nav" role="tablist" aria-label="Stream categories">
+    <button id="tab-current" class="tab-btn active" role="tab" aria-selected="true">Current Tab</button>
+    <button id="tab-all" class="tab-btn" role="tab" aria-selected="false">All Recent</button>
+  </div>
+
+  <main id="main-content">
+    <div id="bulk-bar" class="bulk-bar" hidden>
+      <div class="bulk-left">
+        <input type="checkbox" id="select-all-checkbox" aria-label="Select all streams">
+        <span id="selected-count">0 selected</span>
+      </div>
+      <div class="bulk-actions">
+        <button id="btn-bulk-copy" class="btn btn-sm">📋 Copy as list</button>
+      </div>
+      <p id="bulk-warning" class="bulk-warning" role="status" hidden></p>
+    </div>
+
+    <div id="filter-bar" class="filter-bar" hidden>
+      <input type="text" id="stream-filter" class="filter-input" placeholder="Filter streams by URL or kind..." aria-label="Filter streams by URL or kind">
+    </div>
+
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">📡</div>
+      <p class="empty-title">Waiting for video stream...</p>
+      <ol class="empty-steps" id="hint-default">
+        <li>Play or seek the video on this page.</li>
+        <li>Streams (HLS, DASH, MSS, MP4) appear here automatically.</li>
+        <li>No luck? Try another server or player on the page.</li>
+      </ol>
+      <div class="empty-hint" id="hint-other-tabs" hidden>
+        Nothing on this tab yet — but <strong id="other-tab-count">0</strong> stream(s)
+        were found on other tabs.<br>
+        <button id="btn-switch-all" class="btn btn-secondary btn-sm empty-switch-btn">Switch to All Recent</button>
+      </div>
+    </div>
+
+    <p id="no-matches" class="empty-hint no-matches-hint" hidden>
+      No stream matches “<span id="no-matches-term"></span>”.
+    </p>
+
+    <div id="stream-list" class="stream-list" role="listbox" aria-multiselectable="true" aria-label="Detected video streams"></div>
+  </main>
+
+  <footer class="footer">
+    <div id="toast" class="toast" role="status" aria-live="polite">
+      <span id="toast-text">Copied as cURL! Switch to GUI & click "Paste from browser"</span>
+      <button id="toast-action" class="toast-action" hidden></button>
+    </div>
+    <div class="footer-info">
+      <span id="ext-version" class="ext-version" aria-label="Extension version"></span>
+      <a id="ext-update-badge" class="ext-update-badge" target="_blank" rel="noopener" hidden aria-label="Extension update available"></a>
+    </div>
+    <div class="helper-hint">💡 Click <strong>"Copy as cURL"</strong> then press <strong>"📋 Paste from browser"</strong> in GUI</div>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

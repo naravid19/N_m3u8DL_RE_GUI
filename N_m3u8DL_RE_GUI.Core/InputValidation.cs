@@ -45,7 +45,7 @@ public static class InputValidation
     public static bool IsLikelyValidInput(string? input)
     {
         if (string.IsNullOrWhiteSpace(input))
-            return true;
+            return false;
 
         if (IsHttpUrl(input))
             return true;

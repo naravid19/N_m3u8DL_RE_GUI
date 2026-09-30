@@ -10,8 +10,7 @@
     <ApplicationIcon>logo_3Iv_icon.ico</ApplicationIcon>
 
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,4 +38,18 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.8" />
   </ItemGroup>
+
+  <!-- The extension ships inside the GUI's zip and needs to know which suite
+       release it came with. Generating it from $(AppVersion) keeps
+       Directory.Build.props the only place anyone types a version. -->
+  <Target Name="WriteSuiteVersionForExtension" AfterTargets="Build">
+    <PropertyGroup>
+      <SuiteVersionFile>$(MSBuildThisFileDirectory)..\extension\suite-version.json</SuiteVersionFile>
+    </PropertyGroup>
+    <WriteLinesToFile
+      File="$(SuiteVersionFile)"
+      Lines="{ &quot;suiteVersion&quot;: &quot;$(AppVersion)&quot; }"
+      Overwrite="true"
+      WriteOnlyWhenDifferent="true" />
+  </Target>
 </Project>

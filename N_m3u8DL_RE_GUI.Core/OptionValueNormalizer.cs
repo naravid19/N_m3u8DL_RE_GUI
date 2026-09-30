@@ -30,9 +30,10 @@ public static class OptionValueNormalizer
         }
 
         // Keep UNC prefix while removing trailing separators.
-        if (trimmed.StartsWith(@"\\", StringComparison.Ordinal))
-            return trimmed.TrimEnd('\\');
+        if (trimmed == "/" || trimmed == "\\")
+            return trimmed;
 
-        return trimmed.TrimEnd('\\', '/');
+        var result = trimmed.TrimEnd('\\', '/');
+        return string.IsNullOrEmpty(result) ? trimmed : result;
     }
 }

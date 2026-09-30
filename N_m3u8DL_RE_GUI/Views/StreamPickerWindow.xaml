@@ -1,0 +1,94 @@
+<Window x:Class="N_m3u8DL_RE_GUI.Views.StreamPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Choose a stream"
+        Height="360" Width="720"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#1C1C22">
+    <Window.Resources>
+        <SolidColorBrush x:Key="AccentBrush" Color="#5865F2"/>
+        <SolidColorBrush x:Key="AccentTextBrush" Color="#7A87FF"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#4350D8"/>
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="#3E4ACB"/>
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F2F2F8"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#8888A8"/>
+        <SolidColorBrush x:Key="BorderBrushCustom" Color="#66667C"/>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentPressedBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushCustom}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource BorderBrushCustom}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Text="This capture contains more than one stream. Pick the one to download — the first is usually the master playlist."
+                   TextWrapping="Wrap"
+                   Foreground="{StaticResource TextPrimaryBrush}"
+                   Margin="0,0,0,12"/>
+
+        <ListBox Grid.Row="1"
+                 x:Name="List_Candidates"
+                 AutomationProperties.Name="Stream candidates found in the capture"
+                 MouseDoubleClick="List_Candidates_MouseDoubleClick"
+                 Background="#141418"
+                 BorderBrush="{StaticResource BorderBrushCustom}"
+                 HorizontalContentAlignment="Stretch">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="{Binding Kind}" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentTextBrush}"/>
+                        <TextBlock Text="{Binding Url}" TextTrimming="CharacterEllipsis"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button x:Name="Button_Cancel" Content="Cancel" IsCancel="True"
+                    AutomationProperties.Name="Cancel stream selection"
+                    Style="{StaticResource SecondaryButtonStyle}" MinWidth="90"/>
+            <Button x:Name="Button_Use" Content="Use this stream" IsDefault="True"
+                    AutomationProperties.Name="Use the selected stream"
+                    Click="Button_Use_Click"
+                    Style="{StaticResource PrimaryButtonStyle}" MinWidth="130" Margin="8,0,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>

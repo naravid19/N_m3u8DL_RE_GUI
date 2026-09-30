@@ -272,6 +272,7 @@ project_requirements.txt
 # Local publish artifacts
 /Publish/
 publish.bat
+publish-exclude.txt
 
 # Temporary Cloudflare bypass segments and temp scripts
 /cf_segments/
@@ -279,8 +280,11 @@ cf_dl_*.bat
 
 test.txt
 /tools
-/docs
+# Planning and scratch documentation kept local only
+/docs/
 /references
 /graphify-out
-/N_m3u8DL_RE_GUI.Tests
 /.impeccable
+
+# Generated from Directory.Build.props on every build — never hand-edit.
+/extension/suite-version.json

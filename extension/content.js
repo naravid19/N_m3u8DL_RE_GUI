@@ -1,0 +1,136 @@
+/**
+ * N-RE Stream Bridge — Content Script (All Frames)
+ *
+ * Runs on top page and inside player iframes.
+ * Detects HTML5 video elements, sources, and media playback events.
+ */
+
+(function () {
+  const MAX_SEEN = 200;
+  const seenUrls = new Set();
+
+  function rememberUrl(url) {
+    if (seenUrls.has(url)) return false;
+    // Set iterates in insertion order, so the first key is the oldest.
+    if (seenUrls.size >= MAX_SEEN) {
+      seenUrls.delete(seenUrls.values().next().value);
+    }
+    seenUrls.add(url);
+    return true;
+  }
+
+  function reportStream(url, kindHint) {
+    if (!url || typeof url !== 'string') return;
+    if (url.startsWith('blob:') || url.startsWith('data:') || url.startsWith('javascript:')) return;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+    // Filter out synthetic player URLs that use hash fragments for internal routing (e.g. Hydrax/Abysscdn #mp4/...)
+    if (url.includes('#mp4/') || url.includes('#hls/') || url.includes('#chunk') || url.includes('maxChunkSize=')) return;
+
+    if (!rememberUrl(url)) return;
+
+    try {
+      chrome.runtime.sendMessage({
+        type: 'MEDIA_ELEMENT_DETECTED',
+        url: url,
+        referer: window.location.href,
+        kindHint: kindHint || null
+      });
+    } catch {
+      // Extension context invalidated or inactive
+    }
+  }
+
+  function checkMediaElement(el) {
+    if (!el) return;
+
+    // Check src attribute
+    if (el.src) {
+      reportStream(el.src);
+    }
+    // Check currentSrc property (often populated on play)
+    if (el.currentSrc) {
+      reportStream(el.currentSrc);
+    }
+
+    // Check nested <source> tags
+    if (el.querySelectorAll) {
+      const sources = el.querySelectorAll('source');
+      for (const s of sources) {
+        if (s.src) reportStream(s.src, s.type);
+      }
+    }
+  }
+
+  function scanAllMedia() {
+    // 1. Scan HTML5 video/audio elements
+    document.querySelectorAll('video, audio, source').forEach(checkMediaElement);
+
+    // 2. Scan iframes for embedded players (e.g. Abyss, Hydrax, Marimo, TonyTonyChopper)
+    document.querySelectorAll('iframe').forEach((iframe) => {
+      try {
+        const src = iframe.src || iframe.getAttribute('data-src') || iframe.getAttribute('src');
+        if (src && typeof src === 'string') {
+          const lower = src.toLowerCase();
+          if (
+            lower.includes('abysscdn.com/?v=') ||
+            lower.includes('playhydrax.com/?v=') ||
+            lower.includes('zplayer.io/?v=') ||
+            lower.includes('abyss.to/?v=') ||
+            lower.includes('short.ink/')
+          ) {
+            reportStream(src, 'Abyss');
+          }
+        }
+      } catch {
+        // Cross-origin iframe security
+      }
+    });
+
+    // 3. If the current frame itself is an Abyss player page
+    try {
+      const currentUrl = window.location.href;
+      const lower = currentUrl.toLowerCase();
+      if (
+        lower.includes('abysscdn.com/?v=') ||
+        lower.includes('playhydrax.com/?v=') ||
+        lower.includes('zplayer.io/?v=') ||
+        lower.includes('abyss.to/?v=') ||
+        lower.includes('short.ink/')
+      ) {
+        reportStream(currentUrl, 'Abyss');
+      }
+    } catch {}
+  }
+
+  // 1. Initial scan on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scanAllMedia);
+  } else {
+    scanAllMedia();
+  }
+
+  // 2. Event listeners for dynamically playing videos
+  document.addEventListener('play', (e) => checkMediaElement(e.target), true);
+  document.addEventListener('loadstart', (e) => checkMediaElement(e.target), true);
+  document.addEventListener('loadeddata', (e) => checkMediaElement(e.target), true);
+  document.addEventListener('canplay', (e) => checkMediaElement(e.target), true);
+
+  // 3. MutationObserver for video elements added dynamically (e.g. by JS players)
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType === 1) {
+          if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO' || node.tagName === 'SOURCE') {
+            checkMediaElement(node);
+          } else if (node.querySelectorAll) {
+            node.querySelectorAll('video, audio, source').forEach(checkMediaElement);
+          }
+        }
+      }
+    }
+  });
+
+  if (document.documentElement) {
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+})();
