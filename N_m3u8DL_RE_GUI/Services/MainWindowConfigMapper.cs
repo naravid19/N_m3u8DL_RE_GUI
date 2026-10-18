@@ -1,4 +1,7 @@
 #nullable enable
+using System;
+using System.Globalization;
+using System.Linq;
 using WpfCheckBox = System.Windows.Controls.CheckBox;
 using WpfComboBox = System.Windows.Controls.ComboBox;
 using WpfComboBoxItem = System.Windows.Controls.ComboBoxItem;
@@ -85,15 +88,19 @@ internal static class MainWindowConfigMapper
         state.Set("UrlProcessorArgs", window.TextBox_UrlProcessorArgs.Text);
         state.Set("TaskStartAt", window.TextBox_TaskStartAt.Text);
         state.Set("ForceAnsiConsole", Flag(window.CheckBox_ForceAnsiConsole.IsChecked == true));
-        state.Set("NoAnsiColor", Flag(window.CheckBox_NoAnsiColor.IsChecked == true));
         state.Set("LogFilePath", window.TextBox_LogFilePath.Text);
         state.Set("BypassCloudflare", Flag(window.CheckBox_BypassCF?.IsChecked == true));
+        state.Set("GuiLanguage", GetGuiLanguage(window.Combo_GuiLanguage));
 
         return state;
     }
 
     public static void Restore(MainWindow window, AppConfigState config)
     {
+        var langCode = ResolveGuiLanguage(config);
+        RestoreGuiLanguageCombo(window.Combo_GuiLanguage, langCode);
+        LanguageService.Default.SetLanguage(langCode);
+
         RestoreTextBox(window.TextBox_EXE, config.GetDecodedBase64("程序路径"));
         RestoreTextBox(window.TextBox_WorkDir, config.GetDecodedBase64("保存路径"));
         RestoreTextBox(window.TextBox_Proxy, config.GetDecodedBase64("代理"));
@@ -162,7 +169,6 @@ internal static class MainWindowConfigMapper
         RestoreTextBox(window.TextBox_UrlProcessorArgs, config.Get("UrlProcessorArgs"));
         RestoreTextBox(window.TextBox_TaskStartAt, config.Get("TaskStartAt"));
         RestoreCheckBox(window.CheckBox_ForceAnsiConsole, config.Get("ForceAnsiConsole"));
-        RestoreCheckBox(window.CheckBox_NoAnsiColor, config.Get("NoAnsiColor"));
         RestoreTextBox(window.TextBox_LogFilePath, config.Get("LogFilePath"));
         RestoreCheckBox(window.CheckBox_BypassCF, config.Get("BypassCloudflare"));
     }
@@ -212,5 +218,90 @@ internal static class MainWindowConfigMapper
     {
         var customHlsIv = config.Get("CustomHLSIv");
         return string.IsNullOrWhiteSpace(customHlsIv) ? config.Get("IV") : customHlsIv;
+    }
+
+    internal static string ResolveGuiLanguage(AppConfigState config, CultureInfo? culture = null)
+    {
+        var saved = config.Get("GuiLanguage");
+        if (!string.IsNullOrWhiteSpace(saved))
+        {
+            return saved;
+        }
+
+        return DetectLanguage(culture ?? CultureInfo.CurrentUICulture);
+    }
+
+    internal static string DetectLanguage(CultureInfo culture)
+    {
+        var name = culture.Name;
+        if (name.StartsWith("zh-Hans", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "zh-CN", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "zh-SG", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "zh-CHS", StringComparison.OrdinalIgnoreCase))
+        {
+            return "zh-CN";
+        }
+
+        if (name.StartsWith("zh-Hant", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "zh-TW", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "zh-HK", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "zh-MO", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(name, "zh-CHT", StringComparison.OrdinalIgnoreCase))
+        {
+            return "zh-TW";
+        }
+
+        return "en-US";
+    }
+
+    private static string GetGuiLanguage(WpfComboBox? combo)
+    {
+        if (combo == null)
+            return LanguageService.Default.CurrentLanguage;
+
+        if (combo.SelectedValue is string sv && !string.IsNullOrWhiteSpace(sv))
+            return sv;
+
+        if (combo.SelectedItem is WpfComboBoxItem cbi)
+        {
+            if (cbi.Tag is string tag && !string.IsNullOrWhiteSpace(tag))
+                return tag;
+            if (cbi.Content is string content && !string.IsNullOrWhiteSpace(content))
+                return content;
+        }
+        else if (combo.SelectedItem is LanguageInfo li)
+        {
+            return li.Code;
+        }
+
+        return LanguageService.Default.CurrentLanguage;
+    }
+
+    private static void RestoreGuiLanguageCombo(WpfComboBox? combo, string langCode)
+    {
+        if (combo == null)
+            return;
+
+        combo.SelectedValue = langCode;
+        if (combo.SelectedItem == null)
+        {
+            foreach (var rawItem in combo.Items)
+            {
+                if (rawItem is WpfComboBoxItem item)
+                {
+                    if (string.Equals(item.Tag?.ToString(), langCode, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(item.Content?.ToString(), langCode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        combo.SelectedItem = item;
+                        break;
+                    }
+                }
+                else if (rawItem is LanguageInfo li && string.Equals(li.Code, langCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    combo.SelectedItem = li;
+                    break;
+                }
+            }
+        }
     }
 }

@@ -160,4 +160,21 @@ public class CurlCommandParserTests
         Assert.NotNull(result);
         Assert.Empty(result!.Headers);
     }
+
+    [Fact]
+    public void Parse_CarriesSaveNameAndWarnDirectives()
+    {
+        const string command = """
+            curl 'https://cdn.example.com/hls/master.m3u8' \
+              -H 'Referer: https://example.com/'
+            # nre-save-name: Episode 1
+            # nre-warn: Referer mismatch — 1 stream(s) differ
+            """;
+
+        var result = CurlCommandParser.Parse(command);
+
+        Assert.NotNull(result);
+        Assert.Equal("Episode 1", result!.Directives["save-name"]);
+        Assert.Equal("Referer mismatch — 1 stream(s) differ", result.Directives["warn"]);
+    }
 }

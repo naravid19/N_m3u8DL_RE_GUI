@@ -28,22 +28,22 @@ public class ConfigService : IConfigService
         }
         catch (IOException)
         {
-            Debug.WriteLine($"Config load failed due to IO error: {path}");
+            Trace.WriteLine($"Config load failed due to IO error: {path}");
             return state;
         }
         catch (UnauthorizedAccessException)
         {
-            Debug.WriteLine($"Config load failed due to access error: {path}");
+            Trace.WriteLine($"Config load failed due to access error: {path}");
             return state;
         }
         catch (ArgumentException)
         {
-            Debug.WriteLine($"Config load failed due to invalid path: {path}");
+            Trace.WriteLine($"Config load failed due to invalid path: {path}");
             return state;
         }
         catch (NotSupportedException)
         {
-            Debug.WriteLine($"Config load failed due to unsupported path: {path}");
+            Trace.WriteLine($"Config load failed due to unsupported path: {path}");
             return state;
         }
 
@@ -71,10 +71,10 @@ public class ConfigService : IConfigService
         return state;
     }
 
-    public void Save(string path, AppConfigState state)
+    public bool Save(string path, AppConfigState state)
     {
         if (string.IsNullOrWhiteSpace(path))
-            return;
+            return false;
 
         var builder = new StringBuilder();
         foreach (var pair in state.Entries)
@@ -87,23 +87,13 @@ public class ConfigService : IConfigService
 
         try
         {
-            File.WriteAllText(path, builder.ToString());
+            AtomicFile.WriteAllText(path, builder.ToString());
+            return true;
         }
-        catch (IOException)
+        catch (Exception ex)
         {
-            Debug.WriteLine($"Config save failed due to IO error: {path}");
-        }
-        catch (UnauthorizedAccessException)
-        {
-            Debug.WriteLine($"Config save failed due to access error: {path}");
-        }
-        catch (ArgumentException)
-        {
-            Debug.WriteLine($"Config save failed due to invalid path: {path}");
-        }
-        catch (NotSupportedException)
-        {
-            Debug.WriteLine($"Config save failed due to unsupported path: {path}");
+            Trace.WriteLine($"Config save failed: {ex}");
+            return false;
         }
     }
 }

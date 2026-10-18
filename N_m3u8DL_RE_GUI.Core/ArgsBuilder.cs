@@ -1,5 +1,6 @@
 #nullable enable
 using System.Text;
+using N_m3u8DL_RE_GUI.Core.Capture;
 
 namespace N_m3u8DL_RE_GUI.Core;
 
@@ -35,11 +36,7 @@ public static class ArgsBuilder
         // Headers - RE supports multiple -H "key: value"
         if (!string.IsNullOrWhiteSpace(options.Headers))
         {
-            // '|' is the legacy separator kept for existing configs. Newline is the lossless
-            // one — it cannot occur inside an HTTP header value, unlike '|'.
-            var headers = options.Headers.Split(
-                new[] { '|', '\n', '\r' },
-                StringSplitOptions.RemoveEmptyEntries);
+            var headers = HeaderParser.SplitHeaderLines(options.Headers);
             foreach (var header in headers)
             {
                 if (!string.IsNullOrWhiteSpace(header))
@@ -79,9 +76,7 @@ public static class ArgsBuilder
         // ============================================
         if (options.HasTimeRange)
         {
-            var start = options.RangeStart!.Replace("\"", "\\\"");
-            var end = options.RangeEnd!.Replace("\"", "\\\"");
-            sb.Append($" --custom-range \"{start}-{end}\"");
+            sb.Append(" --custom-range").AppendQuoted($"{options.RangeStart}-{options.RangeEnd}");
         }
         
         // ============================================
@@ -118,7 +113,8 @@ public static class ArgsBuilder
         sb.AppendIfTrue("--skip-download", options.SkipDownload);
         sb.AppendIfTrue("--binary-merge", options.BinaryMerge);
         sb.AppendIfTrue("--use-ffmpeg-concat-demuxer", options.UseFFmpegConcatDemuxer);
-        sb.AppendIfTrue("--del-after-done", options.DelAfterDone);
+        // The CLI defaults --del-after-done to true, so an unchecked box must be sent as false.
+        sb.Append(options.DelAfterDone ? " --del-after-done" : " --del-after-done false");
         sb.AppendIfTrue("--no-date-info", options.NoDateInfo);
         
         if (!options.WriteMetaJson)
@@ -157,7 +153,8 @@ public static class ArgsBuilder
                 sb.Append($" --sub-format {options.SubFormat.ToUpper()}");
         }
         
-        sb.AppendIfTrue("--auto-subtitle-fix", options.AutoSubtitleFix);
+        // Same as --del-after-done: the CLI default is true.
+        sb.Append(options.AutoSubtitleFix ? " --auto-subtitle-fix" : " --auto-subtitle-fix false");
         
         // ============================================
         // Mux Settings
@@ -170,21 +167,27 @@ public static class ArgsBuilder
             if (!string.IsNullOrWhiteSpace(options.Muxer))
                 muxOptions.Append($":muxer={options.Muxer.ToLower()}");
             
-            if (!string.IsNullOrWhiteSpace(options.MuxBinPath))
-            {
-                // The whole mux option is appended without going through the escaper, so
-                // a quote inside the path would terminate bin_path early and spill the
-                // remainder into separate arguments.
-                var escapedBinPath = options.MuxBinPath.Replace("\"", "\\\"");
-                muxOptions.Append($":bin_path=\"{escapedBinPath}\"");
-            }
-            
             if (options.MuxKeepFiles)
                 muxOptions.Append(":keep=true");
-            
+
             if (options.MuxSkipSubtitle)
                 muxOptions.Append(":skip_sub=true");
-            
+
+            if (!string.IsNullOrWhiteSpace(options.MuxBinPath))
+            {
+                // RE splits this option on ':', so a drive letter has to be escaped as "C\:"
+                // (the form its own --morehelp prints) or the path arrives as bare "C" — and
+                // it goes last because RE's unescaper drops every backslash collected so far
+                // each time it meets an escaped colon, so a path ending in '\' must not be
+                // followed by another ':key=value' pair.
+                // The mux option is one unquoted token, so only the path is quoted: the
+                // Windows parser keeps a quoted run inside the token it appears in.
+                // ponytail: one escaped colon per value is all RE survives; a second one
+                // (an alternate-data-stream path) would need the upstream parser fixed.
+                muxOptions.Append(":bin_path=")
+                    .Append(StringBuilderExtensions.QuoteForWindowsArgument(options.MuxBinPath.Replace(":", @"\:")));
+            }
+
             sb.Append($" --mux-after-done {muxOptions}");
         }
         
@@ -235,14 +238,19 @@ public static class ArgsBuilder
 }
 
 /// <summary>
-/// Extension methods for StringBuilder.
+/// Extension methods for StringBuilder, and the Windows argument escaper they share
+/// with CfCommandBuilder.
 /// </summary>
 public static class StringBuilderExtensions
 {
     /// <summary>Cached so the fast path below really is allocation-free.</summary>
     private static readonly char[] EscapeChars = { '\\', '"' };
 
-    private static string QuoteForWindowsArgument(string value)
+    /// <summary>
+    /// The one Windows argument escaper: wraps <paramref name="value"/> in quotes so
+    /// CommandLineToArgvW (and the CRT) reads it back as exactly one argument.
+    /// </summary>
+    internal static string QuoteForWindowsArgument(string value)
     {
         // Fast path: if no quotes or backslashes are present, wrapping in quotes is sufficient.
         if (value.IndexOfAny(EscapeChars) < 0)

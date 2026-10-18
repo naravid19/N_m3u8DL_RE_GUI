@@ -60,3 +60,33 @@ export function describeProbeFailure({ hadTab, pageResult, directResult } = {}) 
 
   return 'Could not fetch manifest (Unknown error)';
 }
+
+// Widevine, PlayReady, FairPlay system IDs plus the HLS KEYFORMAT / skd:// spellings.
+const DRM_SIGNATURE = new RegExp([
+  'edef8ba9-79d6-4ace-a3c8-27dcd51d21ed',
+  '9a04f079-9840-4286-ab92-e65be0885f95',
+  '94ce86fb-07ff-4f43-adb8-93d2fa968ca2',
+  'com\\.apple\\.streamingkeydelivery',
+  'com\\.microsoft\\.playready',
+  'skd://'
+].join('|'), 'i');
+
+/**
+ * True when the manifest declares a DRM key system, i.e. a download cannot decrypt it.
+ * HLS: only #EXT-X-KEY / #EXT-X-SESSION-KEY lines count, so a title or URL that
+ * happens to contain a signature is not flagged. Plain AES-128 and SAMPLE-AES with
+ * an ordinary key URI are not DRM; the engine can decrypt those with a key.
+ * shortcut: a master playlist rarely carries key tags (they sit in the media
+ * playlists, which the probe does not fetch); upgrade by probing one variant.
+ */
+export function detectDrm(text) {
+  if (!text || typeof text !== 'string') return false;
+
+  if (text.includes('#EXTM3U')) {
+    return text
+      .split(/\r?\n/)
+      .some((line) => /^#EXT-X-(SESSION-)?KEY:/.test(line.trim()) && DRM_SIGNATURE.test(line));
+  }
+
+  return DRM_SIGNATURE.test(text);
+}

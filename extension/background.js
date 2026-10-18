@@ -9,6 +9,7 @@ import { classify, extractDispositionFilename } from './lib/classify.js';
 import { addStream, clearTab } from './lib/storage.js';
 import { totalSizeFrom } from './lib/format.js';
 import { buildHeaderPayload, pruneInflight } from './lib/inflight-headers.js';
+import { addListenerWithExtraHeaders } from './lib/web-request.js';
 
 const MAX_INFLIGHT = 300;
 const INFLIGHT_TTL_MS = 120000;
@@ -117,7 +118,8 @@ function queueStream(tabId, streamData) {
 }
 
 // 1. Capture outgoing headers so a detected stream can be replayed.
-chrome.webRequest.onSendHeaders.addListener(
+addListenerWithExtraHeaders(
+  chrome.webRequest.onSendHeaders,
   (details) => {
     if (!details.requestHeaders) return;
 
@@ -129,11 +131,12 @@ chrome.webRequest.onSendHeaders.addListener(
     pruneInflight(inFlightHeaders, { maxInflight: MAX_INFLIGHT, ttlMs: INFLIGHT_TTL_MS });
   },
   { urls: ['<all_urls>'] },
-  ['requestHeaders', 'extraHeaders']
+  ['requestHeaders']
 );
 
 // 2. Classify responses.
-chrome.webRequest.onHeadersReceived.addListener(
+addListenerWithExtraHeaders(
+  chrome.webRequest.onHeadersReceived,
   (details) => {
     let contentType = null;
     let contentLength = null;
@@ -159,6 +162,7 @@ chrome.webRequest.onHeadersReceived.addListener(
 
     const headers = inFlightHeaders.get(details.requestId) || {};
     const { sizeBytes, isPartial } = totalSizeFrom(contentLength, contentRange, details.statusCode);
+    const fallbackOrigin = details.initiator || originOf(details.originUrl);
 
     queueStream(details.tabId, {
       url: details.url,
@@ -166,7 +170,7 @@ chrome.webRequest.onHeadersReceived.addListener(
       confidence: result.confidence,
       sizeBytes,
       isPartial,
-      referer: headers.referer || (details.initiator ? details.initiator + '/' : null),
+      referer: headers.referer || (fallbackOrigin ? fallbackOrigin + '/' : null),
       userAgent: headers.userAgent || navigator.userAgent,
       cookie: headers.cookie || null,
       origin: headers.origin || null,
@@ -176,7 +180,7 @@ chrome.webRequest.onHeadersReceived.addListener(
     });
   },
   { urls: ['<all_urls>'] },
-  ['responseHeaders', 'extraHeaders']
+  ['responseHeaders']
 );
 
 // 3. Messages reported by content scripts (DOM elements, deep detector).

@@ -118,3 +118,12 @@ test('handles TooLarge fetch error by reporting error', async () => {
   assert.equal(result.variants.length, 0);
   assert.ok(result.error);
 });
+
+test('a DRM manifest is reported on the probe result', async () => {
+  const drm = MASTER + '#EXT-X-SESSION-KEY:METHOD=SAMPLE-AES,URI="skd://k",KEYFORMAT="com.apple.streamingkeydelivery"\n';
+  const result = await probeVariants(
+    { ...stream, url: 'https://cdn.example.com/drm.m3u8' }, 7,
+    { fetchFromPage: ok(drm), fetchDirect: never() }
+  );
+  assert.equal(result.drm, true);
+});

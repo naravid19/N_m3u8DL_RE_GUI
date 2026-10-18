@@ -52,10 +52,10 @@ public class DownloadServiceTests
     public async Task StartDownloadAsync_WithNonExistentExePath_ShouldReturnFalseAndLogMessage()
     {
         var service = new DownloadService();
-        var options = new DownloadOptions 
-        { 
+        var options = new DownloadOptions
+        {
             Input = "https://surrit.com/33ece07f-3229-41eb-b189-ec2485619e02/360p/video.m3u8",
-            ExePath = @"C:\non_existent_path\fake_downloader.exe" 
+            ExePath = @"C:\non_existent_path\fake_downloader.exe"
         };
         var logs = new List<string>();
 

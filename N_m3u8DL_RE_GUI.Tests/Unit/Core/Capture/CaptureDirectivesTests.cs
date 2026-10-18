@@ -130,4 +130,24 @@ public class CaptureDirectivesTests
         Assert.Single(directives);
         Assert.Equal("Referer: https://site.com/\nUser-Agent: Mozilla/5.0", directives["headers"]);
     }
+
+    [Fact]
+    public void Parse_ReadsSaveNameDirective()
+    {
+        var payload = "curl 'https://example.com/master.m3u8'\n# nre-save-name: My Awesome Video";
+        var directives = CaptureDirectives.Parse(payload);
+
+        Assert.Single(directives);
+        Assert.Equal("My Awesome Video", directives["save-name"]);
+    }
+
+    [Fact]
+    public void Parse_ReadsWarnDirective()
+    {
+        var payload = "curl 'https://example.com/master.m3u8'\n# nre-warn: Referer mismatch — 1 stream(s) differ";
+        var directives = CaptureDirectives.Parse(payload);
+
+        Assert.Single(directives);
+        Assert.Equal("Referer mismatch — 1 stream(s) differ", directives["warn"]);
+    }
 }

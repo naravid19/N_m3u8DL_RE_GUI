@@ -10,7 +10,9 @@ Welcome to the automated test suite for **N_m3u8DL_RE_GUI**! This directory cont
 N_m3u8DL_RE_GUI.Tests/
 ├── README.md                           <- Test suite documentation & context
 ├── Fixtures/                           <- Shared test fixtures & constants
-│   └── TestConstants.cs                <- Centralized test URLs & constants
+│   ├── ProjectSource.cs                <- Reads project source, for guards on code needing a live window
+│   ├── TestConstants.cs                <- Centralized test URLs & constants
+│   └── Win32CommandLine.cs             <- Parses a command line the way Windows does
 ├── Unit/                               <- Unit tests (fast, isolated, mocked)
 │   ├── Core/                           <- Tests for N_m3u8DL_RE_GUI.Core
 │   │   ├── ArgsBuilderTests.cs         <- Command-line argument builder tests
@@ -22,14 +24,17 @@ N_m3u8DL_RE_GUI.Tests/
 │   │   └── TextEncodingDetectorTests.cs<- File BOM & encoding detection tests
 │   ├── Services/                       <- Tests for application services
 │   │   ├── BatchScriptServiceTests.cs  <- Batch script generator tests
+│   │   ├── LanguageUsageParityTests.cs <- Every referenced Str_* key is defined
+│   │   ├── MainWindowGuardTests.cs     <- Save-name and capture-queue guards
+│   │   ├── ServiceLoggingGuardTests.cs <- Failures logged with Trace, not Debug
 │   │   ├── ConfigServiceTests.cs       <- INI configuration service tests
 │   │   ├── DownloadServiceTests.cs     <- Download process lifecycle tests
 │   │   ├── JsonConfigServiceTests.cs   <- JSON config persistence tests
 │   │   ├── MainWindowConfigMapperTests.cs <- GUI-to-Config mapping tests
 │   │   ├── UpdateCheckServiceTests.cs  <- GitHub update checker tests
 │   │   └── UtilityServiceTests.cs      <- Title resolver & file utility tests
-│   └── ViewModels/                     <- Tests for ViewModels
-│       └── MainViewModelTests.cs       <- MainViewModel command & state tests
+│   └── ViewModels/                     <- Tests for the DI container
+│       └── ViewModelLocatorTests.cs    <- Service registration & lifetime tests
 └── Integration/                        <- Integration & Live Stream tests
     └── LiveStreamValidationTests.cs    <- Validation tests for real HLS/M3U8 streams
 ```

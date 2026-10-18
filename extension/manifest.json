@@ -3,7 +3,7 @@
   "minimum_chrome_version": "111",
   "incognito": "split",
   "name": "N-RE Stream Bridge",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "Sniff and capture HLS, DASH, MSS, and media streams with 1-click cURL export for N_m3u8DL-RE GUI.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApx2CDyMU8D+/dZDK3HSAQ3L4/rxYxbUnKr8to0LzzKLeZFYMzHB/Yjaormg7vtfRZtgcrEK3gxFKr5aO6jYSEYTTqQUAa7x8XgDpo1O4CBBdlhkD3XfcR8bOA00QxQSqmHzvhFsmArlF3CY2LQ2KlX2CwNiKmr3Wms51nDc1PjjVCOtJOOWvS1q4u7IMYPfYdJb6iwEmdt1QCF70rWs+t5y1iF0Fkt+JJoxY1QykjfVerZp8ZKm2ItWysCjne3gRW/K0BOVkqAh1R9yHcICYFKauyi1I5cuKVqBBvtKaRWCBBigAUH5MGmIhNqnW1mHzwgz4ZK/Lz4q+TbdO2kaI5wIDAQAB",
   "permissions": [

@@ -22,14 +22,17 @@ public class ViewModelLocatorTests
     }
 
     [Fact]
-    public void MainViewModel_ShouldResolveNewTransientInstance()
+    public void ResolvedLanguageServiceIsTheSameInstanceAsTheStaticDefault()
     {
-        var vm1 = ViewModelLocator.MainViewModel;
-        var vm2 = ViewModelLocator.MainViewModel;
+        // A second, un-synced LanguageService would have its own CurrentLanguage
+        // (always "en-US") and its own LanguageChanged that never fires when the
+        // user actually switches languages -- a future component injecting
+        // ILanguageService would silently show stale text with no error and no
+        // test failure. Proving reference equality is the only check that rules
+        // that out; equal *values* on two different instances would not.
+        var resolved = ViewModelLocator.ServiceProvider.GetService<ILanguageService>();
 
-        Assert.NotNull(vm1);
-        Assert.NotNull(vm2);
-        Assert.NotSame(vm1, vm2); // Transient lifetime
+        Assert.Same(LanguageService.Default, resolved);
     }
 
     [Fact]

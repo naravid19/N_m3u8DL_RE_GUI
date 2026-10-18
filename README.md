@@ -7,6 +7,7 @@
 <!-- PROJECT SHIELDS -->
 
 [![Version][version-shield]][version-url]
+[![Firefox Add-on][firefox-shield]][firefox-url]
 [![.NET][dotnet-shield]][dotnet-url]
 [![WPF][wpf-shield]][wpf-url]
 [![C#][csharp-shield]][csharp-url]
@@ -48,7 +49,8 @@
 ### Main Benefits:
 
 - 🚀 **No command-line memorization** - Common options are available through simple UI controls.
-- ⏯️ **Resume Interrupted Downloads** - Automatically detects stopped or crashed downloads with existing segments on disk. Seamlessly attach a fresh stream link (since signed URLs expire quickly) and resume without losing previously downloaded chunks.
+- ⚡ **Multi-Job Concurrent Downloads** - Download multiple streams simultaneously with configurable concurrency (1–8 jobs), real-time aggregate top progress bar, interactive job list with two-way form inspection, and individual Resume, Stop, Open Folder, and Remove controls.
+- ⏯️ **Resume Interrupted Downloads** - Resume stopped or failed downloads right from the job list with 1-click **Resume** or on application startup. Seamlessly attach a fresh stream link or new title (since signed CDN URLs expire quickly) and resume without losing previously downloaded chunks.
 - 🎬 **Native Abyss & Hydrax Support** - Direct AES-CTR chunk decryption and assembly for `abysscdn.com`, `playhydrax.com`, `zplayer.io`, and `short.ink` without external tools, with a picker when a video offers several qualities.
 - 🌏 **Speaks Your Language** - The whole interface, status messages included, switches instantly between English, 简体中文, and 繁體中文.
 - 📦 **Batch processing** - Download multiple streams from text files or folders with one click.
@@ -69,19 +71,20 @@ We have intentionally kept the installation process as simple as possible. No in
 
 ### 1. Download
 
-Download the latest release (`N_m3u8DL_RE_GUI_v2.1.6.zip`) from our [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) page.
+Download the latest release (`N_m3u8DL_RE_GUI_v2.1.7.zip`) from our [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) page.
 
 ### 2. Extract
 
 Extract the `.zip` file anywhere on your computer. Inside the folder, you will find 4 core files plus the optional companion browser extension:
 
 ```text
-N_m3u8DL_RE_GUI_v2.1.6/
+N_m3u8DL_RE_GUI_v2.1.7/
 ├── N_m3u8DL_RE_GUI.exe    <-- The main application (Double click this!)
 ├── N_m3u8DL-RE.exe        <-- The core download engine
 ├── ffmpeg.exe             <-- The video/audio muxing engine
 ├── m3u8_cf_bypass.py      <-- The Cloudflare TLS bypass script
-└── extension/             <-- Optional browser companion (see below)
+├── extension-chrome/      <-- Optional Chrome / Edge / Brave companion extension
+└── extension-firefox/     <-- Optional Firefox companion extension
 ```
 
 ### 3. Run
@@ -118,15 +121,25 @@ Simply double-click `N_m3u8DL_RE_GUI.exe` to launch the application.
 | Batch File  | Drop a `.txt` file containing multiple URLs (one per line). |
 | Folder      | Drop a folder containing stream files to batch process them all. |
 
-### N-RE Stream Bridge Browser Extension (v1.4.5)
+### N-RE Stream Bridge Browser Extension (v1.4.6)
 
-Use the companion browser extension **N-RE Stream Bridge** in `extension/` for 1-click stream capture, quality selection, and multi-URL batch queues in Chrome, Edge, and Brave:
-1. Open `chrome://extensions` and enable **Developer mode**.
-2. Click **Load unpacked** and select the `extension/` folder.
-3. Play any video or audio in your browser → click the extension icon.
-4. **Single Stream:** Click **`▸ Qualities`** to pick your resolution (1080p, 720p, etc.) → **`⬇ Download`** (or **`📋 Copy as cURL`**).
-5. **Batch Streams:** Check multiple stream rows → click **`📋 Copy as list`**.
-6. In the GUI, click **`📋 Paste from browser`** (or Ctrl+V) → All stream URLs, headers, and quality selectors are filled instantly!
+Use the companion browser extension **N-RE Stream Bridge** in `extension-chrome/` or `extension-firefox/` for 1-click stream capture, quality selection, and multi-URL batch queues in Chrome, Edge, Brave, and Firefox:
+
+#### Installation
+- **Firefox (≥ 128) — Recommended:**
+  1. Install directly from **[Mozilla Add-ons (AMO)][firefox-url]** for permanent installation and automatic updates.
+  2. Launch **N_m3u8DL-RE GUI** at least once so it registers the Native Messaging Host for Firefox in your Windows registry (`HKCU\Software\Mozilla\NativeMessagingHosts\com.nm3u8dlre.gui`).
+  3. *(Optional)* In `about:addons` → **N-RE Stream Bridge**, toggle **Run in Private Windows** to allow capture in private tabs.
+  *(Or for local development / testing: open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and select `extension-firefox/manifest.json`).*
+- **Chrome / Edge / Brave (Chromium ≥ 111):**
+  1. Open `chrome://extensions` (or `edge://extensions`) and enable **Developer mode**.
+  2. Click **Load unpacked** and select the `extension-chrome/` folder from the release.
+
+#### Usage
+1. Play any video or audio in your browser → click the extension icon.
+2. **Single Stream:** Click **`▸ Qualities`** to pick your resolution (1080p, 720p, etc.) → **`⬇ Download`** (or **`📋 Copy as cURL`**).
+3. **Batch Streams:** Check multiple stream rows → click **`📋 Copy as list`**.
+4. In the GUI, click **`📋 Paste from browser`** (or Ctrl+V) → All stream URLs, headers, and quality selectors are filled instantly!
 
 > [!TIP]
 > **1-click download:** once the GUI has been run at least once, the popup shows a **`⬇ Download`** button beside `📋 Copy as cURL`. It hands the stream — URL, headers, merged cookies, and the selected quality — straight to the GUI and starts the download, with no copy-paste and no window switching. Click it while a download is already running and the stream simply queues behind it.
@@ -166,7 +179,8 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 - **Native Abyss / Hydrax Downloader** - Built-in zero-dependency C# crypto engine that decrypts and reassembles fragmented chunks from `abysscdn.com`, `playhydrax.com`, `zplayer.io`, and `short.ink`. Verifies chunk sizes on disk and resumes a stopped or interrupted download from its exact byte offset instead of restarting, with honest cancellation reporting and accurate live progress tracking. Videos offered in several qualities open a quality picker (largest first).
 - **Hardened Cloudflare WAF Bypass** - Multi-threaded segment downloader (`curl_cffi`), browser fingerprint impersonation, manifest rewriter & proxy mode (`--serve`) for DASH/MSS/DRM streams, honest exit code handling, and automatic segment resume from a deterministic per-download job directory (re-running the same URL and Save Name skips segments already on disk).
 - **3-Zone Modern UX/UI Architecture** - Clean layout with a top URL hero bar, a 6-Tab sidebar (`📦 Download`, `🌐 Network`, `🔒 Security`, `🎬 Media`, `📡 Live`, `⚙️ Advanced`), and a fixed command preview bar at the bottom.
-- **GUI Auto-Update Engine** - Zero rate-limit HTTP update checker. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top.
+- **GUI & Engine Auto-Update Engine** - Zero rate-limit HTTP update checker for application releases and N_m3u8DL-RE engine version probing (`EngineUpdateCheckService`) with safe process teardown. If a new version is released, a green pill badge (`🎉 vX.X.X Available!`) will appear at the top. The Settings tab provides startup auto-checks and on-demand check controls for both the GUI and the bundled N_m3u8DL-RE CLI engine, with local version probing, 3-state status reporting, and 1-click upstream release navigation.
+- **Environment Doctor Diagnostics** - Built-in inspection window running `N_m3u8DL-RE doctor --json` on demand to check system platform, CPU architecture, .NET runtime, and the operational status/versions of companion utilities (`ffmpeg`, `mkvmerge`, `mp4decrypt`, `shaka-packager`), complete with color-coded status badges and 1-click JSON report copying.
 - **Multi-Language Interface** - English, 简体中文, and 繁體中文, switched live from the header with no restart. Labels, dialogs, status messages, the resume banner, and update status are all translated; the technical log stays in English. The language follows your Windows display language on first launch.
 - **Full RE Support** - Compatible with all major N_m3u8DL-RE command-line arguments.
 - **Batch Downloads** - Process multiple URLs from text files or drop entire folders of streams.
@@ -178,12 +192,14 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 - **Thread-Safe Cancellation** - Responsive process cancellation with clean token lifetime management that safely terminates child process trees.
 - **In-Window Live Feedback & Progress** - Real-time progress bar, live status messages with color-coded alerts (green success, amber warnings/partials, red errors), collapsible diagnostic log, and an "Open Folder" button on completion.
 - **Accessible & Keyboard Ready** - High-contrast focus visual indicators, access keys (`Alt+G` for Go, `Alt+S` / `Escape` for Stop), and full UI automation properties.
-- **Automated Test Suite (1,336 Tests)** - Rock-solid stability backed by 1,336 unit, integration, parity, and accessibility tests across .NET (892 tests, 1 live-network test intentionally skipped), Node.js (361 tests), and Python (83 tests) test suites.
+- **Automated Test Suite (1,718 Tests)** - Rock-solid stability backed by 1,718 unit, integration, parity, and accessibility tests across .NET (1,233 tests, 1 live-network test intentionally skipped), Node.js (397 tests), and Python (88 tests) test suites.
 
 ### Download Options
-- **Concurrent Downloads** - Download multiple streams simultaneously.
+- **Concurrent Downloads & Job Scheduler** - Download multiple streams simultaneously with configurable concurrency (default 2, up to 8), real-time aggregate top progress bar, dual-scope status text, interactive job list panel with two-way form inspection, per-job Resume/Stop/Remove controls, and collision detection.
 - **Audio/Subtitle Selection** - Download audio-only or subtitles-only easily.
 - **Stream Selection (Regex)** - Select or drop video/audio/subtitle streams by standard regex.
+- **VOD Part Dropping (`--vod-drop-parts`)** - Discard comma-separated part indexes or ranges (e.g. `0,2-4`) in VOD mode.
+- **Network Interface Binding (`--interface`)** - Bind network traffic to a specific interface name or IP address (e.g., `eth0` or `192.168.1.10`).
 - **Time Range** - Download specific portions of a stream (e.g., `00:05:00-00:10:00`).
 - **Speed Limit** - Set a maximum download speed to avoid throttling.
 - **Custom Proxy** - Support for HTTP and SOCKS5 proxies.
@@ -195,6 +211,8 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 
 ### Live Recording
 - **Perform as VOD** - Treat live streams as VOD, allowing full download and pausing.
+- **Live Idle Timeout (`--live-idle-timeout`)** - Automatically stop recording after N seconds with no incoming segments.
+- **Live Catch-Up (`--live-catchup`)** - Download live catch-up by duration (`HH:MM:SS`) or ISO 8601 start timestamp (e.g., `01:00:00` or `2026-10-10T21:00:00+08:00`), overriding take count.
 - **Realtime Merge** - Merge segments in real time without waiting for completion.
 - **Pipe Mux** - Direct pipe to muxer to save disk I/O.
 - **Record Limit** - Set a maximum recording duration.
@@ -205,6 +223,7 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 - **Key Text File** - Load a massive list of decryption keys directly from a file.
 
 ### Advanced Control
+- **Netscape Cookies File (`--cookies`)** - Load session cookies from a Netscape format text file via a file selector.
 - **Custom Headers** - Add HTTP headers (Cookie, User-Agent, Origin, etc.).
 - **Thread Control** - Customize thread count, retry limits, and timeout parameters.
 - **Auto Subtitle Fix** - Automatically fix subtitle synchronization issues. Like *Delete After Done*, it is on by default in N_m3u8DL-RE, and unticking it really turns it off.
@@ -213,9 +232,16 @@ If a website is blocking you with Cloudflare, open the **Network tab (🌐)** an
 
 ### Building a Release
 
-To build the release folder and zip, run `publish.bat` from the repository root (add `/nopause` when calling it from another script). It reads the version from `Directory.Build.props`, publishes the app as a self-contained single file, adds `N_m3u8DL-RE.exe`, `ffmpeg.exe`, `m3u8_cf_bypass.py` and the `extension/` folder (without its tests), checks the result, and writes `Publish\N_m3u8DL_RE_GUI_v<version>\` together with `N_m3u8DL_RE_GUI_v<version>.zip`. `N_m3u8DL-RE.exe`, `ffmpeg.exe` and `m3u8_cf_bypass.py` must sit in the repository root; if one is missing it stops before building anything. Everything is assembled in `Publish\.staging` and moved into place only after every check passes, so a failed run never leaves a half-built release.
+To build the release bundle, run `publish.bat` from the repository root (add `/nopause` when calling it from another script). It reads the version from `Directory.Build.props` and `extension/manifest.json`, publishes the app as a self-contained single file, adds companion binaries and extension folders, verifies output hygiene, and packages everything into an isolated `Publish\v<version>\` bundle containing:
+- `N_m3u8DL_RE_GUI_v<version>\` (unpacked application folder for local testing)
+- `N_m3u8DL_RE_GUI_v<version>.zip` (primary release archive)
+- `nre-stream-bridge-v<ext_version>-firefox.zip` (standalone Firefox extension package for AMO / GitHub)
+- `nre-stream-bridge-v<ext_version>-chrome.zip` (standalone Chrome extension package)
+- `SHA256SUMS.txt` (SHA-256 checksums for all release archives)
 
-A complete release archive must contain: `N_m3u8DL_RE_GUI.exe`, `N_m3u8DL-RE.exe`, `ffmpeg.exe`, `m3u8_cf_bypass.py`, and the `extension/` folder. The version is `AppVersion` in `Directory.Build.props`, the only place it is typed; `publish.bat` checks that the built exe reports the same number, so the folder name, the zip name and the binary cannot drift apart.
+`N_m3u8DL-RE.exe`, `ffmpeg.exe` and `m3u8_cf_bypass.py` must sit in the repository root; if one is missing it stops before building anything. Everything is assembled in `Publish\.staging` and moved into place only after every check passes, so a failed run never leaves a half-built release.
+
+A complete release archive must contain: `N_m3u8DL_RE_GUI.exe`, `N_m3u8DL-RE.exe`, `ffmpeg.exe`, `m3u8_cf_bypass.py`, and the `extension-chrome/` and `extension-firefox/` folders. The version is `AppVersion` in `Directory.Build.props`, the only place it is typed; `publish.bat` checks that the built exe reports the same number, so the folder name, the zip name and the binary cannot drift apart.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -253,8 +279,10 @@ This application is a **GUI wrapper only**. All downloading and processing is ha
 Distributed under the MIT License. See `LICENSE` for more information.
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[version-shield]: https://img.shields.io/badge/version-2.1.6-blue?style=for-the-badge
+[version-shield]: https://img.shields.io/badge/version-2.1.7-blue?style=for-the-badge
 [version-url]: CHANGELOG.md
+[firefox-shield]: https://img.shields.io/badge/Firefox_Add--on-AMO-FF7139?style=for-the-badge&logo=firefox-browser&logoColor=white
+[firefox-url]: https://addons.mozilla.org/en-US/firefox/addon/n-re-stream-bridge/
 [dotnet-shield]: https://img.shields.io/badge/.NET-9.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white
 [dotnet-url]: https://dotnet.microsoft.com/
 [wpf-shield]: https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white

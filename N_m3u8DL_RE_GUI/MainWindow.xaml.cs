@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Application = System.Windows.Application;
 using Clipboard = System.Windows.Clipboard;
 using DataFormats = System.Windows.DataFormats;
@@ -124,16 +125,9 @@ namespace N_m3u8DL_RE_GUI
             InitializeComponent();
             _downloadButtonLabel = Button_GO.Content;
 
-            var appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            if (appVersion != null)
-            {
-                var verString = $"v{appVersion.Major}.{appVersion.Minor}.{Math.Max(0, appVersion.Build)}";
-                Title = $"N_m3u8DL-RE GUI {verString}";
-                if (TextBlock_AppVersion != null)
-                {
-                    TextBlock_AppVersion.Text = verString;
-                }
-            }
+            UpdateAppTitle();
+            Services.LanguageService.Default.LanguageChanged += OnLanguageChanged;
+            SyncGuiLanguageCombo();
 
             CommandBindings.Add(new CommandBinding(
                 StartDownloadRoutedCommand,
@@ -144,6 +138,8 @@ namespace N_m3u8DL_RE_GUI
                 StopDownloadRoutedCommand,
                 (_, _) => Button_Stop_Click(Button_Stop, new RoutedEventArgs()),
                 (_, e) => e.CanExecute = Button_Stop.Visibility == Visibility.Visible));
+
+            Loaded += (_, _) => StartWatchingCaptureInbox();
 
             TextBox_URL.Focus();
             System.Windows.DataObject.AddPastingHandler(TextBox_URL, TextBox_URL_Pasting);
@@ -199,7 +195,7 @@ namespace N_m3u8DL_RE_GUI
         string BuildArgsRE(string? inputOverride = null)
         {
             var saveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text);
-            var saveName = TextBox_Title.Text;
+            var saveName = _utilityService.GetValidFileName(TextBox_Title.Text);
             var tmpDir = ResumePaths.ResolveTmpDir(
                 TextBox_TmpDir?.Text,
                 _activeResumeJob?.TmpDir,
@@ -304,8 +300,7 @@ namespace N_m3u8DL_RE_GUI
                 AllowHlsMultiExtMap = CheckBox_AllowHlsMultiExtMap?.IsChecked == true,
                 ForceAnsiConsole = CheckBox_ForceAnsiConsole?.IsChecked == true,
                 // Forced on: the GUI parses redirected output, and escape sequences make
-                // it unreadable. ponytail: CheckBox_NoAnsiColor is now vestigial — remove
-                // it from the XAML in the IA pass.
+                // it unreadable.
                 NoAnsiColor = true,
                 DisableUpdateCheck = CheckBox_DisableUpdateCheck?.IsChecked == true,
             };
@@ -320,7 +315,7 @@ namespace N_m3u8DL_RE_GUI
         private DownloadOptions BuildDownloadOptions()
         {
             var saveDir = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text);
-            var saveName = TextBox_Title.Text;
+            var saveName = _utilityService.GetValidFileName(TextBox_Title.Text);
             var tmpDir = ResumePaths.ResolveTmpDir(
                 TextBox_TmpDir?.Text,
                 _activeResumeJob?.TmpDir,
@@ -427,8 +422,7 @@ namespace N_m3u8DL_RE_GUI
                 UseFFmpegConcatDemuxer = CheckBox_UseFFmpegConcat?.IsChecked == true,
                 AllowHlsMultiExtMap = CheckBox_AllowHlsMultiExtMap?.IsChecked == true,
                 // Forced on: the GUI parses redirected output, and escape sequences make
-                // it unreadable. ponytail: CheckBox_NoAnsiColor is now vestigial — remove
-                // it from the XAML in the IA pass.
+                // it unreadable.
                 NoAnsiColor = true,
                 DisableUpdateCheck = CheckBox_DisableUpdateCheck?.IsChecked == true,
             };
@@ -500,6 +494,50 @@ namespace N_m3u8DL_RE_GUI
         private void Combo_LogLevel_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
         private void Combo_UILanguage_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
         private void Combo_CFImpersonate_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_CFEngine_SelectionChanged(object sender, SelectionChangedEventArgs e) => GetParameter();
+        private void Combo_GuiLanguage_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suspendParameterRefresh) return;
+            var lang = (Combo_GuiLanguage.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? Combo_GuiLanguage.SelectedValue?.ToString();
+            if (!string.IsNullOrEmpty(lang))
+            {
+                Services.LanguageService.Default.SetLanguage(lang);
+            }
+        }
+
+        private void UpdateAppTitle()
+        {
+            var appVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            var appTitle = Services.LanguageService.Default.GetString("Str_AppTitle", "N_m3u8DL-RE GUI");
+            if (appVersion != null)
+            {
+                var verString = $"v{appVersion.Major}.{appVersion.Minor}.{Math.Max(0, appVersion.Build)}";
+                Title = $"{appTitle} {verString}";
+                if (TextBlock_AppVersion != null)
+                {
+                    TextBlock_AppVersion.Text = verString;
+                }
+            }
+            else
+            {
+                Title = appTitle;
+            }
+        }
+
+        private void SyncGuiLanguageCombo()
+        {
+            if (Combo_GuiLanguage == null) return;
+            var cur = Services.LanguageService.Default.CurrentLanguage;
+            foreach (ComboBoxItem item in Combo_GuiLanguage.Items)
+            {
+                if (item.Tag?.ToString() == cur)
+                {
+                    if (Combo_GuiLanguage.SelectedItem != item)
+                        Combo_GuiLanguage.SelectedItem = item;
+                    break;
+                }
+            }
+        }
 
         private void FlashTextBox(TextBox textBox)
         {
@@ -553,6 +591,9 @@ namespace N_m3u8DL_RE_GUI
                 await PopulateTitleForInputAsync(TextBox_URL.Text, clearWhenUnknown: false);
         }
 
+        /// <summary>Bumped on every applied capture so an in-flight title fetch can tell it is stale.</summary>
+        private int _captureGeneration;
+
         private async Task PopulateTitleForInputAsync(string input, bool clearWhenUnknown)
         {
             if (string.IsNullOrWhiteSpace(input))
@@ -561,9 +602,13 @@ namespace N_m3u8DL_RE_GUI
             if (InputValidation.IsHttpUrl(input))
             {
                 var cts = BeginCancellableOperation();
+                var generation = _captureGeneration;
                 try
                 {
-                    TextBox_Title.Text = await _utilityService.GetTitleFromUrlAsync(input, cts.Token);
+                    var title = await _utilityService.GetTitleFromUrlAsync(input, cts.Token);
+                    // A capture applied while this was in flight owns the title now.
+                    if (generation == _captureGeneration)
+                        TextBox_Title.Text = title;
                 }
                 catch (OperationCanceledException)
                 {
@@ -660,8 +705,8 @@ namespace N_m3u8DL_RE_GUI
 
             if (candidates.Count == 0)
             {
-                SetStatus("No stream was found in that capture. Clear the network log, press play, " +
-                          "let it run a few seconds, then save the HAR again.", isError: true);
+                SetStatus(Services.LanguageService.Default.GetString("Str_StatusHarNoStream",
+                    "No stream was found in that capture. Clear the network log, press play, let it run a few seconds, then save the HAR again."), isError: true);
                 return;
             }
 
@@ -700,8 +745,48 @@ namespace N_m3u8DL_RE_GUI
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            Services.LanguageService.Default.LanguageChanged -= OnLanguageChanged;
+
+            // A run outlives this window unless it is stopped here. The downloader,
+            // the CF proxy and ffmpeg are separate processes with no Job Object tying
+            // them to us, and DownloadService is not IDisposable, so disposing the DI
+            // container in App.OnExit never reaches them either -- they would keep
+            // going, still writing files, with no UI left to stop them.
+            try
+            {
+                _downloadService.StopDownload();
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Failed to stop the active download while closing: {ex.Message}");
+            }
+
+            // The CF proxy is killed through this token, not by StopDownload.
+            try
+            {
+                _activeOperationCts?.Cancel();
+            }
+            catch (ObjectDisposedException) { }
+
             var state = Services.MainWindowConfigMapper.Capture(this);
-            _configService.Save("config.txt", state);
+            if (!_configService.Save("config.txt", state))
+            {
+                // Save reports failure precisely so it is not silent. The window is
+                // about to disappear, so a dialog is the only place left to say it.
+                MessageBox.Show(
+                    Services.LanguageService.Default.GetString(
+                        "Str_SaveOnExitFailedMsg",
+                        "Your settings could not be saved. The previous saved settings are unchanged, but any changes made in this session will be lost."),
+                    Services.LanguageService.Default.GetString("Str_SaveOnExitFailedTitle", "Could Not Save Settings"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private void OnLanguageChanged(object? sender, EventArgs e)
+        {
+            UpdateAppTitle();
+            SyncGuiLanguageCombo();
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -774,13 +859,15 @@ namespace N_m3u8DL_RE_GUI
                 if (job != null && job.ExistingBytes > 0)
                 {
                     _activeResumeJob = job;
-                    var title = string.IsNullOrWhiteSpace(job.SaveName) ? "Unfinished download" : $"Unfinished download — \"{job.SaveName}\"";
+                    var title = string.IsNullOrWhiteSpace(job.SaveName)
+                        ? Localize("Str_ResumeTitleUnnamed", "Unfinished download")
+                        : Localize("Str_ResumeTitleNamed", "Unfinished download — \"{0}\"", job.SaveName);
                     TextBlock_ResumeTitle.Text = $"⏸  {title}";
 
                     var size = FormatByteSize(job.ExistingBytes);
                     var timeAgo = FormatTimeAgo(job.StartedAt);
-                    var host = string.IsNullOrWhiteSpace(job.SourceHost) ? string.Empty : $" · from {job.SourceHost}";
-                    TextBlock_ResumeDetail.Text = $"{size} already saved · stopped {timeAgo}{host}";
+                    var host = string.IsNullOrWhiteSpace(job.SourceHost) ? string.Empty : Localize("Str_ResumeFromHost", " · from {0}", job.SourceHost);
+                    TextBlock_ResumeDetail.Text = Localize("Str_ResumeDetailLine", "{0} already saved · stopped {1}{2}", size, timeAgo, host);
 
                     Border_ResumeBanner.Visibility = Visibility.Visible;
                 }
@@ -792,7 +879,7 @@ namespace N_m3u8DL_RE_GUI
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[MainWindow] CheckForResumableJob error: {ex.Message}");
+                Trace.WriteLine($"[MainWindow] CheckForResumableJob error: {ex.Message}");
                 _activeResumeJob = null;
                 Border_ResumeBanner.Visibility = Visibility.Collapsed;
             }
@@ -809,19 +896,19 @@ namespace N_m3u8DL_RE_GUI
         private static string FormatTimeAgo(DateTimeOffset startedAt)
         {
             var elapsed = DateTimeOffset.UtcNow - startedAt;
-            if (elapsed.TotalMinutes < 1) return "just now";
+            if (elapsed.TotalMinutes < 1) return Localize("Str_TimeJustNow", "just now");
             if (elapsed.TotalMinutes < 60)
             {
                 var m = Math.Max(1, (int)elapsed.TotalMinutes);
-                return $"{m} minute{(m == 1 ? "" : "s")} ago";
+                return m == 1 ? Localize("Str_TimeMinuteAgo", "{0} minute ago", m) : Localize("Str_TimeMinutesAgo", "{0} minutes ago", m);
             }
             if (elapsed.TotalHours < 24)
             {
                 var h = (int)elapsed.TotalHours;
-                return $"{h} hour{(h == 1 ? "" : "s")} ago";
+                return h == 1 ? Localize("Str_TimeHourAgo", "{0} hour ago", h) : Localize("Str_TimeHoursAgo", "{0} hours ago", h);
             }
             var d = (int)elapsed.TotalDays;
-            return $"{d} day{(d == 1 ? "" : "s")} ago";
+            return d == 1 ? Localize("Str_TimeDayAgo", "{0} day ago", d) : Localize("Str_TimeDaysAgo", "{0} days ago", d);
         }
 
         private void Button_ResumeJob_Click(object sender, RoutedEventArgs e)
@@ -837,7 +924,7 @@ namespace N_m3u8DL_RE_GUI
                 TextBox_URL.Focus();
 
                 Border_ResumeBanner.Visibility = Visibility.Collapsed;
-                SetStatus("Paste a fresh link for this video. The original link has expired — that is normal, and everything already downloaded will be kept.");
+                SetStatus(Services.LanguageService.Default.GetString("Str_StatusResumeFreshLink", "Paste a fresh link for this video. The original link has expired — that is normal, and everything already downloaded will be kept."));
             }
         }
 
@@ -847,9 +934,11 @@ namespace N_m3u8DL_RE_GUI
             {
                 var size = FormatByteSize(_activeResumeJob.ExistingBytes);
                 var targetName = string.IsNullOrWhiteSpace(_activeResumeJob.SaveName) ? "this download" : $"\"{_activeResumeJob.SaveName}\"";
-                var message = $"Delete {size} of partial download for {targetName}? This cannot be undone.";
+                var msgTemplate = Services.LanguageService.Default.GetString("Str_DiscardDialogMsg", "Delete {0} of partial download for {1}? This cannot be undone.");
+                var message = string.Format(msgTemplate, size, targetName);
+                var title = Services.LanguageService.Default.GetString("Str_DiscardDialogTitle", "Discard Interrupted Download");
 
-                var result = MessageBox.Show(message, "Discard Interrupted Download", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning);
                 if (result == MessageBoxResult.Yes)
                 {
                     var success = Services.ResumeJobStore.Default.Discard();
@@ -857,13 +946,14 @@ namespace N_m3u8DL_RE_GUI
                     {
                         Border_ResumeBanner.Visibility = Visibility.Collapsed;
                         _activeResumeJob = null;
-                        SetStatus("Partial download discarded.");
+                        SetStatus(Services.LanguageService.Default.GetString("Str_StatusResumeDiscarded", "Partial download discarded."));
                     }
                     else
                     {
                         MessageBox.Show(
-                            "Could not delete partial files. A file may still be in use by another process.",
-                            "Discard Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                            Services.LanguageService.Default.GetString("Str_DiscardFailedMsg", "Could not delete partial files. A file may still be in use by another process."),
+                            Services.LanguageService.Default.GetString("Str_DiscardFailedTitle", "Discard Failed"),
+                            MessageBoxButton.OK, MessageBoxImage.Error);
                     }
                 }
             }
@@ -903,7 +993,6 @@ namespace N_m3u8DL_RE_GUI
                 Top = Math.Max(work.Top, work.Bottom - Height);
         }
 
-        private readonly System.Text.StringBuilder _logBuffer = new();
         private string? _lastOutputDirectory;
 
         private void Button_PasteCurl_Click(object sender, RoutedEventArgs e)
@@ -916,29 +1005,52 @@ namespace N_m3u8DL_RE_GUI
             catch (Exception ex)
             {
                 // The clipboard is a shared OS resource; another process can hold it locked.
-                SetStatus($"Could not read the clipboard: {ex.Message}", isError: true);
+                SetStatus(Localize("Str_StatusClipboardReadFailed", "Could not read the clipboard: {0}", ex.Message), isError: true);
                 return;
             }
 
-            if (TryApplyCapturedRequest(CurlCommandParser.Parse(clipboardText)))
-                return;
+            ApplyCapturePayload(clipboardText);
+        }
 
-            if (BatchPasteHelper.LooksLikeBatchList(clipboardText))
+        /// <summary>
+        /// Applies one capture payload — the text "Copy as cURL" produces —
+        /// whether it arrived through the clipboard or from the browser
+        /// extension via the native host. Returns true when something was
+        /// applied.
+        /// </summary>
+        private bool ApplyCapturePayload(string text)
+        {
+            if (TryApplyCapturedRequest(CurlCommandParser.Parse(text)))
+                return true;
+
+            if (BatchPasteHelper.LooksLikeBatchList(text))
             {
-                var directives = CaptureDirectives.Parse(clipboardText);
+                var directives = CaptureDirectives.Parse(text);
                 if (directives.TryGetValue("headers", out var headers) && !string.IsNullOrWhiteSpace(headers))
                 {
                     TextBox_Headers.Text = headers;
                 }
+                if (directives.TryGetValue("save-name", out var saveName) && !string.IsNullOrWhiteSpace(saveName))
+                {
+                    TextBox_Title.Text = saveName;
+                }
 
-                var batchFile = BatchPasteHelper.WriteTempBatchFile(clipboardText);
+                var batchFile = BatchPasteHelper.WriteTempBatchFile(text);
                 TextBox_URL.Text = batchFile;
-                SetStatus("Imported batch list — click GO to download.");
-                return;
+
+                if (directives.TryGetValue("warn", out var warn) && !string.IsNullOrWhiteSpace(warn))
+                {
+                    SetStatus(warn, isWarning: true);
+                }
+                else
+                {
+                    SetStatus(Localize("Str_StatusBatchImported", "Imported batch list — click GO to download."));
+                }
+                return true;
             }
 
-            SetStatus("Clipboard does not contain a cURL command or multi-stream batch list. " +
-                      "In your browser extension: click 'Copy as cURL' or 'Copy as list'.", isError: true);
+            SetStatus(Localize("Str_StatusClipboardNoCapture", "Clipboard does not contain a cURL command or multi-stream batch list. In your browser extension: click 'Copy as cURL' or 'Copy as list'."), isError: true);
+            return false;
         }
 
         private void TextBox_URL_Pasting(object sender, DataObjectPastingEventArgs e)
@@ -964,10 +1076,22 @@ namespace N_m3u8DL_RE_GUI
                 {
                     TextBox_Headers.Text = headers;
                 }
+                if (directives.TryGetValue("save-name", out var saveName) && !string.IsNullOrWhiteSpace(saveName))
+                {
+                    TextBox_Title.Text = saveName;
+                }
 
                 var batchFile = BatchPasteHelper.WriteTempBatchFile(pasted);
                 TextBox_URL.Text = batchFile;
-                SetStatus("Imported batch list — click GO to download.");
+
+                if (directives.TryGetValue("warn", out var warn) && !string.IsNullOrWhiteSpace(warn))
+                {
+                    SetStatus(warn, isWarning: true);
+                }
+                else
+                {
+                    SetStatus(Localize("Str_StatusBatchImported", "Imported batch list — click GO to download."));
+                }
                 e.CancelCommand();
             }
         }
@@ -978,50 +1102,194 @@ namespace N_m3u8DL_RE_GUI
         /// </summary>
         private bool TryApplyCapturedRequest(CapturedRequest? captured)
         {
-            if (captured is null)
+            var plan = CaptureApplyPlan.From(captured);
+            if (plan is null)
                 return false;
 
-            TextBox_URL.Text = captured.Url;
+            _captureGeneration++;
 
-            if (captured.Headers.Count > 0)
-                TextBox_Headers.Text = captured.ToHeaderLines();
+            // Full state replacement (D1, fixes H2)
+            TextBox_URL.Text = plan.Url;
+            TextBox_Headers.Text = plan.HeaderLines;
+            TextBox_SelectVideo.Text = plan.SelectVideo;
+            TextBox_SelectAudio.Text = plan.SelectAudio;
+            TextBox_SelectSubtitle.Text = plan.SelectSubtitle;
+            TextBox_Title.Text = plan.SaveName;
 
-            if (captured.Directives.TryGetValue("select-video", out var selectVideo) && !string.IsNullOrWhiteSpace(selectVideo))
+            // CF controls (fixes C1)
+            TextBox_CFReferer.Text = plan.CfReferer;
+            TextBox_CFCookie.Text = plan.CfCookie;
+
+            // The Key, the CF bypass and the TLS profile belong to this Stream only. The
+            // download starts right after a capture, so nothing may carry over from the
+            // previous one. The user's proxy is a preference and is left alone.
+            TextBox_Key.Text = string.Empty;
+            Combo_CFImpersonate.SelectedIndex = 0;
+            if (plan.CfImpersonate != null)
             {
-                TextBox_SelectVideo.Text = selectVideo;
+                foreach (var item in Combo_CFImpersonate.Items)
+                {
+                    if (item is ComboBoxItem cbi &&
+                        string.Equals(cbi.Tag as string, plan.CfImpersonate, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Combo_CFImpersonate.SelectedItem = cbi;
+                        break;
+                    }
+                }
             }
 
-            var kind = captured.Kind == CapturedStreamKind.Unknown
-                ? "stream"
-                : captured.Kind.ToString().ToUpperInvariant();
+            CheckBox_BypassCF.IsChecked = plan.EnableCfBypass;
 
-            var qualityMsg = captured.Directives.ContainsKey("select-video") ? $" (Quality: {captured.Directives["select-video"]})" : "";
-            SetStatus($"Imported {kind} — 1 URL, {captured.Headers.Count} header(s){qualityMsg}.");
+            var kind = plan.Kind == CapturedStreamKind.Unknown
+                ? "stream"
+                : plan.Kind.ToString().ToUpperInvariant();
+
+            var qualityMsg = !string.IsNullOrEmpty(plan.SelectVideo) ? Localize("Str_StatusImportedQuality", " (Quality: {0})", plan.SelectVideo) : "";
+
+            if (plan.Warning != null)
+            {
+                SetStatus(plan.Warning, isWarning: true);
+            }
+            else if (plan.EnableCfBypass)
+            {
+                SetStatus(Localize("Str_StatusCfDetected", "Cloudflare detected — bypass mode enabled."), isWarning: true);
+            }
+            else
+            {
+                SetStatus(Localize("Str_StatusImported", "Imported {0} — 1 URL, {1} header(s){2}.", kind, plan.HeaderCount, qualityMsg));
+            }
             return true;
         }
 
-        private void SetStatus(string text, bool isError = false)
+        /// <summary>
+        /// Looks up a translated UI string and applies string.Format when arguments are given.
+        /// The key must be a literal so LanguageUsageParityTests can see it.
+        /// </summary>
+        private static string Localize(string key, string fallback, params object[] args)
+        {
+            var template = Services.LanguageService.Default.GetString(key, fallback);
+            return args.Length == 0 ? template : string.Format(template, args);
+        }
+
+        private void SetStatus(string text, bool isError = false, bool isWarning = false)
         {
             TextBlock_Status.Text = text;
-            TextBlock_Status.Foreground = isError ? ErrorBorderBrush : DefaultStatusBrush;
+            TextBlock_Status.Foreground = isError   ? ErrorBorderBrush
+                                        : isWarning ? WarnBrush
+                                        :             DefaultStatusBrush;
         }
 
         private static readonly Media.SolidColorBrush DefaultStatusBrush =
             CreateFrozenBrush(MediaColor.FromRgb(0x88, 0x88, 0xA8));
 
+        private static readonly Media.SolidColorBrush WarnBrush =
+            CreateFrozenBrush(MediaColor.FromRgb(0xF0, 0xA0, 0x30));
+
         private void AppendLog(string message)
         {
-            _logBuffer.AppendLine(message);
-            TextBox_Log.Text = _logBuffer.ToString();
+            // Appended, not rebuilt: re-assigning the whole text per line made a long
+            // run's log O(n^2) on the UI thread, even with the log panel collapsed.
+            TextBox_Log.AppendText(message + Environment.NewLine);
             TextBox_Log.ScrollToEnd();
         }
 
         private void ResetRunState()
         {
-            _logBuffer.Clear();
             TextBox_Log.Text = string.Empty;
             ProgressBar_Download.Value = 0;
             Button_OpenFolder.Visibility = Visibility.Collapsed;
+        }
+
+        private readonly Core.NativeBridge.CaptureInbox _captureInbox = new();
+
+        /// <summary>Set while a capture's start is queued but has not run yet.</summary>
+        private bool _captureStartPending;
+
+        /// <summary>
+        /// Set by the capture drain just before it clicks GO for a browser capture. Nobody is
+        /// at the keyboard for that run, so it must not open a dialog. Consumed at the top of
+        /// Button_GO_Click.
+        /// </summary>
+        private bool _startingFromCapture;
+        private FileSystemWatcher? _inboxWatcher;
+
+        /// <summary>
+        /// The single place a download path returns control to the user. It is
+        /// also where the capture queue advances, so a payload that arrived
+        /// mid-download starts as soon as the current one finishes.
+        /// </summary>
+        private void SetDownloadIdle()
+        {
+            Button_GO.IsEnabled = true;
+            Button_Stop.Visibility = Visibility.Collapsed;
+            DrainCaptureInbox();
+        }
+
+        /// <summary>
+        /// Applies one queued capture and starts it. Refuses while a download
+        /// is running and deliberately leaves the entry in the inbox — that
+        /// refusal is what makes the inbox behave as a queue.
+        /// </summary>
+        private void DrainCaptureInbox()
+        {
+            // Button_GO stays enabled until the queued start below runs, so on its own
+            // it would let a second drain in that gap overwrite this capture's fields.
+            if (!Button_GO.IsEnabled || _captureStartPending)
+                return;
+
+            while (Button_GO.IsEnabled)
+            {
+                var payload = _captureInbox.TakeOldest();
+                if (payload is null)
+                    return;
+
+                if (!ApplyCapturePayload(payload))
+                {
+                    SetStatus(Localize("Str_StatusCaptureUnreadable", "Received a capture from the browser that could not be read."), isWarning: true);
+                    continue;
+                }
+
+                SetStatus(Localize("Str_StatusCaptureStarting", "Received from browser — starting download…"));
+
+                // Queued rather than called: a drain triggered from a finally block
+                // would otherwise re-enter the download handler it is unwinding.
+                _captureStartPending = true;
+                Dispatcher.BeginInvoke(
+                    new Action(() =>
+                    {
+                        _captureStartPending = false;
+                        _startingFromCapture = true;
+                        Button_GO_Click(Button_GO, new RoutedEventArgs());
+                    }),
+                    DispatcherPriority.Background);
+                break;
+            }
+        }
+
+        private void StartWatchingCaptureInbox()
+        {
+            try
+            {
+                Directory.CreateDirectory(_captureInbox.Directory);
+
+                // ponytail: FileSystemWatcher can drop events under load. The
+                // startup drain below and the drain on every download
+                // completion are the recovery path; add polling only if a
+                // dropped event is ever actually observed.
+                _inboxWatcher = new FileSystemWatcher(_captureInbox.Directory, "*.json")
+                {
+                    NotifyFilter = NotifyFilters.FileName,
+                    EnableRaisingEvents = true
+                };
+                _inboxWatcher.Created += (_, _) =>
+                    Dispatcher.BeginInvoke(new Action(DrainCaptureInbox), DispatcherPriority.Background);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"Capture inbox watcher unavailable: {ex.Message}");
+            }
+
+            DrainCaptureInbox();
         }
 
         private void ToggleButton_Log_Changed(object sender, RoutedEventArgs e)
@@ -1039,6 +1307,10 @@ namespace N_m3u8DL_RE_GUI
 
         private async void Button_GO_Click(object sender, RoutedEventArgs e)
         {
+            // Read and cleared before any asynchronous work so a stale flag can never leak into a later manual run.
+            var unattended = _startingFromCapture;
+            _startingFromCapture = false;
+
             // Convert hex key to base64 if applicable
             if (!string.IsNullOrWhiteSpace(TextBox_Key.Text))
             {
@@ -1052,8 +1324,11 @@ namespace N_m3u8DL_RE_GUI
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Key conversion failed (invalid hex format): {ex.Message}");
-                        MessageBox.Show("Invalid Hex Key format. Please check your key.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        Trace.WriteLine($"Key conversion failed (invalid hex format): {ex.Message}");
+                        MessageBox.Show(
+                            Services.LanguageService.Default.GetString("Str_InvalidHexKey", "Invalid Hex Key format. Please check your key."),
+                            Services.LanguageService.Default.GetString("Str_Error", "Error"),
+                            MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
                 }
@@ -1068,8 +1343,11 @@ namespace N_m3u8DL_RE_GUI
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Key conversion failed: {ex.Message}");
-                            MessageBox.Show("Invalid Hex Key format. Please check your key.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                            Trace.WriteLine($"Key conversion failed: {ex.Message}");
+                            MessageBox.Show(
+                                Services.LanguageService.Default.GetString("Str_InvalidHexKey", "Invalid Hex Key format. Please check your key."),
+                                Services.LanguageService.Default.GetString("Str_Error", "Error"),
+                                MessageBoxButton.OK, MessageBoxImage.Error);
                             return;
                         }
                     }
@@ -1079,23 +1357,25 @@ namespace N_m3u8DL_RE_GUI
             if (CheckBox_BypassCF?.IsChecked != true && !File.Exists(TextBox_EXE.Text))
             {
                 MessageBox.Show(
-                    "N_m3u8DL-RE.exe was not found.\n\n" +
-                    "Set its path on the Download tab, or right-click the Executable field and choose Get Downloader.",
-                    "Downloader Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Services.LanguageService.Default.GetString("Str_DownloaderNotFoundMsg", "N_m3u8DL-RE.exe was not found.\n\nSet its path on the Download tab, or right-click the Executable field and choose Get Downloader."),
+                    Services.LanguageService.Default.GetString("Str_DownloaderNotFoundTitle", "Downloader Not Found"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (TextBox_URL.Text == "")
             {
                 MessageBox.Show(
-                    "Enter a URL or file path first.",
-                    "Missing Input", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Services.LanguageService.Default.GetString("Str_MissingInputMsg", "Enter a URL or file path first."),
+                    Services.LanguageService.Default.GetString("Str_MissingInputTitle", "Missing Input"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (!InputValidation.IsValidProxy(TextBox_Proxy.Text))
             {
                 MessageBox.Show(
-                    "Proxy must start with http:// or socks5://.",
-                    "Invalid Proxy", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Services.LanguageService.Default.GetString("Str_InvalidProxyMsg", "Proxy must start with http:// or socks5://."),
+                    Services.LanguageService.Default.GetString("Str_InvalidProxyTitle", "Invalid Proxy"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1106,12 +1386,11 @@ namespace N_m3u8DL_RE_GUI
                 Button_Stop.Visibility = Visibility.Visible;
                 try
                 {
-                    await StartAbyssDownloadAsync(TextBox_URL.Text);
+                    await StartAbyssDownloadAsync(TextBox_URL.Text, unattended);
                 }
                 finally
                 {
-                    Button_GO.IsEnabled = true;
-                    Button_Stop.Visibility = Visibility.Collapsed;
+                    SetDownloadIdle();
                 }
                 return;
             }
@@ -1120,7 +1399,7 @@ namespace N_m3u8DL_RE_GUI
             if (_batchScriptService.IsBatchInput(TextBox_URL.Text))
             {
                 this.IsEnabled = false;
-                Button_GO.Content = "Working…";
+                Button_GO.SetResourceReference(ContentControl.ContentProperty, "Str_Working");
                 Services.BatchScriptBuildResult? result = null;
                 var cts = BeginCancellableOperation();
                 try
@@ -1142,13 +1421,16 @@ namespace N_m3u8DL_RE_GUI
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "Batch build failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(
+                        ex.Message,
+                        Services.LanguageService.Default.GetString("Str_BatchBuildFailedTitle", "Batch build failed"),
+                        MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
                 finally
                 {
                     EndCancellableOperation(cts);
-                    Button_GO.Content = _downloadButtonLabel;
+                    Button_GO.SetResourceReference(ContentControl.ContentProperty, "Str_Download");
                     this.IsEnabled = true;
                 }
 
@@ -1160,7 +1442,7 @@ namespace N_m3u8DL_RE_GUI
                     _lastOutputDirectory = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text)
                                            ?? Environment.CurrentDirectory;
                     ResetRunState();
-                    SetStatus("Running batch…");
+                    SetStatus(Localize("Str_StatusRunningBatch", "Running batch…"));
 
                     var batchProgress = new Progress<int>(p => ProgressBar_Download.Value = p);
                     var batchLog = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
@@ -1173,24 +1455,24 @@ namespace N_m3u8DL_RE_GUI
                         if (batchOk)
                         {
                             ProgressBar_Download.Value = 100;
-                            SetStatus($"Batch finished. Saved to {_lastOutputDirectory}");
+                            var statusFmt = Services.LanguageService.Default.GetString("Str_StatusBatchDone", "Batch finished. Saved to {0}");
+                            SetStatus(string.Format(statusFmt, _lastOutputDirectory));
                             Button_OpenFolder.Visibility = Visibility.Visible;
                         }
                         else
                         {
-                            SetStatus("Batch failed — open the Log for details.", isError: true);
+                            SetStatus(Services.LanguageService.Default.GetString("Str_StatusBatchFailed", "Batch failed — open the Log for details."), isError: true);
                             ToggleButton_Log.IsChecked = true;
                         }
                     }
                     catch (Exception ex)
                     {
-                        SetStatus($"Batch error: {ex.Message}", isError: true);
+                        SetStatus(Localize("Str_StatusBatchError", "Batch error: {0}", ex.Message), isError: true);
                         ToggleButton_Log.IsChecked = true;
                     }
                     finally
                     {
-                        Button_GO.IsEnabled = true;
-                        Button_Stop.Visibility = Visibility.Collapsed;
+                        SetDownloadIdle();
                         try
                         {
                             if (File.Exists(result.FilePath))
@@ -1198,7 +1480,7 @@ namespace N_m3u8DL_RE_GUI
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Failed to delete temp batch file '{result.FilePath}': {ex.Message}");
+                            Trace.WriteLine($"Failed to delete temp batch file '{result.FilePath}': {ex.Message}");
                         }
                     }
                 }
@@ -1224,7 +1506,7 @@ namespace N_m3u8DL_RE_GUI
                             : options.SaveDir;
 
                         ResetRunState();
-                        SetStatus("Downloading…");
+                        SetStatus(Services.LanguageService.Default.GetString("Str_StatusDownloading", "Downloading…"));
 
                         Services.ResumeJobStore.Default.Begin(
                             options.Input,
@@ -1242,25 +1524,25 @@ namespace N_m3u8DL_RE_GUI
                             Services.ResumeJobStore.Default.Complete();
                             _activeResumeJob = null;
                             ProgressBar_Download.Value = 100;
-                            SetStatus($"Saved to {_lastOutputDirectory}");
+                            var savedFmt = Services.LanguageService.Default.GetString("Str_StatusSavedTo", "Saved to {0}");
+                            SetStatus(string.Format(savedFmt, _lastOutputDirectory));
                             Button_OpenFolder.Visibility = Visibility.Visible;
                         }
                         else
                         {
-                            SetStatus("Download failed — open the Log for details.", isError: true);
+                            SetStatus(Services.LanguageService.Default.GetString("Str_StatusDownloadFailed", "Download failed — open the Log for details."), isError: true);
                             ToggleButton_Log.IsChecked = true;
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    SetStatus($"Download error: {ex.Message}", isError: true);
+                    SetStatus(Localize("Str_StatusDownloadError", "Download error: {0}", ex.Message), isError: true);
                     ToggleButton_Log.IsChecked = true;
                 }
                 finally
                 {
-                    Button_GO.IsEnabled = true;
-                    Button_Stop.Visibility = Visibility.Collapsed;
+                    SetDownloadIdle();
                 }
             }
         }
@@ -1288,7 +1570,7 @@ namespace N_m3u8DL_RE_GUI
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Failed to copy command: {ex.Message}");
+                    Trace.WriteLine($"Failed to copy command: {ex.Message}");
                 }
             }
         }
@@ -1322,11 +1604,11 @@ namespace N_m3u8DL_RE_GUI
                     FileName = targetPath,
                     UseShellExecute = true
                 };
-                Process.Start(startInfo);
+                using var process = Process.Start(startInfo);
             }
             catch (System.ComponentModel.Win32Exception ex)
             {
-                Debug.WriteLine($"Failed to open target '{targetPath}': {ex.Message}");
+                Trace.WriteLine($"Failed to open target '{targetPath}': {ex.Message}");
             }
         }
 
@@ -1334,14 +1616,14 @@ namespace N_m3u8DL_RE_GUI
         /// Native C# downloader for Abyss/Hydrax video streams (abysscdn.com, playhydrax.com, short.ink, etc.).
         /// Automatically parses metadata, selects optimal quality, downloads fragmented chunks, and reassembles into MP4.
         /// </summary>
-        private async Task StartAbyssDownloadAsync(string url)
+        private async Task StartAbyssDownloadAsync(string url, bool unattended)
         {
             var cts = BeginCancellableOperation();
             _lastOutputDirectory = OptionValueNormalizer.NormalizeSaveDir(TextBox_WorkDir.Text)
                                    ?? Environment.CurrentDirectory;
 
             ResetRunState();
-            SetStatus("Fetching Abyss/Hydrax video metadata…");
+            SetStatus(Localize("Str_StatusAbyssFetching", "Fetching Abyss/Hydrax video metadata…"));
             AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Abyss/Hydrax video stream detected: {url}");
 
             try
@@ -1358,8 +1640,20 @@ namespace N_m3u8DL_RE_GUI
                     throw new InvalidOperationException("No downloadable video streams found in Abyss metadata.");
                 }
 
-                // Pick highest resolution/size available
-                var source = mp4.Sources.OrderByDescending(s => s.Size).First();
+                // Largest first. A person starting the download picks a quality when there is a
+                // choice; an unattended capture run takes the largest.
+                var ranked = AbyssSourceChoice.Ranked(mp4.Sources);
+                var source = ranked[0];
+                if (ranked.Count > 1 && !unattended)
+                {
+                    var picker = new Views.AbyssQualityWindow(ranked) { Owner = this };
+                    if (picker.ShowDialog() != true || picker.Selected is null)
+                    {
+                        SetStatus(Localize("Str_StatusCancelled", "Cancelled."));
+                        return;
+                    }
+                    source = picker.Selected;
+                }
 
                 var titleClean = _utilityService.GetValidFileName(TextBox_Title.Text);
                 if (string.IsNullOrWhiteSpace(titleClean))
@@ -1371,15 +1665,15 @@ namespace N_m3u8DL_RE_GUI
 
                 AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Video: {mp4.Slug} | Quality: {source.Label} | Size: {source.Size / (1024.0 * 1024.0):F1} MB | Codec: {source.Codec}");
                 AppendLog($"{DateTime.Now:HH:mm:ss.fff} INFO : Output file: {outputPath}");
-                SetStatus($"Downloading Abyss stream: {source.Label}…");
+                SetStatus(Localize("Str_StatusAbyssSource", "Downloading Abyss stream: {0}…", source.Label));
 
-                var abyssService = new AbyssDownloadService();
+                using var abyssService = new AbyssDownloadService();
                 var progress = new Progress<AbyssDownloadProgress>(p =>
                 {
                     Dispatcher.InvokeAsync(() =>
                     {
                         ProgressBar_Download.Value = (int)p.Percentage;
-                        SetStatus($"Downloading Abyss: {p}");
+                        SetStatus(Localize("Str_StatusAbyssProgress", "Downloading Abyss: {0}", p));
                     });
                 });
 
@@ -1396,17 +1690,17 @@ namespace N_m3u8DL_RE_GUI
                     cancellationToken: cts.Token);
 
                 ProgressBar_Download.Value = 100;
-                SetStatus($"Saved to {outputPath}");
+                SetStatus(Localize("Str_StatusSavedTo", "Saved to {0}", outputPath));
                 Button_OpenFolder.Visibility = Visibility.Visible;
             }
             catch (OperationCanceledException)
             {
-                SetStatus("Download stopped by user.");
+                SetStatus(Services.LanguageService.Default.GetString("Str_StatusStopped", "Download stopped by user."));
                 AppendLog($"{DateTime.Now:HH:mm:ss.fff} WARN : Download cancelled by user.");
             }
             catch (Exception ex)
             {
-                SetStatus($"Download error: {ex.Message}", isError: true);
+                SetStatus(Localize("Str_StatusDownloadError", "Download error: {0}", ex.Message), isError: true);
                 AppendLog($"{DateTime.Now:HH:mm:ss.fff} ERROR : {ex.Message}");
                 ToggleButton_Log.IsChecked = true;
             }
@@ -1421,147 +1715,107 @@ namespace N_m3u8DL_RE_GUI
         /// Uses dedicated CF bypass controls (TextBox_CFReferer, TextBox_CFCookie,
         /// Combo_CFImpersonate, CheckBox_CFKeepSegs) for a clean, predictable data path.
         /// </summary>
-        private CfCommandOptions BuildCfOptions(string pythonExe = "python")
+        /// <summary>
+        /// The CF job id (CfCommandBuilder.ComputeJobId) is a hash of this exact string, so
+        /// resume only finds last run's segments if every caller sanitizes the title
+        /// identically. One method, not three copies of the same three lines.
+        /// </summary>
+        private string GetCfOutputFileName()
+        {
+            var titleClean = _utilityService.GetValidFileName(TextBox_Title.Text);
+            if (string.IsNullOrWhiteSpace(titleClean)) titleClean = "output";
+            if (!titleClean.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)) titleClean += ".mp4";
+            return titleClean;
+        }
+
+        private CfCommandOptions BuildCfOptions(string pythonExe = "python", string? specificSegDir = null)
         {
             string scriptPath = Path.Combine(AppContext.BaseDirectory, "m3u8_cf_bypass.py");
             if (!File.Exists(scriptPath))
                 scriptPath = Path.Combine(Environment.CurrentDirectory, "m3u8_cf_bypass.py");
 
-            var titleClean = _utilityService.GetValidFileName(TextBox_Title.Text);
-            if (string.IsNullOrWhiteSpace(titleClean)) titleClean = "output";
-            if (!titleClean.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)) titleClean += ".mp4";
+            var titleClean = GetCfOutputFileName();
+
+            var headersDict = HeaderParser.Parse(TextBox_Headers?.Text);
+
+            // Referer: CFReferer non-empty ? CFReferer : headers["Referer"] ?? DeriveReferer(url)
+            string referer = "";
+            if (!string.IsNullOrWhiteSpace(TextBox_CFReferer?.Text))
+            {
+                referer = TextBox_CFReferer.Text.Trim();
+            }
+            else if (headersDict.TryGetValue("Referer", out var refHeader) && !string.IsNullOrWhiteSpace(refHeader))
+            {
+                referer = refHeader.Trim();
+            }
+            else
+            {
+                referer = CfCommandBuilder.DeriveReferer(null, TextBox_URL.Text);
+            }
+
+            // Cookie: CFCookie non-empty ? CFCookie : headers["Cookie"] ?? ""
+            string cookie = "";
+            if (!string.IsNullOrWhiteSpace(TextBox_CFCookie?.Text))
+            {
+                cookie = TextBox_CFCookie.Text.Trim();
+            }
+            else if (headersDict.TryGetValue("Cookie", out var cookieHeader) && !string.IsNullOrWhiteSpace(cookieHeader))
+            {
+                cookie = cookieHeader.Trim();
+            }
+
+            // UserAgent: headers["User-Agent"] ?? ""
+            string userAgent = "";
+            if (headersDict.TryGetValue("User-Agent", out var uaHeader) && !string.IsNullOrWhiteSpace(uaHeader))
+            {
+                userAgent = uaHeader.Trim();
+            }
+
+            // Extra headers: every remaining header passing HeaderPolicy
+            var extraHeaders = new List<CapturedHeader>();
+            foreach (var kvp in headersDict)
+            {
+                if (kvp.Key.Equals("Referer", StringComparison.OrdinalIgnoreCase) ||
+                    kvp.Key.Equals("Cookie", StringComparison.OrdinalIgnoreCase) ||
+                    kvp.Key.Equals("User-Agent", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (HeaderPolicy.ShouldForward(kvp.Key))
+                {
+                    extraHeaders.Add(new CapturedHeader(kvp.Key, kvp.Value));
+                }
+            }
+
+            string jobId = CfCommandBuilder.ComputeJobId(TextBox_URL.Text, titleClean);
+            string segDir = !string.IsNullOrWhiteSpace(specificSegDir)
+                ? specificSegDir
+                : Path.Combine(AppContext.BaseDirectory, "cf_segments", jobId);
+
+            string? engineTag = (Combo_CFEngine?.SelectedItem is ComboBoxItem cbe) ? cbe.Tag as string : null;
+            var urlKind = CurlCommandParser.ClassifyUrl(TextBox_URL.Text ?? string.Empty);
+            bool hasKey = !string.IsNullOrWhiteSpace(TextBox_Key?.Text);
+            bool isProxy = CfEngineSelector.ShouldUseProxy(engineTag, urlKind, hasKey);
 
             return new CfCommandOptions(
                 PythonExe: pythonExe,
                 ScriptPath: scriptPath,
-                Url: TextBox_URL.Text,
+                Url: TextBox_URL.Text ?? string.Empty,
                 OutputName: titleClean,
                 WorkDir: string.IsNullOrWhiteSpace(TextBox_WorkDir.Text)
                     ? Environment.CurrentDirectory
                     : TextBox_WorkDir.Text,
-                SegDir: Path.Combine(AppContext.BaseDirectory, "cf_segments"),
-                Referer: CfCommandBuilder.DeriveReferer(TextBox_CFReferer?.Text, TextBox_URL.Text),
-                Cookie: TextBox_CFCookie?.Text?.Trim() ?? string.Empty,
+                SegDir: segDir,
+                Referer: referer,
+                Cookie: cookie,
                 Impersonate: (Combo_CFImpersonate?.SelectedItem is ComboBoxItem cfi && cfi.Tag is string tag && !string.IsNullOrEmpty(tag))
                     ? tag
                     : "chrome",
-                KeepSegments: CheckBox_CFKeepSegs?.IsChecked == true);
-        }
-
-        /// <summary>
-        /// Find a Python interpreter that can import curl_cffi, by probing a list of
-        /// candidate interpreters and running `python -c "import curl_cffi"` for each.
-        /// Returns the first interpreter whose exit code is 0, or null if none found.
-        ///
-        /// Candidate order:
-        ///   1. Explicit full paths to common CPython installs (avoids Windows Store stub)
-        ///   2. `py` launcher (reliable on Windows)
-        ///   3. Bare `python` / `python3` (PATH-resolved; last resort)
-        /// </summary>
-        private static async System.Threading.Tasks.Task<string?> FindPythonWithCurlCffiAsync(System.Threading.CancellationToken cancellationToken = default)
-        {
-            var candidates = new List<string>();
-
-            // 1. Explicit full paths to standard CPython installs
-            try
-            {
-                string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string progFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                string progFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-                foreach (var baseDir in new[] { progFiles, progFilesX86 })
-                {
-                    if (string.IsNullOrEmpty(baseDir)) continue;
-                    var pyRoot = Path.Combine(baseDir, "Python");
-                    if (Directory.Exists(pyRoot))
-                        foreach (var d in Directory.GetDirectories(pyRoot))
-                            candidates.Add(Path.Combine(d, "python.exe"));
-                }
-                if (!string.IsNullOrEmpty(localApp))
-                {
-                    var pp = Path.Combine(localApp, "Programs", "Python");
-                    if (Directory.Exists(pp))
-                        foreach (var d in Directory.GetDirectories(pp))
-                            candidates.Add(Path.Combine(d, "python.exe"));
-                }
-            }
-            catch { }
-
-            // 2. WorkBuddy & Anaconda/Miniconda managed environments
-            try
-            {
-                string userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                if (!string.IsNullOrEmpty(userProfile))
-                {
-                    string wbPy = Path.Combine(userProfile, ".workbuddy", "binaries", "python", "versions");
-                    if (Directory.Exists(wbPy))
-                        foreach (var v in Directory.GetDirectories(wbPy))
-                            candidates.Add(Path.Combine(v, "python.exe"));
-
-                    foreach (var condaName in new[] { "anaconda3", "miniconda3", "Anaconda3", "Miniconda3" })
-                    {
-                        var condaPath = Path.Combine(userProfile, condaName, "python.exe");
-                        if (File.Exists(condaPath))
-                            candidates.Add(condaPath);
-                    }
-                }
-            }
-            catch { }
-
-            // 3. Named launchers resolved via PATH.
-            candidates.Add("py");
-            candidates.Add("python");
-            candidates.Add("python3");
-
-            foreach (var c in candidates)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                try
-                {
-                    // Skip full paths that don't exist on disk.
-                    if (c.IndexOf(Path.DirectorySeparatorChar) >= 0 && !File.Exists(c))
-                        continue;
-
-                    var psi = new ProcessStartInfo(c, "-c \"import curl_cffi\"")
-                    {
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                    };
-
-                    using (var p = Process.Start(psi))
-                    {
-                        if (p == null) continue;
-                        using var timeoutCts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
-
-                        var outTask = p.StandardOutput.ReadToEndAsync(timeoutCts.Token);
-                        var errTask = p.StandardError.ReadToEndAsync(timeoutCts.Token);
-
-                        try
-                        {
-                            await p.WaitForExitAsync(timeoutCts.Token);
-                            await System.Threading.Tasks.Task.WhenAll(outTask, errTask);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            try { p.Kill(entireProcessTree: true); } catch { }
-                            if (cancellationToken.IsCancellationRequested)
-                                throw;
-                            continue;
-                        }
-
-                        if (p.ExitCode == 0)
-                            return c;
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch { }
-            }
-            return null;
+                KeepSegments: CheckBox_CFKeepSegs?.IsChecked == true,
+                UserAgent: userAgent,
+                ExtraHeaders: extraHeaders,
+                Serve: isProxy);
         }
 
         /// <summary>
@@ -1588,7 +1842,7 @@ namespace N_m3u8DL_RE_GUI
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to clean stale temp files: {ex.Message}");
+                Trace.WriteLine($"Failed to clean stale temp files: {ex.Message}");
             }
         }
 
@@ -1605,8 +1859,9 @@ namespace N_m3u8DL_RE_GUI
             if (!File.Exists(scriptPath))
             {
                 MessageBox.Show(
-                    "m3u8_cf_bypass.py not found.\nPlease place it in the same directory as the GUI executable.",
-                    "Bypass Cloudflare", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Services.LanguageService.Default.GetString("Str_CfScriptMissing", "m3u8_cf_bypass.py not found.\nPlease place it in the same directory as the GUI executable."),
+                    Services.LanguageService.Default.GetString("Str_CfDialogTitle", "Cloudflare Bypass"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1614,7 +1869,7 @@ namespace N_m3u8DL_RE_GUI
             string? pythonExe = null;
             try
             {
-                pythonExe = await FindPythonWithCurlCffiAsync(cts.Token);
+                pythonExe = await PythonLocator.FindWithCurlCffiAsync(cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -1628,42 +1883,190 @@ namespace N_m3u8DL_RE_GUI
             if (string.IsNullOrEmpty(pythonExe))
             {
                 MessageBox.Show(
-                    "No Python interpreter with curl_cffi found.\n\n" +
-                    "Install the dependency once (run in your terminal):\n" +
-                    "    pip install curl_cffi\n" +
-                    "or: python -m pip install curl_cffi\n\n" +
-                    "Then click Start Download again.",
-                    "Bypass Cloudflare", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Services.LanguageService.Default.GetString("Str_PyCurlCffiMissing", "No Python interpreter with curl_cffi found.\n\nInstall the dependency once (run in your terminal):\n    pip install curl_cffi\nor: python -m pip install curl_cffi\n\nThen click Start Download again."),
+                    Services.LanguageService.Default.GetString("Str_CfDialogTitle", "Cloudflare Bypass"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            string cfCmd = CfCommandBuilder.BuildCommand(BuildCfOptions(pythonExe));
-            TextBox_Parameter.Text = cfCmd;
+            var titleClean = GetCfOutputFileName();
 
-            string bat = Path.Combine(Path.GetTempPath(), "cf_dl_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".bat");
-            File.WriteAllText(bat, CfCommandBuilder.BuildBatchScript(cfCmd), new UTF8Encoding(false));
+            string jobId = CfCommandBuilder.ComputeJobId(TextBox_URL.Text, titleClean);
+            string jobSegDir = Path.Combine(AppContext.BaseDirectory, "cf_segments", jobId);
+            var cfOptions = BuildCfOptions(pythonExe, jobSegDir);
+
+            TextBox_Parameter.Text = CfCommandBuilder.BuildMaskedCommand(cfOptions);
+
+            if (cfOptions.Serve)
+            {
+                await RunCfProxyThenReAsync(cfOptions);
+                return;
+            }
+
+            // No .bat/cmd.exe wrapper: CreateNoWindow+redirected I/O below means no
+            // console is ever shown, so the batch file bought nothing but a second,
+            // incompatible quoting dialect (cmd.exe's, layered on top of the
+            // already-correct C-runtime quoting CfCommandBuilder emits) — the exact
+            // shape of bug N8/M6. Launching python.exe directly removes that layer
+            // instead of adding a second escaping function to patch around it.
+            Environment.SetEnvironmentVariable("PYTHONUTF8", "1");
+            Environment.SetEnvironmentVariable("PYTHONIOENCODING", "utf-8");
 
             _lastOutputDirectory = string.IsNullOrWhiteSpace(TextBox_WorkDir.Text)
                 ? Environment.CurrentDirectory
                 : TextBox_WorkDir.Text;
             ResetRunState();
-            SetStatus("Running Cloudflare bypass…");
+            SetStatus(Localize("Str_StatusCfRunning", "Running Cloudflare bypass…"));
 
             var cfProgress = new Progress<int>(p => ProgressBar_Download.Value = p);
             var cfLog = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
 
-            var cfOk = await _downloadService.StartProcessAsync(bat, string.Empty, cfLog, cfProgress);
+            var cfExitCode = await _downloadService.StartProcessWithExitCodeAsync(
+                cfOptions.PythonExe, CfCommandBuilder.BuildArguments(cfOptions), cfLog, cfProgress);
 
-            if (cfOk)
+            if (cfExitCode == 0)
             {
                 ProgressBar_Download.Value = 100;
-                SetStatus($"Saved to {_lastOutputDirectory}");
+                SetStatus(Localize("Str_StatusSavedTo", "Saved to {0}", _lastOutputDirectory));
                 Button_OpenFolder.Visibility = Visibility.Visible;
+            }
+            else if (cfExitCode == 3)
+            {
+                SetStatus(Localize("Str_StatusCfPartial", "Partial download saved to {0} (some segments failed).", _lastOutputDirectory), isWarning: true);
+                Button_OpenFolder.Visibility = Visibility.Visible;
+            }
+            else if (cfExitCode == 4)
+            {
+                SetStatus(Localize("Str_StatusCfEncrypted", "Encrypted stream detected (#EXT-X-KEY). Use N_m3u8DL-RE directly with --key."), isWarning: true);
+                ToggleButton_Log.IsChecked = true;
+            }
+            else if (cfExitCode == 5)
+            {
+                SetStatus(Localize("Str_StatusCfAccessDenied", "Access denied (401/403). Check Referer and Cookie credentials."), isWarning: true);
+                ToggleButton_Log.IsChecked = true;
+            }
+            else if (cfExitCode == 6)
+            {
+                // The manifest has an init segment, a separate rendition or byte ranges,
+                // which only N_m3u8DL-RE can assemble. Auto hands over; a pinned direct
+                // engine is the user's explicit choice, so it is reported instead.
+                var pinnedTag = (Combo_CFEngine?.SelectedItem is ComboBoxItem pinned) ? pinned.Tag as string : null;
+                if (pinnedTag == "direct")
+                {
+                    SetStatus(Localize("Str_StatusCfNeedsProxyEngine", "This stream needs the proxy engine. Set the Cloudflare engine to Auto or Proxy."), isWarning: true);
+                    ToggleButton_Log.IsChecked = true;
+                }
+                else
+                {
+                    AppendLog("The direct downloader cannot assemble this stream. Switching to the proxy engine.");
+                    var proxyOptions = cfOptions with { Serve = true };
+                    TextBox_Parameter.Text = CfCommandBuilder.BuildMaskedCommand(proxyOptions);
+                    await RunCfProxyThenReAsync(proxyOptions);
+                }
             }
             else
             {
-                SetStatus("Cloudflare bypass failed — open the Log for details.", isError: true);
+                SetStatus(Localize("Str_StatusCfFailed", "Cloudflare bypass failed — open the Log for details."), isError: true);
                 ToggleButton_Log.IsChecked = true;
+            }
+        }
+
+        /// <summary>
+        /// Runs the "CF proxy + RE" engine (N1): starts m3u8_cf_bypass.py --serve
+        /// directly (no .bat, so its stdout/stdin can be read as a machine
+        /// protocol rather than left for a human console), waits for the
+        /// PROXY_READY handshake, then points N_m3u8DL-RE at the local proxy
+        /// URL and lets it do the actual download — DASH track selection, CENC
+        /// decryption and muxing all stay RE's job, Python only contributes the
+        /// TLS fingerprint. The proxy is torn down (stdin EOF, then a kill if it
+        /// doesn't exit) once RE finishes, whatever the outcome.
+        /// </summary>
+        private async System.Threading.Tasks.Task RunCfProxyThenReAsync(CfCommandOptions cfOptions)
+        {
+            _lastOutputDirectory = string.IsNullOrWhiteSpace(TextBox_WorkDir.Text)
+                ? Environment.CurrentDirectory
+                : TextBox_WorkDir.Text;
+            ResetRunState();
+            SetStatus(Localize("Str_StatusCfProxyStarting", "Starting Cloudflare proxy…"));
+
+            var cts = BeginCancellableOperation();
+            CfProxyHost? proxy = null;
+            try
+            {
+                var started = await CfProxyHost.StartAsync(
+                    CfProxyHost.BuildStartInfo(cfOptions.PythonExe, CfCommandBuilder.BuildArguments(cfOptions)),
+                    line => Dispatcher.InvokeAsync(() => AppendLog(line)),
+                    TimeSpan.FromSeconds(15),
+                    cts.Token);
+
+                switch (started.Status)
+                {
+                    case CfProxyStartStatus.Ready:
+                        proxy = started.Host;
+                        break;
+                    case CfProxyStartStatus.StartFailed:
+                        SetStatus(started.Error is null
+                            ? Localize("Str_StatusCfProxyStartFailed", "Failed to start Cloudflare proxy.")
+                            : Localize("Str_StatusCfProxyStartFailedEx", "Failed to start Cloudflare proxy: {0}", started.Error),
+                            isError: true);
+                        return;
+                    case CfProxyStartStatus.Cancelled:
+                        SetStatus(Localize("Str_StatusCancelled", "Cancelled."));
+                        return;
+                    default:
+                        SetStatus(Localize("Str_StatusCfProxyNotReady", "Cloudflare proxy did not become ready in time — open the Log for details."), isError: true);
+                        ToggleButton_Log.IsChecked = true;
+                        return;
+                }
+
+                SetStatus(Localize("Str_StatusCfProxyReady", "Cloudflare proxy ready — starting N_m3u8DL-RE…"));
+
+                var reOptions = BuildDownloadOptions();
+                reOptions.Input = proxy!.ProxyUrl;
+                // The proxy already authenticates the origin leg (Referer/Cookie/UA/
+                // impersonation); RE only ever talks to 127.0.0.1 from here on, and a
+                // stray Base URL pointing at the real CDN would route straight past
+                // the proxy that is doing the TLS-fingerprint bypass.
+                reOptions.Headers = string.Empty;
+                reOptions.BaseUrl = string.Empty;
+                // Neither a custom nor the system proxy may sit between RE and 127.0.0.1:
+                // it would be handed loopback traffic it cannot route. The bypass proxy
+                // has no upstream-proxy option, so a configured proxy is not applied here.
+                if (!string.IsNullOrWhiteSpace(reOptions.Proxy))
+                    AppendLog("Note: the custom proxy is not used by the Cloudflare proxy engine.");
+                reOptions.Proxy = string.Empty;
+                reOptions.UseSystemProxy = false;
+
+                Services.ResumeJobStore.Default.Begin(reOptions.Input, reOptions.SaveName ?? string.Empty, reOptions.SaveDir ?? string.Empty, reOptions.TmpDir ?? string.Empty);
+
+                var reProgress = new Progress<int>(p => ProgressBar_Download.Value = p);
+                var reLog = new Action<string>(line => Dispatcher.InvokeAsync(() => AppendLog(line)));
+
+                var succeeded = await _downloadService.StartDownloadAsync(reOptions, reProgress, reLog, cts.Token);
+
+                if (succeeded)
+                {
+                    Services.ResumeJobStore.Default.Complete();
+                    _activeResumeJob = null;
+                    ProgressBar_Download.Value = 100;
+                    SetStatus(Localize("Str_StatusSavedTo", "Saved to {0}", _lastOutputDirectory));
+                    Button_OpenFolder.Visibility = Visibility.Visible;
+                }
+                else if (cts.IsCancellationRequested)
+                {
+                    SetStatus(Services.LanguageService.Default.GetString("Str_StatusCancelled", "Cancelled."));
+                }
+                else
+                {
+                    SetStatus(Localize("Str_StatusReFailed", "N_m3u8DL-RE failed — open the Log for details."), isError: true);
+                    ToggleButton_Log.IsChecked = true;
+                }
+            }
+            finally
+            {
+                EndCancellableOperation(cts);
+                if (proxy != null)
+                    await proxy.DisposeAsync();
             }
         }
 
@@ -1675,12 +2078,12 @@ namespace N_m3u8DL_RE_GUI
             }
             catch (ExternalException ex)
             {
-                Debug.WriteLine($"Clipboard access failed (external lock): {ex.Message}");
+                Trace.WriteLine($"Clipboard access failed (external lock): {ex.Message}");
                 return string.Empty;
             }
             catch (InvalidOperationException ex)
             {
-                Debug.WriteLine($"Clipboard access failed (thread state): {ex.Message}");
+                Trace.WriteLine($"Clipboard access failed (thread state): {ex.Message}");
                 return string.Empty;
             }
         }
@@ -1693,9 +2096,9 @@ namespace N_m3u8DL_RE_GUI
                 Arguments = arguments,
                 UseShellExecute = false
             };
-            var process = Process.Start(startInfo);
+            using var process = Process.Start(startInfo);
             if (process == null)
-                Debug.WriteLine($"Failed to start process: {executablePath}");
+                Trace.WriteLine($"Failed to start process: {executablePath}");
         }
 
         /// <summary>
@@ -1735,8 +2138,10 @@ namespace N_m3u8DL_RE_GUI
                     TextBox_Key.Text = path;
                 else
                     MessageBox.Show(
-                        "That file is not a valid key file. A raw HLS key must be exactly 16 bytes.",
-                        "Invalid Key File", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        Services.LanguageService.Default.GetString("Str_InvalidKeyFileMsg",
+                            "That file is not a valid key file. A raw HLS key must be exactly 16 bytes."),
+                        Services.LanguageService.Default.GetString("Str_InvalidKeyFileTitle", "Invalid Key File"),
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1761,7 +2166,7 @@ namespace N_m3u8DL_RE_GUI
             try
             {
                 if (Button_CheckUpdate != null) Button_CheckUpdate.IsEnabled = false;
-                if (TextBlock_UpdateStatus != null) TextBlock_UpdateStatus.Text = "Checking...";
+                if (TextBlock_UpdateStatus != null) TextBlock_UpdateStatus.Text = Localize("Str_UpdateChecking", "Checking...");
 
                 var currentVer = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
                 if (currentVer == null)
@@ -1769,7 +2174,7 @@ namespace N_m3u8DL_RE_GUI
                     // No safe guess exists: too low nags about the installed version, too
                     // high hides every real update. Say nothing rather than mislead.
                     if (isManual && TextBlock_UpdateStatus != null)
-                        TextBlock_UpdateStatus.Text = "Could not determine this app's version.";
+                        TextBlock_UpdateStatus.Text = Localize("Str_UpdateNoVersion", "Could not determine this app's version.");
                     return;
                 }
 
@@ -1783,7 +2188,7 @@ namespace N_m3u8DL_RE_GUI
                         Button_UpdateBadge.Tag = result.ReleaseUrl;
                         Button_UpdateBadge.Visibility = Visibility.Visible;
                         if (TextBlock_UpdateStatus != null)
-                            TextBlock_UpdateStatus.Text = $"{result.LatestVersion} available!";
+                            TextBlock_UpdateStatus.Text = Localize("Str_UpdateAvailable", "{0} available!", result.LatestVersion);
                         break;
 
                     case N_m3u8DL_RE_GUI.Core.Services.UpdateCheckStatus.UpToDate:
@@ -1792,7 +2197,7 @@ namespace N_m3u8DL_RE_GUI
                         {
                             if (isManual)
                             {
-                                TextBlock_UpdateStatus.Text = "✓ Latest version";
+                                TextBlock_UpdateStatus.Text = Localize("Str_UpdateLatest", "✓ Latest version");
                                 var timer = new System.Windows.Threading.DispatcherTimer
                                 {
                                     Interval = TimeSpan.FromSeconds(3)
@@ -1817,7 +2222,7 @@ namespace N_m3u8DL_RE_GUI
                         {
                             if (isManual)
                             {
-                                TextBlock_UpdateStatus.Text = "Could not check for updates — check your connection.";
+                                TextBlock_UpdateStatus.Text = Localize("Str_UpdateCheckFailed", "Could not check for updates — check your connection.");
                             }
                             else
                             {

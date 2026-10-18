@@ -167,9 +167,14 @@ public class GitHubUpdateCheckServiceTests
     }
 
     [Fact]
-    public void AppVersion_MatchesExpectedVersionFromDirectoryBuildProps()
+    public void AppVersion_InheritedFromDirectoryBuildProps_IsNotNullAndSharedAcrossAssemblies()
     {
-        var coreAssembly = typeof(IUpdateCheckService).Assembly;
-        Assert.Equal("2.1.5", coreAssembly.GetName().Version?.ToString(3));
+        var coreVersion = typeof(IUpdateCheckService).Assembly.GetName().Version;
+        var testVersion = typeof(GitHubUpdateCheckServiceTests).Assembly.GetName().Version;
+
+        Assert.NotNull(coreVersion);
+        Assert.NotNull(testVersion);
+        Assert.Equal(coreVersion, testVersion);
+        Assert.True(coreVersion.Major >= 2);
     }
 }

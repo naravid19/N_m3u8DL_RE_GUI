@@ -1,9 +1,11 @@
 {
   "name": "n-re-stream-bridge",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "build:firefox": "node scripts/firefox-manifest.mjs",
+    "lint:firefox": "npx web-ext lint -s dist-firefox"
   }
 }

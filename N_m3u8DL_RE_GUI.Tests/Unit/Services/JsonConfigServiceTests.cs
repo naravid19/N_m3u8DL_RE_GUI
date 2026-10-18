@@ -250,4 +250,25 @@ public class JsonConfigServiceTests
                 Directory.Delete(tempDir, recursive: true);
         }
     }
+
+    [Fact]
+    public void ReportsFailureWhenTheTargetCannotBeWritten()
+    {
+        // A directory where the file should be: the write cannot succeed, and
+        // the caller must be able to tell.
+        var dir = Path.Combine(Path.GetTempPath(), "nre_cfgfail_" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(Path.Combine(dir, "config.json"));
+        try
+        {
+            var service = new JsonConfigService();
+            var state = new AppConfigState();
+            state.Set("SomeKey", "SomeValue");
+
+            Assert.False(service.Save(Path.Combine(dir, "config.txt"), state));
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { }
+        }
+    }
 }

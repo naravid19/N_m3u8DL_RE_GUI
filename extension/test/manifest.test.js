@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseHlsMaster, parseDashManifest, parseAttributeList, describeVariant } from '../lib/manifest.js';
+import { parseHlsMaster, parseDashManifest, parseAttributeList, describeVariant, trackSelector } from '../lib/manifest.js';
 
 const fixture = (name) =>
   readFileSync(join(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -24,8 +24,40 @@ test('parseAttributeList tolerates an empty list', () => {
 test('parseHlsMaster returns one entry per variant, highest first', () => {
   const variants = parseHlsMaster(fixture('master.m3u8'), MASTER_URL);
 
-  assert.equal(variants.length, 3);
-  assert.deepEqual(variants.map((v) => v.height), [1080, 720, 360]);
+  const video = variants.filter((v) => v.kind === 'video');
+  assert.equal(video.length, 3);
+  assert.deepEqual(video.map((v) => v.height), [1080, 720, 360]);
+});
+
+test('parseHlsMaster lists EXT-X-MEDIA audio renditions after the video variants', () => {
+  const text = [
+    '#EXTM3U',
+    '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="English",LANGUAGE="en",URI="en.m3u8"',
+    '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="sub",NAME="Thai",LANGUAGE="th",URI="th.m3u8"',
+    '#EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=1280x720',
+    'v.m3u8',
+    ''
+  ].join('\n');
+  const variants = parseHlsMaster(text, MASTER_URL);
+
+  assert.deepEqual(variants.map((v) => v.kind), ['video', 'audio', 'subtitle']);
+  assert.equal(variants[1].lang, 'en');
+  assert.equal(variants[1].label, 'English');
+});
+
+test('trackSelector prefers language, falls back to name, drops quotes', () => {
+  assert.equal(trackSelector({ kind: 'audio', lang: 'th', name: 'Thai' }), 'lang="th":for=best');
+  assert.equal(trackSelector({ kind: 'audio', lang: null, name: 'Com"mentary' }), 'name="Commentary":for=best');
+  assert.equal(trackSelector({ kind: 'audio', lang: null, name: null }), null);
+  assert.equal(trackSelector({ kind: 'video', lang: 'en' }), null);
+});
+
+test('parseDashManifest carries the AdaptationSet lang on audio variants', () => {
+  const mpd = '<MPD><AdaptationSet mimeType="audio/mp4" lang="ja"><Representation bandwidth="128000" codecs="mp4a.40.2"/></AdaptationSet></MPD>';
+  const [audio] = parseDashManifest(mpd, MASTER_URL);
+
+  assert.equal(audio.kind, 'audio');
+  assert.equal(audio.lang, 'ja');
 });
 
 test('parseHlsMaster resolves relative variant URLs against the master', () => {
@@ -171,4 +203,29 @@ test('describeVariant falls back to bandwidth alone', () => {
 
 test('describeVariant tolerates a variant with neither', () => {
   assert.equal(describeVariant({ kind: 'video', width: null, height: null, bandwidth: null }), 'video');
+});
+
+test('parseHlsMaster returns SUBTITLES renditions as subtitle tracks', () => {
+  const text = [
+    '#EXTM3U',
+    '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="sub",NAME="Thai",LANGUAGE="th",URI="th.m3u8"',
+    '#EXT-X-MEDIA:TYPE=CLOSED-CAPTIONS,GROUP-ID="cc",NAME="CC",LANGUAGE="en",INSTREAM-ID="CC1"',
+    '#EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=1280x720',
+    'v.m3u8',
+    ''
+  ].join('\n');
+  const tracks = parseHlsMaster(text, MASTER_URL).filter((v) => v.kind === 'subtitle');
+
+  assert.equal(tracks.length, 1);
+  assert.equal(trackSelector(tracks[0]), 'lang="th":for=best');
+});
+
+test('parseDashManifest classes text AdaptationSets as subtitles, after audio', () => {
+  const mpd = '<MPD>'
+    + '<AdaptationSet contentType="text" mimeType="application/ttml+xml" lang="th"><Representation bandwidth="1000"/></AdaptationSet>'
+    + '<AdaptationSet mimeType="audio/mp4" lang="en"><Representation bandwidth="128000"/></AdaptationSet>'
+    + '<AdaptationSet mimeType="video/mp4"><Representation bandwidth="500000" height="720"/></AdaptationSet>'
+    + '</MPD>';
+
+  assert.deepEqual(parseDashManifest(mpd, MASTER_URL).map((v) => v.kind), ['video', 'audio', 'subtitle']);
 });

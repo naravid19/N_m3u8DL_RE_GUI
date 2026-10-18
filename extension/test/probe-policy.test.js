@@ -80,3 +80,41 @@ test('a message is always produced, even with nothing to go on', () => {
 
   assert.ok(message.length > 0);
 });
+
+import { detectDrm } from '../lib/probe-policy.js';
+
+test('detectDrm flags HLS key tags that name a DRM key format', () => {
+  const widevine = '#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES-CTR,URI="data:text/plain;base64,AA==",KEYFORMAT="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"\n';
+  const fairplay = '#EXTM3U\n#EXT-X-SESSION-KEY:METHOD=SAMPLE-AES,URI="skd://abc",KEYFORMAT="com.apple.streamingkeydelivery"\n';
+  assert.equal(detectDrm(widevine), true);
+  assert.equal(detectDrm(fairplay), true);
+});
+
+test('detectDrm leaves decryptable HLS encryption alone', () => {
+  const aes = '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="https://cdn.example.com/key.bin"\n';
+  const sampleAes = '#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI="https://cdn.example.com/key.bin"\n';
+  assert.equal(detectDrm(aes), false);
+  assert.equal(detectDrm(sampleAes), false);
+});
+
+test('detectDrm ignores a signature outside HLS key tags', () => {
+  assert.equal(detectDrm('#EXTM3U\n#EXTINF:6,skd://title\nseg.ts\n'), false);
+});
+
+test('detectDrm flags DASH and MSS protection by system ID', () => {
+  const mpd = '<MPD><ContentProtection schemeIdUri="urn:uuid:EDEF8BA9-79D6-4ACE-A3C8-27DCD51D21ED"/></MPD>';
+  const ism = '<SmoothStreamingMedia><Protection><ProtectionHeader SystemID="9A04F079-9840-4286-AB92-E65BE0885F95"/></Protection></SmoothStreamingMedia>';
+  assert.equal(detectDrm(mpd), true);
+  assert.equal(detectDrm(ism), true);
+  assert.equal(detectDrm('<MPD><ContentProtection schemeIdUri="urn:mpeg:dash:mp4protection:2011"/></MPD>'), false);
+});
+
+test('detectDrm is false for empty input', () => {
+  assert.equal(detectDrm(''), false);
+  assert.equal(detectDrm(null), false);
+});
+
+test('detectDrm treats the dots in the FairPlay and PlayReady key formats literally', () => {
+  const lookalike = '#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI="https://cdn.example.com/k",KEYFORMAT="comXappleXstreamingkeydelivery"\n';
+  assert.equal(detectDrm(lookalike), false);
+});

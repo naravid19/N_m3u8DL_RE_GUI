@@ -193,8 +193,8 @@ public class ArgsBuilderTests
     public void Build_WithNullInput_ShouldHandleGracefully()
     {
         // Arrange
-        var options = new DownloadOptions 
-        { 
+        var options = new DownloadOptions
+        {
             Input = null,
             ThreadCount = NonDefaultThreadCount
         };

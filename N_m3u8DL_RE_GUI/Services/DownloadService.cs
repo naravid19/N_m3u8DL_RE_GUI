@@ -41,7 +41,7 @@ public class DownloadService : IDownloadService
         }
     }
 
-    public Task<bool> StartDownloadAsync(
+    public async Task<bool> StartDownloadAsync(
         DownloadOptions options,
         IProgress<int>? progressCallback = null,
         Action<string>? logCallback = null,
@@ -50,13 +50,13 @@ public class DownloadService : IDownloadService
         if (IsDownloading)
         {
             logCallback?.Invoke("Download is already in progress. Please wait for it to complete.");
-            return Task.FromResult(false);
+            return false;
         }
 
         if (string.IsNullOrWhiteSpace(options.Input))
         {
             logCallback?.Invoke("Please enter a URL to download.");
-            return Task.FromResult(false);
+            return false;
         }
 
         var exePath = string.IsNullOrWhiteSpace(options.ExePath) ? "N_m3u8DL-RE.exe" : options.ExePath;
@@ -64,7 +64,7 @@ public class DownloadService : IDownloadService
         {
             logCallback?.Invoke($"File not found: {exePath}");
             logCallback?.Invoke("Please download N_m3u8DL-RE.exe from: https://github.com/nilaoda/N_m3u8DL-RE/releases");
-            return Task.FromResult(false);
+            return false;
         }
 
         logCallback?.Invoke("Starting download...");
@@ -83,10 +83,22 @@ public class DownloadService : IDownloadService
             StandardErrorEncoding = System.Text.Encoding.UTF8
         };
 
-        return StartTrackedProcessAsync(startInfo, logCallback, progressCallback, redirect: true, cancellationToken);
+        var exitCode = await StartTrackedProcessWithExitCodeAsync(startInfo, logCallback, progressCallback, cancellationToken);
+        return exitCode == 0;
     }
 
-    public Task<bool> StartProcessAsync(
+    public async Task<bool> StartProcessAsync(
+        string fileName,
+        string arguments,
+        Action<string>? logCallback = null,
+        IProgress<int>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        var exitCode = await StartProcessWithExitCodeAsync(fileName, arguments, logCallback, progressCallback, cancellationToken);
+        return exitCode == 0;
+    }
+
+    public Task<int> StartProcessWithExitCodeAsync(
         string fileName,
         string arguments,
         Action<string>? logCallback = null,
@@ -96,13 +108,13 @@ public class DownloadService : IDownloadService
         if (IsDownloading)
         {
             logCallback?.Invoke("A process is already in progress. Please wait for it to complete.");
-            return Task.FromResult(false);
+            return Task.FromResult(-1);
         }
 
         if (string.IsNullOrWhiteSpace(fileName))
         {
             logCallback?.Invoke("Process target file path is required.");
-            return Task.FromResult(false);
+            return Task.FromResult(-1);
         }
 
         var startInfo = new ProcessStartInfo
@@ -117,14 +129,13 @@ public class DownloadService : IDownloadService
             StandardErrorEncoding = System.Text.Encoding.UTF8
         };
 
-        return StartTrackedProcessAsync(startInfo, logCallback, progressCallback, redirect: true, cancellationToken);
+        return StartTrackedProcessWithExitCodeAsync(startInfo, logCallback, progressCallback, cancellationToken);
     }
 
-    private async Task<bool> StartTrackedProcessAsync(
+    private async Task<int> StartTrackedProcessWithExitCodeAsync(
         ProcessStartInfo startInfo,
         Action<string>? logCallback,
         IProgress<int>? progressCallback,
-        bool redirect,
         CancellationToken cancellationToken)
     {
         Process? process = null;
@@ -135,7 +146,7 @@ public class DownloadService : IDownloadService
             if (SafeIsRunning(_currentProcess))
             {
                 logCallback?.Invoke("A process is already in progress. Please wait for it to complete.");
-                return false;
+                return -1;
             }
 
             cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -147,23 +158,17 @@ public class DownloadService : IDownloadService
 
         try
         {
-            if (redirect)
-            {
-                process.OutputDataReceived += (_, e) => Forward(e.Data, logCallback, progressCallback);
-                process.ErrorDataReceived += (_, e) => Forward(e.Data, logCallback, progressCallback);
-            }
+            process.OutputDataReceived += (_, e) => Forward(e.Data, logCallback, progressCallback);
+            process.ErrorDataReceived += (_, e) => Forward(e.Data, logCallback, progressCallback);
 
             if (!process.Start())
             {
                 logCallback?.Invoke($"Failed to start process: {startInfo.FileName}");
-                return false;
+                return -1;
             }
 
-            if (redirect)
-            {
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-            }
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
 
             try
             {
@@ -172,28 +177,28 @@ public class DownloadService : IDownloadService
             catch (OperationCanceledException)
             {
                 logCallback?.Invoke("Process execution was cancelled.");
-                return false;
+                return -1;
             }
 
-            var success = process.ExitCode == 0;
-            logCallback?.Invoke(success
+            var exitCode = process.ExitCode;
+            logCallback?.Invoke(exitCode == 0
                 ? "Process finished successfully!"
-                : $"Process exited with code: {process.ExitCode}");
+                : $"Process exited with code: {exitCode}");
 
-            if (success)
+            if (exitCode == 0)
                 progressCallback?.Report(100);
 
-            return success;
+            return exitCode;
         }
         catch (OperationCanceledException)
         {
             logCallback?.Invoke("Process execution was cancelled.");
-            return false;
+            return -1;
         }
         catch (Exception ex)
         {
             logCallback?.Invoke($"Process execution error: {ex.Message}");
-            return false;
+            return -1;
         }
         finally
         {
@@ -251,7 +256,7 @@ public class DownloadService : IDownloadService
             catch (ObjectDisposedException) { }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Token cancel error: {ex.Message}");
+                Trace.WriteLine($"Token cancel error: {ex.Message}");
             }
         }
 
@@ -268,7 +273,7 @@ public class DownloadService : IDownloadService
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Failed to stop process tree: {ex.Message}");
+                Trace.WriteLine($"Failed to stop process tree: {ex.Message}");
             }
         }
     }

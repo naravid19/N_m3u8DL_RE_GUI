@@ -84,4 +84,72 @@ public class MainWindowConfigMapperTests
         modernOnly.Set("CustomHLSIv", "ffeeddccbbaa99887766554433221100");
         Assert.Equal("ffeeddccbbaa99887766554433221100", MainWindowConfigMapper.ResolveCustomHlsIv(modernOnly));
     }
+
+    [Theory]
+    [InlineData("zh-CN")]
+    [InlineData("zh-TW")]
+    [InlineData("en-US")]
+    public void ResolveGuiLanguage_WhenConfigHasExplicitLanguage_ReturnsConfiguredLanguage(string expectedLang)
+    {
+        var state = new AppConfigState();
+        state.Set("GuiLanguage", expectedLang);
+
+        var resolved = MainWindowConfigMapper.ResolveGuiLanguage(state);
+
+        Assert.Equal(expectedLang, resolved);
+    }
+
+    [Theory]
+    [InlineData("zh-CN", "zh-CN")]
+    [InlineData("zh-SG", "zh-CN")]
+    [InlineData("zh-Hans", "zh-CN")]
+    [InlineData("zh-Hans-CN", "zh-CN")]
+    [InlineData("zh-Hans-SG", "zh-CN")]
+    [InlineData("zh-CHS", "zh-CN")]
+    public void DetectLanguage_WhenCultureIsSimplifiedChinese_DetectsZhCN(string cultureName, string expected)
+    {
+        var culture = new System.Globalization.CultureInfo(cultureName);
+        var detected = MainWindowConfigMapper.DetectLanguage(culture);
+        Assert.Equal(expected, detected);
+    }
+
+    [Theory]
+    [InlineData("zh-TW", "zh-TW")]
+    [InlineData("zh-HK", "zh-TW")]
+    [InlineData("zh-MO", "zh-TW")]
+    [InlineData("zh-Hant", "zh-TW")]
+    [InlineData("zh-Hant-TW", "zh-TW")]
+    [InlineData("zh-Hant-HK", "zh-TW")]
+    [InlineData("zh-CHT", "zh-TW")]
+    public void DetectLanguage_WhenCultureIsTraditionalChinese_DetectsZhTW(string cultureName, string expected)
+    {
+        var culture = new System.Globalization.CultureInfo(cultureName);
+        var detected = MainWindowConfigMapper.DetectLanguage(culture);
+        Assert.Equal(expected, detected);
+    }
+
+    [Theory]
+    [InlineData("en-US", "en-US")]
+    [InlineData("en-GB", "en-US")]
+    [InlineData("ja-JP", "en-US")]
+    [InlineData("ko-KR", "en-US")]
+    [InlineData("fr-FR", "en-US")]
+    [InlineData("de-DE", "en-US")]
+    public void DetectLanguage_WhenCultureIsOther_DefaultsToEnUS(string cultureName, string expected)
+    {
+        var culture = new System.Globalization.CultureInfo(cultureName);
+        var detected = MainWindowConfigMapper.DetectLanguage(culture);
+        Assert.Equal(expected, detected);
+    }
+
+    [Fact]
+    public void ResolveGuiLanguage_WhenConfigIsEmpty_UsesAutoDetection()
+    {
+        var state = new AppConfigState();
+        var culture = new System.Globalization.CultureInfo("zh-TW");
+
+        var resolved = MainWindowConfigMapper.ResolveGuiLanguage(state, culture);
+
+        Assert.Equal("zh-TW", resolved);
+    }
 }

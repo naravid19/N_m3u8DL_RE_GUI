@@ -271,7 +271,6 @@ project_requirements.txt
 
 # Local publish artifacts
 /Publish/
-publish.bat
 publish-exclude.txt
 
 # Temporary Cloudflare bypass segments and temp scripts
@@ -280,18 +279,29 @@ cf_dl_*.bat
 
 test.txt
 /tools
-# Planning and scratch documentation kept local only
+# Planning and scratch documentation kept local only, along with the agent-skill
+# config under docs/agents/, the AGENTS.md pointing at it, and the CONTEXT.md
+# glossary those skills maintain -- all of it is local tooling setup, not
+# something a user of this project needs to see.
 /docs/
+/AGENTS.md
+/CONTEXT.md
 /references
 /graphify-out
 /.impeccable
 
 # Generated from Directory.Build.props on every build — never hand-edit.
 /extension/suite-version.json
+/extension/dist-firefox/
+nilaoda_N_m3u8DL-RE.md
+
+# Runtime settings the app writes next to itself on first run. config.json
+# holds DPAPI-protected secrets (custom headers, proxy, decryption keys), so it
+# is per-machine state that must never be committed; config.txt is its legacy
+# equivalent. Both appear in the repo root whenever the GUI is launched from there.
+/config.json
+/config.txt
 /.claude
 /.serena
-nilaoda_N_m3u8DL-RE.md
-CONTEXT.md
-config.txt
-config.json
-AGENTS.md
+/.playwright-mcp
+/extension/.impeccable

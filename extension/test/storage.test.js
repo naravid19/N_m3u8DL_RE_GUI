@@ -15,7 +15,12 @@ const {
   dismissMany,
   getDismissed,
   getCachedUpdateResult,
-  setCachedUpdateResult
+  setCachedUpdateResult,
+  isGuiHintDismissed,
+  getDelAfterDone,
+  setDelAfterDone,
+  dismissGuiHint,
+  clearGuiHintDismissal
 } = await import('../lib/storage.js');
 
 const TAB = 7;
@@ -381,6 +386,39 @@ test('a failed check is cached only briefly so a blip is not sticky', async () =
   await setCachedUpdateResult({ status: 'check-failed' }, tenMinutesAgo);
 
   assert.equal(await getCachedUpdateResult(), null);
+});
+
+test('the desktop-app banner shows until the user snoozes it', async () => {
+  assert.equal(await isGuiHintDismissed(), false);
+
+  assert.equal(await dismissGuiHint(), true);
+
+  assert.equal(await isGuiHintDismissed(), true);
+});
+
+test('a snoozed banner comes back after a week', async () => {
+  const now = Date.now();
+  await dismissGuiHint(now);
+
+  assert.equal(await isGuiHintDismissed(now + 6 * 24 * 60 * 60 * 1000), true);
+  assert.equal(await isGuiHintDismissed(now + 8 * 24 * 60 * 60 * 1000), false);
+});
+
+test('finding the app clears the snooze', async () => {
+  await dismissGuiHint();
+  await clearGuiHintDismissal();
+
+  assert.equal(await isGuiHintDismissed(), false);
+});
+
+test('delete-after-done defaults to on and remembers an explicit choice', async () => {
+  assert.equal(await getDelAfterDone(), true);
+
+  await setDelAfterDone(false);
+  assert.equal(await getDelAfterDone(), false);
+
+  await setDelAfterDone(true);
+  assert.equal(await getDelAfterDone(), true);
 });
 
 test('an empty cache reports nothing rather than throwing', async () => {

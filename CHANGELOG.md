@@ -7,12 +7,151 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [2.1.7] - 2026-10-16
 
-## [2.1.6] - 2026-09-29
+### Changed
+
+- **Upgrade Bundled N_m3u8DL-RE Engine**:
+  - Replaced bundled `N_m3u8DL-RE.exe` with build `0.6.0+d07cf22` supporting `--cookies`, `--vod-drop-parts`, `--vod-select-parts`, `--interface`, `--live-idle-timeout`, `--live-catchup`, and `doctor --json`.
+
+- **Multi-Job Lifecycle, Teardown Safety & Standards Hardening**:
+  - Added `JobScheduler.Remove(id)` to safely prune completed, failed, or cancelled jobs from the scheduler's internal list while preserving active jobs.
+  - Enforced ADR 0001 teardown state: `Stop` and `Stop All` buttons remain disabled while active jobs are in `Stopping` state until child process tree termination completes.
+  - Bounded window close teardown: `Window_Closing` waits up to 4000ms for idle shutdown via `Task.WhenAny` to prevent UI lockup if external processes terminate slowly.
+  - Unified conflict detection across Engine, Abyss, and Cloudflare download routes via `CheckAndShowJobConflict` helper and `JobConflictChecker`.
+  - Deduplicated download pipeline callbacks via `EnqueueDownloadJob`, `CreateJobProgressReporter`, and `CreateJobLogReporter`.
 
 ### Added
 
+- **Browser Extension v1.4.6 (Popup Redesign)**: flat rows in the desktop app's dark palette, tab counts, a footer switch for *Delete temp files after download*, an app-link pill in the header, and identical action buttons on every stream. Full technical changelog in [extension/CHANGELOG.md](extension/CHANGELOG.md).
+
+- **Delete Temp Files Option In The Browser Extension**: the popup has a *Delete temp files after download* toggle (on by default, remembered across browser restarts). **Download** and **Copy as cURL** both send it as `# nre-del-after-done: 1|0`. When the GUI applies that capture it sets *Delete Temporary Files After Done* to match, so the extension decides for the downloads it starts. A capture without the directive (an older extension or a pasted cURL) keeps your own setting. The existing retry and *Allow Missing Segments* deferral of the deletion is unchanged.
+
+- **Multi-Job Concurrent Downloads & Job Scheduler**:
+  - Implemented `JobScheduler` in `N_m3u8DL_RE_GUI.Core.Jobs` enabling multiple concurrent downloads across all four download paths (N_m3u8DL-RE Engine, Cloudflare bypass, Abyss native, Batch script).
+  - Added user-configurable `MaxConcurrentJobs` setting (default 2, range 1–8) with round-trip config persistence in `config.json` and accessible number stepper input.
+  - **Multi-Download Aggregate Progress & Dual-Scope Status**: The top status strip and progress bar calculate and display the average progress across all active running jobs (`running > 1`), paired with contextual status text: `"{running} downloading ({overallProgress}%) · [{selected.DisplayName}: {selected.StatusText}]"` when a row is selected, or overall and queued counts when none is selected. Smoothly reverts to single-job tracking when `running == 1`.
+  - **Two-Way Form Sync on Job Selection**: Selecting a job in `ListView_Jobs` immediately loads that job's parameters (URL, Title, SaveDir, Headers, Key, Proxy, TmpDir, BaseUrl) into the form and restores its CLI command in the preview bar (`PopulateFormFromJob`). Guarded with `_suspendParameterRefresh` to avoid clobbering historical commands, and cleanly clears empty fields when switching between jobs.
+  - **Per-Job Resume & Retry in Job List**: Added a `[Resume]` button on cancelled or failed Engine rows in `ListView_Jobs` (Cloudflare, Abyss and Batch rows have no resume rebuild; re-run them from the form, which loads the selected job's fields). Resuming safely re-enqueues the job into `JobScheduler` while preserving already downloaded segment chunks in `TmpDir`. Supports modifying the URL or Title in the form before resuming (e.g. for expired CDN links); options are cloned, command is regenerated, and the previous job is only replaced once enqueuing succeeds.
+  - **Taskbar Notification on Background Capture**: Added `Services.WindowNotificationHelper` using `FlashWindowEx` to pulse the Windows taskbar icon when a new download capture arrives from the browser while the app window is inactive or in the background.
+  - Snapshot at enqueue: form inputs are snapshotted on start so users can freely edit the form and prepare subsequent jobs without affecting running jobs.
+  - Per-Job `IDownloadService` registration via transient DI factory, ensuring isolated process trees, independent cancellation, and clean teardown.
+  - Temporary & segment directory isolation: isolated `cf_segments/<jobId>` for Cloudflare and `<default tmp>/<jobId>` for Engine (a Temp Dir you set yourself is used as given) preventing `WinError 32` file sharing collisions.
+  - `JobConflictChecker`: automatically checks and blocks clashing save paths or temporary directories between active jobs.
+  - Job list UI panel (`ListView_Jobs`): shows active and queued jobs with a neutral kind label, a progress bar and short status (`42%`, Completed, Failed) coloured only by state from theme tokens, the full message as a tooltip, and per-job `Resume`, `Stop`, `Open folder`, and `Remove` controls, alongside a global `Stop all` button.
+  - Per-job resume store (`ResumeJobStore`): records stored per-job under `%LOCALAPPDATA%\N_m3u8DL_RE_GUI\jobs\<jobId>.json` with safe one-time verified migration from legacy `active-job.json`.
+  - Capture Inbox queue integration: incoming browser captures automatically enqueue to the scheduler whenever the form is not actively being edited.
+
+- **Environment Doctor (`EngineDoctorService` & `Views/EngineDoctorWindow`)**:
+  - Added an interactive **Environment Doctor** modal dialog in Settings to inspect host system specifications (OS, CPU architecture, process architecture, .NET runtime) and verify availability/versions of external companion tools (`ffmpeg`, `mkvmerge`, `mp4decrypt`, `shaka-packager`) via `N_m3u8DL-RE doctor --json`.
+  - Visual status chips (`OK`, `Missing`, `Error`) with theme-adaptive styling across Dark and Light palettes, real-time tool version display, and a 1-click **Copy JSON** button for issue reporting.
+  - Fault-tolerant parsing: upstream `doctor --json` returns exit code 1 whenever required tools are missing; `EngineDoctorService` parses stdout first to avoid false "Unsupported" errors, while strictly adhering to ADR 0001 process tree termination and 10s timeout handling.
+  - Fully localized in English (`en-US`), Simplified Chinese (`zh-CN`), and Traditional Chinese (`zh-TW`).
+
+- **Upstream CLI Engine Flags & Dedicated UI Controls**:
+  - **Netscape Cookies File (`--cookies`)**: Added file input control in Advanced Settings with a file browser dialog (`...`), format validation for Netscape cookie file headers (`# Netscape HTTP Cookie File` or `# HTTP Cookie File`), and command builder escaping.
+  - **Live Idle Timeout (`--live-idle-timeout`)**: Added numeric input in Live Settings to automatically terminate live recording after N seconds with no incoming segments.
+  - **VOD Drop Parts (`--vod-drop-parts`)**: Added part filter input in Media Settings to discard specified part indices or ranges (e.g. `0,2-4`) during VOD downloads, with real-time format validation matching upstream parser semantics.
+  - **Network Interface Binding (`--interface`)**: Added interface input in Network Settings to bind HTTP network traffic to a specific interface name or IP address (e.g. `eth0` or `192.168.1.10`).
+  - **Live Catch-Up (`--live-catchup`)**: Added catch-up input in Live Settings supporting duration (`HH:MM:SS`) or ISO 8601 start timestamp (e.g. `01:00:00` or `2026-10-10T21:00:00+08:00`), with tooltip notification that catch-up overrides take count.
+  - All new options integrate into `MainWindowConfigMapper` with full round-trip persistence in `config.json` and real-time command preview updates.
+
+- **Themed Controls (`MainWindow.xaml`)**: `SwitchStyle` toggles for the mode options (Always on Top, Auto Retry, CF Fallback, Allow Missing Segments, both startup update checks); a thumb-only themed `ScrollBar`; a shared button chrome so the hover/pressed ramps already declared in the styles now render (the stock chrome painted its own colours over `Background`), with a 1px press sink and a dimmed disabled state. Reuses existing theme brushes, so no new palette keys.
+
+- **Bundled N_m3u8DL-RE Update Check UI**: Added startup checkbox and manual check button in Settings displaying local probed version, 3-state status reporting, and on-demand upstream release navigation.
+- **Engine Version & Upstream Release Check (`EngineUpdateCheckService`)**:
+  - Implemented `EngineUpdateCheckService` in `N_m3u8DL_RE_GUI.Core.Services` to probe the local `N_m3u8DL-RE` CLI executable (`--version`), safely extract SemVer version numbers via boundary-checked regex `(?<!\.)\b(\d+\.\d+\.\d+)(?!\.)`, and query upstream release information via `IUpdateCheckService` (`nilaoda/N_m3u8DL-RE`).
+  - Complies with ADR 0001: executes process cancellation and timeout handling via safe process tree kill fallback (`SafeKillProcess` with `entireProcessTree: true` falling back to root kill on `Win32Exception`) and bounded `WaitForExit(3000)` to prevent orphan background processes, with non-silent diagnostic logging for all exceptions.
+  - Added unit test suite in `EngineUpdateCheckServiceTests` covering stdout/stderr probing, exit code errors, IP address false-positive immunity, timeout termination, cancellation, and remote result propagation.
+
+- **Severity-Coloured Log Viewer (`Controls/LogViewer`)**:
+  - Replaced `TextBox_Log` with a `RichTextBox`-based `LogViewer` where log records are colour-coded by classified severity level using dynamic theme resource references (`CfAmberBrush` for WARN, `ErrorBrush` for ERROR, `DimBrush` for DEBUG/EXTRA, and `TextPrimaryBrush` for INFO and normal output).
+  - Original log text is preserved verbatim; existing history automatically recolours upon runtime theme switching.
+  - Fixed fork memory leak bug by managing individual `Paragraph` blocks and bounding history to `MaxLines` (2000 blocks).
+  - Fixed auto-scroll snapping bug by preserving user scroll position when inspecting earlier lines, only auto-scrolling when already at the bottom.
+
+- **Light Theme & Runtime Theme Switching with System Title Bar Support**:
+  - Added a full WCAG AA-compliant `Theme.Light.xaml` palette and updated Dark `TextSecondaryBrush` to `#9E9EB8` (improving secondary text contrast to 6.49:1).
+  - Implemented `ThemeManager` and `TitleBarTheme` supporting instant runtime switching between Dark and Light themes without restarting, with native caption bar recoloring via DWM (`DwmSetWindowAttribute`).
+  - Added a theme selector dropdown in the header row (`Combo_Theme`) with localized strings across English, Simplified Chinese, and Traditional Chinese, remembered in persistent config under `Theme` (defaulting to Dark).
+  - Modal windows (`StreamPickerWindow`, `AbyssQualityWindow`) track and match the active theme from the first frame.
+
+- **Concurrent Cloudflare Segment Downloads & GUI Thread Count Integration**:
+  - `m3u8_cf_bypass.py` now supports `--thread-count` (alongside `--threads`), honoring the GUI's configured thread count (clamped to 1–64) passed directly from `MainWindow.BuildCfOptions`.
+  - Atomic writing via `.part` files with automatic cleanup on error and in-order playlist merging.
+  - Media information probing is executed immediately upon segment 0 completion, matching engine behavior without waiting for all segments to finish.
+
+### Fixed
+
+- **Engine Left Running After Closing the Window**:
+  - `Window_Closing` stopped the jobs and then blocked the UI thread on `Task.WhenAny(...).GetAwaiter().GetResult()`. Each job's cleanup, which kills the engine process tree, continues on that same thread, so it could not run before the window closed and the `N_m3u8DL-RE` / `ffmpeg` children kept downloading with no UI left to stop them.
+  - Added `UiThreadWait.Until`, which pumps the dispatcher for up to 4 s instead of blocking it (`UiThreadWaitTests`, `ShutdownGuardTests`).
+
+- **Discarding an Interrupted Download Deleted the Whole Temp Dir**:
+  - `ResumeJobStore.Discard` removed the recorded Temp Dir recursively. A Temp Dir you set yourself is not job-owned and may hold other jobs' folders or your own files, so only the engine's task directory (`<tmp-dir>/<save-name>`) inside it is removed now. Folders the app derived for one job (below `.nre-tmp`, or named after the job id) are still removed whole. The resume banner's size count follows the same rule.
+
+- **Resume on Cloudflare, Abyss and Batch Rows Ran the Wrong Pipeline**: `Resume` always rebuilt the job as an Engine run, so an Abyss link was handed to the engine and a batch row re-ran whatever was in the form. The button is now shown for Engine rows only.
+
+- **Browser Captures Stuck in the Inbox While the URL Box Had Focus**:
+  - `DrainCaptureInbox` returned early whenever any form field had focus, and the URL box is focused on launch with nothing in it, so every capture from the extension stayed queued in `%LOCALAPPDATA%\N_m3u8DL_RE_GUI\inbox` and Download appeared to do nothing.
+  - Added `FormEditGuard.IsEditing`: a field blocks a capture only when it is focused and holds text a capture would overwrite (`FormEditGuardTests`).
+
+- **Leftover Empty Temp Directories After `--del-after-done`**:
+  - `N_m3u8DL-RE` deletes temporary segment files (`*.ts`, `raw.m3u8`, `meta.json`) upon completion, but leaves empty track subdirectories (`0__...`) on Windows. The GUI's post-download cleanup (`TryCleanupTempDirectory`) previously called `SegmentAuditService.ResolveTaskDir`, which required `raw.m3u8` to exist, causing cleanup to silently skip after successful runs.
+  - Added `SegmentAuditService.ResolveTaskDirForCleanup`, safely recognizing engine task directories even after `raw.m3u8` is deleted by checking for engine metadata or track subdirectories (`^\d+_`) with no foreign user files.
+  - `TryCleanupTempDirectory` now reliably removes leftover engine task directories and prunes empty parent `.nre-tmp` directories.
+- **Duplicate `.copy.mp4` output**: a finished download was judged incomplete when redirected progress left the last frame at 94/95, so Auto retry ran a second merge. The engine's `Done` record now settles it.
+- **403 on segments that need a Referer**: the engine command now carries the CF Referer (or the matching referer rule) as `-H "Referer: ..."`, as the Cloudflare fallback already did. An explicit Referer header still wins.
+- **Encrypted streams no longer abandon the engine on a 403**: the browser-TLS fallback cannot decrypt, so the engine now keeps its own segment retries instead of being killed at the first 403.
+
+- **Multi-Job Review Fixes**:
+  - Duplicate job ids: `JobScheduler.Enqueue` now returns `false` while an active job has the same id (the GUI shows the conflict dialog) and replaces a finished job with that id, so `Stop` always reaches the live job and two runs of one input can no longer share a temp directory.
+  - Abyss starts read the title, save folder and headers before their first `await` and no longer reset the log box or `_lastOutputDirectory` of the selected job; `Button_GO_Click` counts in-flight starts so the capture inbox cannot overwrite the form while a start is still reading it.
+  - Job row `ProgressBar` binding is `OneWay`: the TwoWay default threw "A TwoWay or OneWayToSource binding cannot work on the read-only property 'Progress'" as soon as a job row appeared.
+  - The selected job's log no longer shows its first lines twice (`DownloadJob.GetLogsSince` and one shared counter for replay and live lines).
+  - The Max Concurrent box no longer clips its digit.
+  - The Log button keeps a readable label in Dark when hovered or checked (`OutlineToggleButtonStyle`; the default ToggleButton chrome painted light system colours).
+  - Cloudflare segment folders are per job (`cf_segments/<jobId>`, and `cf_segments/<sha256(url)[:8]>` when `m3u8_cf_bypass.py` runs without `--seg-dir`), so two runs no longer resume or merge each other's segments.
+
+- **Source-Site Referer Derivation (machine-local rules)**:
+  - In `CfCommandBuilder.DeriveReferer` (and Python `derive_referer`), a CDN host listed in the machine's `referer-rules.json` (`%LOCALAPPDATA%\N_m3u8DL_RE_GUI\`, override with `NRE_REFERER_RULES`) maps to its source-site Referer instead of the CDN origin, eliminating immediate HTTP 403 blocks. Subdomains match. No real site names live in the repository: the rules file is per machine, and a missing or malformed file falls back to the input URL's origin.
+- **Sustained CDN Throughput & Connection Throttling Mitigation**:
+  - In `m3u8_cf_bypass.py`, segment requests now use fresh browser-fingerprinted connections per segment instead of reusing long-lived session connections, which that CDN throttles after initial bursts.
+  - Stalled request timeout shortened to 30 seconds for fast failure recovery and retry.
+- **Capture Inbox Not Draining While GUI Is Open**:
+  - `CaptureInbox.Write` writes capture payloads to a `.tmp` file and moves them to `.json` via `File.Move` to prevent partial writes. On Windows NTFS, moving a file within the same directory raises `FILE_ACTION_RENAMED_NEW_NAME`, which `FileSystemWatcher` surfaces as `Renamed` rather than `Created`.
+  - Previously, `MainWindow.StartWatchingCaptureInbox` only subscribed to `_inboxWatcher.Created`, causing an already-running GUI to miss incoming captures sent from the browser extension until the application was restarted or another download finished.
+  - Subscribed `_inboxWatcher.Renamed` via a shared `ScheduleDrain` handler so captures trigger `DrainCaptureInbox` immediately while the GUI is open, and added a defensive `Window.Activated` drain fallback.
+  - Added unit test `CaptureInboxWatcherTests` and guard test in `MainWindowGuardTests` to protect against regression.
+- **Partial-Segment Merge and Temp Cleanup Targeted the Wrong Directory**:
+  - N_m3u8DL-RE stores a run in `<tmp-dir>/<save-name>/`, but `SegmentAuditService` looked for `raw.m3u8` directly in the Temp Dir, so the tolerant merge always reported "nothing to merge" in the GUI's normal configuration. It now resolves `<tmp-dir>/<save-name>` (or the working directory when no Temp Dir is set) via `ResolveTaskDir`, and no longer scans other folders for a "newest" run.
+  - Delete-after-done cleanup now removes only that task directory instead of the whole user-supplied Temp Dir. A folder resolves only when it holds the engine's `raw.m3u8` and the save name is not `.` or `..`, so a plain user folder or a parent directory is never deleted.
+  - Tracks are the `<index>_...` subfolders (lowest index audited); stray folders are ignored. The partial merge logs a note when other tracks exist, since only the first track (normally video) is merged.
+  - "Merge partial video when segments are missing" is now off for fresh installs and configs without the key, so a result with gaps is never reported as success without the user opting in. Configs that already saved it as on keep that setting.
+- **Live Progress Bar & Log Freezing During N_m3u8DL-RE Downloads**:
+  - When stdout is redirected, N_m3u8DL-RE (Spectre.Console) updates progress in-place using carriage returns (`\r`) or un-delimited rows ending in an ETA (`--:--:--` or `HH:mm:ss`) without emitting newline `\n` characters during segment downloading.
+  - Previously, `Process.BeginOutputReadLine()` in .NET buffered output until `\n`, causing the GUI progress bar and log window to appear completely frozen until the process exited, then dumped all frames at once with duplicate logs.
+  - Resolved via `ConsoleOutputParser.SplitOutput`, ungluing consecutive records (`SplitGluedLogRecords`) and multi-stream progress rows (`SplitProgressFrame`), prioritizing video bar percentage over idle audio/subtitle streams to eliminate progress bar jitter.
+  - Implemented `OutputForwarder` and `PumpStreamAsync` with `TextEncodingDetector.AnsiFallback` stateful decoding, throttling progress frames to 500ms snapshots while updating percentage changes immediately, suppressing repetitive ffmpeg warning bursts, and catching silent engine failures (`ERROR: Failed`).
+
+## [2.1.6] - 2026-10-03
+
+### Added
+
+- **Firefox Extension Support & Mozilla Native Host Registration**:
+  - Officially listed on **[Mozilla Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/n-re-stream-bridge/)** for 1-click installation and automatic updates.
+  - Derived Firefox MV3 extension (`extension/dist-firefox/`) via `build:firefox` script with Gecko ID `nre-stream-bridge@naravid19`, `strict_min_version: "128.0"`, and module event page background.
+  - Firefox `webRequest` resilience: graceful fallback when `extraHeaders` is rejected, and referer recovery from `details.originUrl`.
+  - Native Host registration now writes `native-host-firefox.json` pointing to Mozilla registry key (`HKCU\Software\Mozilla\NativeMessagingHosts\com.nm3u8dlre.gui`) and recognises Firefox launch argument tuples `[manifestPath, addonId]`.
+  - Breakaway launcher: Firefox kills the native host's Job object when the host exits, which killed the GUI the host had just started, so a Firefox capture was queued but never downloaded. The host now starts the GUI with `CREATE_BREAKAWAY_FROM_JOB` (falling back to a plain start where the job forbids it).
+  - **No re-install needed for Chrome users**: existing Chrome/Edge/Brave manifests, IDs, and registry entries remain untouched.
+- **Browser Extension v1.4.5 (Popup Redesign & UX Polish)**: Stream cards now feature a dynamic two-row action structure promoting `⬇ Download` to full-width Primary CTA when the GUI Native Host is online, or promoting `📋 Copy as cURL` when offline. Includes a 3-row animated shimmer skeleton loader for quality probing, monospace filename and `.url-query` parameter separation, CSS specificity `[hidden]` override fix, 361 passing automated tests, and deep-detect hardening (v1.4.4). Full technical changelog in [extension/CHANGELOG.md](extension/CHANGELOG.md).
+- **Release Packaging Hierarchy & Automated Checksums**:
+  - Restructured `publish.bat` to output self-contained, version-isolated release bundles under `Publish\v<version>\`.
+  - Bundles unpacked extension directories symmetrically: `extension-chrome/` (Chrome/Edge/Brave) and `extension-firefox/` (Firefox) for immediate "Load unpacked" developer installation.
+  - Automatically packages canonical standalone extension archives: `nre-stream-bridge-v<ext_version>-firefox.zip` (for AMO / GitHub) and `nre-stream-bridge-v<ext_version>-chrome.zip` with root-level manifests and POSIX path entry validation.
+  - Automatically generates `SHA256SUMS.txt` checksum manifest across all release zip archives.
+  - Atomic directory swapping with scanner lock retry resilience.
 - **`publish.bat` Builds The Release Folder And Zip**: the old script was git-ignored and dropped from `dev`, so the release procedure could vanish on a merge; its version default (`2.1.4`) had also drifted two patches behind the binary it wrapped, and it never copied `extension/`. The new one takes the version from `AppVersion` in `Directory.Build.props` (there is no version argument to forget) and refuses to package an exe whose `FileVersion` disagrees. It copies the engine, ffmpeg, the Cloudflare script and the extension without its tests, `package.json` or `node_modules`, ships no `.pdb` files and no `config.json`/`config.txt`, and writes `Publish\N_m3u8DL_RE_GUI_v<version>\` plus a zip with one top-level folder and forward-slash entry names (Windows PowerShell 5.1's `ZipFile` writes backslashes, so the zip is made with the system `tar`). It assembles everything in `Publish\.staging` and swaps it in only after every check passes: the previous release is renamed aside first (which fails cleanly if the folder is open in Explorer or the exe is running), the new one is moved in and checked again, and any failure puts the previous release back untouched. A missing prerequisite stops it before any build. It is no longer git-ignored. `/nopause` skips the Explorer window and the final pause for use from other scripts.
 - **Choose The Abyss/Hydrax Quality**: the GUI always downloaded the largest rendition. When a video offers more than one, a person pressing GO now gets a small picker (largest first, with size and codec); a download started by a browser capture still takes the largest, since nobody is at the keyboard. `AbyssSourceChoice` holds the ordering and labels; `StreamPickerWindow` and the new `AbyssQualityWindow` share `Resources/PickerStyles.xaml`.
 - **Simplified Chinese README**: `README.zh-CN.md` mirrors the English README (linked from the top of each); the English README also gained the version badge and a working *Getting Started* link, and its license link now points at `LICENSE`, the file that exists.
@@ -93,6 +232,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Download Cancellation & Process Tree Teardown**: Guaranteed kill of child CLI and Python processes during cancellation or teardown without leaving orphaned engine processes.
 - **The Cloudflare Proxy Runner And The Python Probe Are Testable**: starting `m3u8_cf_bypass.py --serve`, the `PROXY_READY` handshake, the stdout drain and the shutdown lived inside `MainWindow.xaml.cs`, reachable only through a live window. They are now `CfProxyHost` and `PythonLocator` in `N_m3u8DL_RE_GUI.Core` (about 250 lines out of the window), covered by tests that run a stand-in process speaking the same protocol, and one that runs the real script. The pipe-full stall fix is now proven by a 30,000-line chatty proxy rather than by reading source. Behaviour is unchanged; `MainWindow.xaml.cs` is down by roughly 220 lines.
 - **Two Swallowed Failures Now Leave A Trace**: a Python candidate that failed the `curl_cffi` probe was dropped without a word, so "No Python interpreter with curl_cffi found" gave nothing to go on; it is now traced per candidate. A finished Abyss download that could not remove its temp folder logged nothing; it now writes a warning to the run log.
 - **Unticking *Delete After Done* Or *Auto Subtitle Fix* Had No Effect**: N_m3u8DL-RE defaults both options to `true` (`CommandInvoker`: `.WithDefault(true)`), but the GUI only wrote the flag when the box was checked, so an unchecked box sent nothing and RE still deleted the temp files and fixed subtitles. An unchecked box now sends `--del-after-done false` / `--auto-subtitle-fix false`.
@@ -522,7 +662,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date       | Highlights                                                |
 | ------- | ---------- | --------------------------------------------------------- |
-| 2.1.6   | 2026-09-29 | Capture Contract v2, Abyss quality picker, GUI in English / 简体中文 / 繁體中文, Cloudflare proxy and direct-engine fixes, Cloudflare runner and Python probe moved into Core, Browser Extension v1.4.5, 1,336 total tests |
+| 2.1.7   | 2026-10-16 | Multi-job scheduler, themes and log viewer, Environment Doctor, new engine flags, extension v1.4.6, shutdown and discard safety fixes |
+| 2.1.6   | 2026-10-03 | Firefox extension & native host support, Extension v1.4.5 UX polish, breakaway process tree, isolated release hierarchy & SHA-256 checksums, Capture Contract v2, Abyss quality picker, GUI in English / 简体中文 / 繁體中文, Cloudflare proxy and direct-engine fixes, Cloudflare runner and Python probe moved into Core, 1,366 total tests |
 | 2.1.5   | 2026-08-23 | Resume download, SSOT versioning, honest update checks, Abyss downloader, Browser Extension v1.3.0, 969 total tests |
 | 2.1.4   | 2026-08-08 | Windows DPAPI secret protection, lifecycle hardening, 164 tests |
 | 2.1.3   | 2026-08-06 | 3-Zone Modern UX/UI Architecture, Dark Mode ComboBox fixes|

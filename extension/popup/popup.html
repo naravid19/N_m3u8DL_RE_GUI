@@ -9,19 +9,28 @@
 <body>
   <header class="header">
     <div class="logo">
-      <img src="../icons/48.png" alt="Logo" class="logo-img" width="18" height="18">
+      <img src="../icons/48.png" alt="" class="logo-img" width="20" height="20">
       <span class="logo-text">N-RE Stream Bridge</span>
     </div>
     <div class="header-actions">
-      <span id="stream-count" class="badge" aria-label="Streams detected">0</span>
+      <span id="link-pill" class="link-pill" role="status">Checking app</span>
       <button id="btn-refresh" class="icon-btn" title="Refresh stream list" aria-label="Refresh stream list"><span data-icon="refresh" data-icon-size="15"></span></button>
       <button id="btn-clear" class="icon-btn" title="Clear detected streams" aria-label="Clear detected streams"><span data-icon="trash" data-icon-size="15"></span></button>
     </div>
   </header>
 
+  <section id="gui-banner" class="gui-banner" role="status" aria-label="Desktop app setup" hidden>
+    <p class="gui-banner-text"><strong>Downloads go through the desktop app.</strong> Run <strong>N_m3u8DL_RE_GUI.exe</strong> once so the browser can find it, then check again. Until then, use <strong>Copy as cURL</strong> and <strong>Paste from browser</strong> in the app, instead of Download.</p>
+    <div class="gui-banner-actions">
+      <button id="gui-banner-recheck" class="btn" type="button"><span data-icon="refresh" data-icon-size="14"></span>Check again</button>
+      <a class="btn btn-text" href="https://github.com/naravid19/N_m3u8DL_RE_GUI/releases/latest" target="_blank" rel="noopener">Get the app</a>
+      <button id="gui-banner-close" class="btn btn-text" type="button">Dismiss</button>
+    </div>
+  </section>
+
   <div class="tabs-nav" role="tablist" aria-label="Stream categories">
-    <button id="tab-current" class="tab-btn active" role="tab" aria-selected="true">Current Tab</button>
-    <button id="tab-all" class="tab-btn" role="tab" aria-selected="false">All Recent</button>
+    <button id="tab-current" class="tab-btn active" role="tab" aria-selected="true">Current Tab <span id="count-current" class="tab-count"></span></button>
+    <button id="tab-all" class="tab-btn" role="tab" aria-selected="false">All Recent <span id="count-all" class="tab-count"></span></button>
   </div>
 
   <main id="main-content">
@@ -41,17 +50,17 @@
     </div>
 
     <div id="empty-state" class="empty-state">
-      <div class="empty-icon" data-icon="signal" data-icon-size="26"></div>
-      <p class="empty-title">Waiting for video stream...</p>
+      <div class="empty-scan" aria-hidden="true"><i></i></div>
+      <p class="empty-title">Listening on this tab</p>
+      <p class="empty-lede">Streams show up here the moment a page requests one.</p>
       <ol class="empty-steps" id="hint-default">
-        <li>Play or seek the video on this page.</li>
-        <li>Streams (HLS, DASH, MSS, MP4) appear here automatically.</li>
-        <li>No luck? Try another server or player on the page.</li>
+        <li><span><strong>Open a video page</strong> and press play.</span></li>
+        <li><span><strong>Pick the stream</strong> that appears. HLS, DASH, MSS and MP4 are detected.</span></li>
+        <li><span><strong>Download in app</strong> or copy the cURL command.</span></li>
       </ol>
-      <div class="empty-hint" id="hint-other-tabs" hidden>
-        Nothing on this tab yet — but <strong id="other-tab-count">0</strong> stream(s)
-        were found on other tabs.<br>
-        <button id="btn-switch-all" class="btn btn-secondary btn-sm empty-switch-btn">Switch to All Recent</button>
+      <div class="empty-other" id="hint-other-tabs" hidden>
+        <span><strong id="other-tab-count">0</strong> streams captured on other tabs</span>
+        <button id="btn-switch-all" class="btn btn-secondary btn-sm">View recent</button>
       </div>
     </div>
 
@@ -67,11 +76,17 @@
       <span id="toast-text"></span>
       <button id="toast-action" class="toast-action" hidden></button>
     </div>
+    <div class="options-bar">
+      <label class="option-toggle" title="Removes the temporary segment files once the video is merged. Sent with both Download and Copy as cURL.">
+        <input type="checkbox" id="opt-del-after-done" checked>
+        <span>Delete temp files after download</span>
+      </label>
+      <p class="option-hint">Applies to Download and Copy as cURL.</p>
+    </div>
     <div class="footer-info">
       <span id="ext-version" class="ext-version" aria-label="Extension version"></span>
       <a id="ext-update-badge" class="ext-update-badge" target="_blank" rel="noopener" hidden aria-label="Extension update available"></a>
     </div>
-    <div class="helper-hint"><span data-icon="lightbulb" data-icon-size="12"></span> No <strong>Download</strong> button? <strong>Copy as cURL</strong>, then <strong>Paste from browser</strong>.</div>
   </footer>
 
   <script type="module" src="popup.js"></script>

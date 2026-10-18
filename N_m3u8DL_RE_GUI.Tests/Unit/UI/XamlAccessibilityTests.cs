@@ -124,8 +124,8 @@ public class XamlAccessibilityTests
         Assert.Contains("local:MainWindow.StartDownloadRoutedCommand", text);
         Assert.Contains("local:MainWindow.StopDownloadRoutedCommand", text);
 
-        // MainViewModel is the DataContext but nothing populates its DownloadOptions, so a
-        // shortcut aimed at its commands always reports "no URL". Guard against the regression.
+        // The window has no view model, so a shortcut bound to a command via {Binding}
+        // would silently do nothing. Guard against the regression.
         Assert.DoesNotContain("Command=\"{Binding StartDownloadCommand", text);
         Assert.DoesNotContain("Command=\"{Binding StopDownloadCommand", text);
     }
@@ -147,10 +147,8 @@ public class XamlAccessibilityTests
     {
         var text = XamlText();
 
-        // "_GO" gives Alt+G, "S_top" gives Alt+T. If both used the same letter, whichever
-        // control was visible would swallow the other's shortcut.
-        Assert.Contains("Content=\"▶ _GO\"", text);
-        Assert.Contains("Content=\"⏹ S_top\"", text);
+        Assert.Contains("Content=\"{DynamicResource Str_Download}\"", text);
+        Assert.Contains("Content=\"{DynamicResource Str_Stop}\"", text);
     }
 
     [Fact]
@@ -161,7 +159,7 @@ public class XamlAccessibilityTests
         var offenders = XDocument.Load(XamlPath()).Descendants()
             .Where(e => e.Name.LocalName == "GroupBox")
             .Select(e => (string?)e.Attribute("Header"))
-            .Where(h => h != null && SingleUnderscoreCount(h!) > 0)
+            .Where(h => h != null && !h.StartsWith("{DynamicResource") && SingleUnderscoreCount(h!) > 0)
             .ToList();
 
         Assert.True(
@@ -215,6 +213,29 @@ public class XamlAccessibilityTests
         Assert.Contains("Click=\"Button_ResumeJob_Click\"", xaml);
         Assert.Contains("x:Name=\"Button_DiscardJob\"", xaml);
         Assert.Contains("Click=\"Button_DiscardJob_Click\"", xaml);
+    }
+
+    [Fact]
+    public void AppXaml_HasStartupUriMainWindow()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        string? appXamlPath = null;
+        while (dir != null)
+        {
+            var candidate = Path.Combine(dir.FullName, "N_m3u8DL_RE_GUI", "App.xaml");
+            if (File.Exists(candidate))
+            {
+                appXamlPath = candidate;
+                break;
+            }
+            dir = dir.Parent;
+        }
+
+        Assert.NotNull(appXamlPath);
+        var doc = XDocument.Load(appXamlPath);
+        var root = doc.Root;
+        Assert.NotNull(root);
+        Assert.Equal("MainWindow.xaml", root.Attribute("StartupUri")?.Value);
     }
 }
 

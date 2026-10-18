@@ -2,11 +2,12 @@
  * N-RE Stream Bridge — Popup Logic
  */
 
-import { getTabStreams, getRecentStreams, clearTab, clearAll, clearTabView, dismissMany, undismissMany, getCachedUpdateResult, setCachedUpdateResult } from '../lib/storage.js';
+import { getTabStreams, getRecentStreams, clearTab, clearAll, clearTabView, dismissMany, undismissMany, getCachedUpdateResult, setCachedUpdateResult, isGuiHintDismissed, dismissGuiHint, clearGuiHintDismissal, getDelAfterDone, setDelAfterDone } from '../lib/storage.js';
 import { formatBytes, formatRelativeTime, elideUrl, describeStream, splitUrl } from '../lib/format.js';
 import { KIND_TITLES } from '../lib/classify.js';
 import { toCurl, toBatchList, findRefererMismatch } from '../lib/curl.js';
 import { probeVariants } from '../lib/probe.js';
+import { trackSelector } from '../lib/manifest.js';
 import { rankStreams, groupByOrigin, reconcileSelection, matchesFilter } from '../lib/list-policy.js';
 import { getExtensionVersion } from '../lib/version.js';
 import { getSuiteVersion } from '../lib/suite-version.js';
@@ -25,19 +26,56 @@ let renderGeneration = 0;
 let filterQuery = '';
 let guiAvailable = null; // null = not probed yet, true | false
 let guiAvailablePromise = null;
+let guiHintClosedHere = false; // survives a failed storage write, for this popup only
+let missingToastShown = false; // one "app not found" toast per popup open
+let delAfterDone = true; // mirrors the "Delete temp files" toggle
 
 function checkGuiAvailable() {
   if (guiAvailablePromise) return guiAvailablePromise;
   guiAvailablePromise = isGuiAvailable().then((available) => {
     guiAvailable = available;
+    if (available) clearGuiHintDismissal();
+    syncGuiBanner();
     return available;
   });
   return guiAvailablePromise;
 }
 
+// One banner for the whole popup, not one per card: "unavailable" means the
+// native host was never registered (the GUI has not been run once), which is
+// true of every card at once.
+async function syncGuiBanner() {
+  const pill = document.getElementById('link-pill');
+  if (pill) {
+    pill.className = `link-pill ${guiAvailable === true ? 'is-linked' : guiAvailable === false ? 'is-missing' : ''}`.trim();
+    pill.textContent = guiAvailable === true ? 'App linked' : guiAvailable === false ? 'App not found' : 'Checking app';
+  }
+  const banner = document.getElementById('gui-banner');
+  if (!banner) return;
+  banner.hidden = guiAvailable !== false || guiHintClosedHere || await isGuiHintDismissed();
+}
+
+// The user has just run the exe; ask the browser again instead of making them
+// close and reopen the popup. A found host re-renders every card so Download
+// takes over as the primary action.
+async function recheckGui(button) {
+  button.disabled = true;
+  guiAvailablePromise = null;
+  const available = await checkGuiAvailable();
+  button.disabled = false;
+  if (available) {
+    renderStreams();
+    showToast('Desktop app found. Download is ready.');
+  } else {
+    showToast('Still not found. Run N_m3u8DL_RE_GUI.exe once, then check again.', { tone: 'notice' });
+  }
+}
+
 const selectedUrls = new Set();
 const variantsCache = new Map(); // url -> { variants, error, loading }
 const selectedQualityMap = new Map(); // url -> selectVideo directive string
+const selectedAudioMap = new Map(); // url -> selectAudio directive string
+const selectedSubtitleMap = new Map(); // url -> selectSubtitle directive string
 const expandedQualities = new Set(); // set of urls currently open
 const qualitiesPanels = new Map(); // url -> the qualities panel currently rendered for it
 
@@ -74,6 +112,8 @@ function showToast(message, options = {}) {
     }
   }
 
+  // Reset every call: a neutral notice must not leave later "copied" toasts grey.
+  toast.classList.toggle('is-notice', options.tone === 'notice');
   toast.style.display = 'flex';
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
@@ -184,7 +224,6 @@ function updateBulkBar(visibleStreams = []) {
 }
 
 function paint({ streams, otherCount }) {
-  const countBadge = document.getElementById('stream-count');
   const emptyState = document.getElementById('empty-state');
   const streamList = document.getElementById('stream-list');
   const filterBar = document.getElementById('filter-bar');
@@ -194,8 +233,6 @@ function paint({ streams, otherCount }) {
   const otherTabCount = document.getElementById('other-tab-count');
   const noMatches = document.getElementById('no-matches');
   const noMatchesTerm = document.getElementById('no-matches-term');
-
-  countBadge.textContent = String(streams.length);
 
   // Keep the filter bar visible whenever a filter is active or streams count >= 5
   const showFilter = streams.length >= 5 || filterQuery.length > 0;
@@ -220,7 +257,7 @@ function paint({ streams, otherCount }) {
     noMatches.hidden = true;
 
     if (otherCount > 0 && currentView === 'current') {
-      hintDefault.hidden = true;
+      hintDefault.hidden = false;
       hintOtherTabs.hidden = false;
       otherTabCount.textContent = String(otherCount);
     } else {
@@ -291,8 +328,12 @@ async function buildCurlFor(item) {
   const chosenQuality = selectedQualityMap.get(item.url) || null;
   const rawTitle = item.pageTitle || activeTabTitle || '';
   const cleanTitle = rawTitle.replace(/[#*?<>|"\\/:]/g, ' ').replace(/\s+/g, ' ').trim();
-  const options = {};
+  const options = { delAfterDone };
   if (chosenQuality) options.selectVideo = chosenQuality;
+  const chosenAudio = selectedAudioMap.get(item.url) || null;
+  if (chosenAudio) options.selectAudio = chosenAudio;
+  const chosenSubtitle = selectedSubtitleMap.get(item.url) || null;
+  if (chosenSubtitle) options.selectSubtitle = chosenSubtitle;
   if (cleanTitle) options.saveName = cleanTitle;
 
   const effectivePageUrl = item.pageUrl || activeTabUrl || null;
@@ -435,20 +476,41 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
 
     const result = await sendToGui(await buildCurlFor(item));
 
-    setButtonLabel(downloadBtn, 'download', 'Download');
-    downloadBtn.disabled = false;
-
     if (result.ok) {
-      showToast('Sent to GUI — the download starts there.');
-    } else if (result.reason === 'unavailable') {
-      // Re-render rather than patch this one card's buttons: every visible
-      // card shares the same guiAvailable flag, and createStreamCard is
-      // already the one place that decides each card's button state from it.
-      guiAvailable = false;
-      renderStreams();
-      showToast('N_m3u8DL-RE GUI is not available. Use Copy as cURL instead.');
+      setButtonLabel(downloadBtn, 'check', 'Sent to App');
+      downloadBtn.classList.add('is-copied');
+      showToast('Sent to GUI — starting download in app.');
+      setTimeout(() => {
+        setButtonLabel(downloadBtn, 'download', 'Download');
+        downloadBtn.classList.remove('is-copied');
+        downloadBtn.disabled = false;
+      }, 2500);
     } else {
-      showToast(`GUI refused the stream: ${result.reason}`);
+      setButtonLabel(downloadBtn, 'download', 'Download');
+      downloadBtn.disabled = false;
+
+      if (result.reason === 'unavailable') {
+        // Re-render rather than patch this one card's buttons: every visible
+        // card shares the same guiAvailable flag, and createStreamCard is
+        // already the one place that decides each card's button state from it.
+        guiAvailable = false;
+        renderStreams();
+        await syncGuiBanner(); // the toast below reads whether the banner is showing
+        // The banner holds the steps; the toast only points at them, and only
+        // once per popup, so repeated clicks do not nag a user who closed it.
+        if (!missingToastShown) {
+          missingToastShown = true;
+          const bannerShown = !document.getElementById('gui-banner').hidden;
+          showToast(
+            bannerShown
+              ? 'Desktop app not found. See the steps at the top.'
+              : 'Desktop app not found. Use Copy as cURL.',
+            { tone: 'notice' }
+          );
+        }
+      } else {
+        showToast(`GUI refused the stream: ${result.reason}`);
+      }
     }
   });
 
@@ -458,11 +520,11 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
   copyCurlBtn.setAttribute('aria-label', `Copy cURL command for ${item.kind} stream`);
   copyCurlBtn.addEventListener('click', async () => {
     const curlCmd = await buildCurlFor(item);
-    await copyWithFeedback(copyCurlBtn, curlCmd, 'clipboard', 'Copy as cURL', 'Copied cURL! Switch to GUI & click "Paste from browser"');
+    await copyWithFeedback(copyCurlBtn, curlCmd, 'clipboard', 'Copy as cURL', 'Copied cURL! Switch to N_m3u8DL_RE_GUI & click "Paste from browser"');
   });
 
   const copyUrlBtn = document.createElement('button');
-  copyUrlBtn.className = 'btn btn-secondary';
+  copyUrlBtn.className = 'btn btn-text';
   setButtonLabel(copyUrlBtn, 'link', 'URL only');
   copyUrlBtn.title = 'Copies the address without the Referer, Cookie or User-Agent headers. Most sites reject it.';
   copyUrlBtn.setAttribute('aria-label', `Copy the ${item.kind} URL without headers`);
@@ -515,10 +577,12 @@ function createStreamCard(item, index, totalCount, allDisplayed) {
     if (available) {
       downloadBtn.className = 'btn';
       copyCurlBtn.className = 'btn btn-secondary';
+      copyCurlBtn.title = 'Copy cURL command with headers';
       primaryRow.appendChild(downloadBtn);
       secondaryRow.appendChild(copyCurlBtn);
     } else {
       copyCurlBtn.className = 'btn';
+      copyCurlBtn.title = 'Copy cURL command with headers, then click "Paste from browser" in N_m3u8DL_RE_GUI';
       primaryRow.appendChild(copyCurlBtn);
     }
     secondaryRow.appendChild(copyUrlBtn);
@@ -584,6 +648,7 @@ async function loadQualities(item, button, { fresh = false } = {}) {
   variantsCache.set(item.url, {
     variants: result.variants,
     error: result.error,
+    drm: Boolean(result.drm),
     loading: false
   });
 
@@ -645,6 +710,14 @@ function renderQualitiesPanel(panel, item) {
     return;
   }
 
+  if (cached.drm) {
+    const warn = document.createElement('div');
+    warn.className = 'qualities-status warn';
+    warn.setAttribute('role', 'alert');
+    warn.textContent = 'DRM protected — needs a decryption key (--key)';
+    panel.appendChild(warn);
+  }
+
   if (!cached.variants || cached.variants.length === 0) {
     const status = document.createElement('div');
     status.className = 'qualities-status';
@@ -683,16 +756,42 @@ function renderQualitiesPanel(panel, item) {
     list.appendChild(opt);
   }
 
+  // Audio needs two tracks for a real choice; subtitles are off by default, so one is enough.
+  appendTrackGroup(list, item, cached.variants, 'audio', selectedAudioMap, 'Default audio', 'Audio', 2);
+  appendTrackGroup(list, item, cached.variants, 'subtitle', selectedSubtitleMap, 'No subtitles', 'Subtitles', 1);
+
   panel.appendChild(list);
 }
 
-function createQualityOption(streamUrl, value, labelText, isChecked, onChange) {
+/** One radio row per distinct language/name of `kind`, plus a "none picked" row. */
+function appendTrackGroup(list, item, variants, kind, pickMap, noneLabel, prefix, minTracks) {
+  const tracks = new Map();
+  for (const v of variants) {
+    const selector = v.kind === kind ? trackSelector(v) : null;
+    if (selector && !tracks.has(selector)) tracks.set(selector, v.label);
+  }
+  if (tracks.size < minTracks) return;
+
+  const current = pickMap.get(item.url) || 'default';
+  list.appendChild(createQualityOption(
+    item.url, 'default', noneLabel, current === 'default',
+    () => pickMap.delete(item.url), kind
+  ));
+  for (const [selector, label] of tracks) {
+    list.appendChild(createQualityOption(
+      item.url, selector, `${prefix} · ${label}`, current === selector,
+      (val) => pickMap.set(item.url, val), kind
+    ));
+  }
+}
+
+function createQualityOption(streamUrl, value, labelText, isChecked, onChange, group = 'qualities') {
   const label = document.createElement('label');
   label.className = 'quality-option';
 
   const radio = document.createElement('input');
   radio.type = 'radio';
-  radio.name = `qualities-${streamUrl}`;
+  radio.name = `${group}-${streamUrl}`;
   radio.value = value;
   radio.checked = isChecked;
 
@@ -713,6 +812,17 @@ async function renderStreams() {
   const data = await loadStreams();
   if (generation !== renderGeneration) return;
   paint(data);
+  updateTabCounts().catch((err) => console.debug('Tab counts unavailable', err));
+}
+
+// Both counts at once, so a user on one tab sees whether the other holds anything.
+async function updateTabCounts() {
+  const [current, recent] = await Promise.all([
+    activeTabId ? getTabStreams(activeTabId) : [],
+    getRecentStreams()
+  ]);
+  document.getElementById('count-current').textContent = String(current.length);
+  document.getElementById('count-all').textContent = String(recent.length);
 }
 
 function refreshTimestamps() {
@@ -742,6 +852,22 @@ async function init() {
   } catch (err) {
     console.error('Could not get active tab', err);
   }
+
+  const delToggle = document.getElementById('opt-del-after-done');
+  delAfterDone = await getDelAfterDone();
+  delToggle.checked = delAfterDone;
+  delToggle.addEventListener('change', () => {
+    delAfterDone = delToggle.checked;
+    setDelAfterDone(delAfterDone);
+  });
+
+  const recheckBtn = document.getElementById('gui-banner-recheck');
+  recheckBtn.addEventListener('click', () => recheckGui(recheckBtn));
+  document.getElementById('gui-banner-close').addEventListener('click', async () => {
+    guiHintClosedHere = true;
+    document.getElementById('gui-banner').hidden = true;
+    await dismissGuiHint();
+  });
 
   // Tab switcher
   const tabCurrent = document.getElementById('tab-current');
@@ -864,6 +990,10 @@ async function init() {
   // Live relative timestamp refresher
   const ticker = setInterval(refreshTimestamps, 30000);
   window.addEventListener('pagehide', () => clearInterval(ticker));
+
+  // Probe on open, not only when a card renders: with no streams the header
+  // pill would otherwise stay on "Checking app" for the life of the popup.
+  checkGuiAvailable();
 
   // Render immediately for fast UI
   renderStreams();

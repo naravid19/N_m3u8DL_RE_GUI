@@ -234,6 +234,45 @@ public class BatchScriptServiceEscapingTests
 
     // -------------------------------------------------------------------------
 
+    [Fact]
+    public async Task BuildScriptAsync_ShouldNotEmitACommandLineThatCmdWouldSplitIntoASecondCommand()
+    {
+        // cmd.exe has no backslash escape. ArgsBuilder escapes an embedded quote as \"
+        // because that is what CreateProcess/argv wants, but cmd reads the same \" as
+        // CLOSING the quoted region -- so everything after it (&, |, <, >) becomes an
+        // operator rather than data. MainWindow runs the generated .bat immediately
+        // with no preview or confirmation, so a crafted entry in a shared URL list
+        // would execute the moment batch download is used.
+        var hostile = "https://example.com/a.m3u8?x=\"&echo INJECTED&\"";
+
+        await WithTxtAsync(hostile, async path =>
+        {
+            var result = await BuildAsync(path, ArgvQuote);
+
+            Assert.DoesNotContain("echo INJECTED", result.Content);
+        });
+    }
+
+    [Fact]
+    public async Task BuildScriptAsync_ShouldStillEmitAnOrdinaryUrlWithAmpersandsInItsQuery()
+    {
+        // & is ordinary in a query string and harmless while it stays inside the quoted
+        // argument. Guards the fix above from over-rejecting: most real signed CDN URLs
+        // carry several ampersands.
+        await WithTxtAsync("https://example.com/a.m3u8?token=abc&expires=123", async path =>
+        {
+            var result = await BuildAsync(path, ArgvQuote);
+
+            Assert.Contains("token=abc&expires=123", result.Content);
+            Assert.Single(TitleLines(result.Content));
+        });
+    }
+
+    /// <summary>
+    /// Mirrors <c>ArgsBuilder</c>'s argv-style quoting — what the real caller hands in.
+    /// </summary>
+    private static string ArgvQuote(string value) => "\"" + value.Replace("\"", "\\\"") + "\"";
+
     private static List<string> TitleLines(string content) =>
         content.Split('\n')
             .Select(l => l.TrimEnd('\r'))

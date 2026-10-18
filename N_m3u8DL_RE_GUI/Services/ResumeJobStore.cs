@@ -1,7 +1,9 @@
 #nullable enable
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using N_m3u8DL_RE_GUI.Core;
 using N_m3u8DL_RE_GUI.Core.Resume;
 
 namespace N_m3u8DL_RE_GUI.Services;
@@ -54,13 +56,13 @@ public class ResumeJobStore
                 }
 
                 var json = JsonSerializer.Serialize(job, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_recordFilePath, json);
+                AtomicFile.WriteAllText(_recordFilePath, json);
 
                 return job;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ResumeJobStore] Failed to begin job: {ex.Message}");
+                Trace.WriteLine($"[ResumeJobStore] Failed to begin job: {ex}");
                 return null;
             }
         }
@@ -82,7 +84,7 @@ public class ResumeJobStore
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ResumeJobStore] Failed to complete job record: {ex.Message}");
+                Trace.WriteLine($"[ResumeJobStore] Failed to complete job record: {ex}");
             }
         }
     }
@@ -133,7 +135,7 @@ public class ResumeJobStore
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ResumeJobStore] TryFindResumable error: {ex.Message}");
+                Trace.WriteLine($"[ResumeJobStore] TryFindResumable error: {ex.Message}");
                 return null;
             }
         }
@@ -167,7 +169,7 @@ public class ResumeJobStore
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ResumeJobStore] Failed to delete tmp directory: {ex.Message}");
+                        Trace.WriteLine($"[ResumeJobStore] Failed to delete tmp directory: {ex.Message}");
                         // Keep the record if file is locked or cannot be deleted
                         return false;
                     }
@@ -178,7 +180,7 @@ public class ResumeJobStore
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ResumeJobStore] Failed to discard job: {ex.Message}");
+                Trace.WriteLine($"[ResumeJobStore] Failed to discard job: {ex.Message}");
                 return false;
             }
         }

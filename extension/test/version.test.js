@@ -32,8 +32,8 @@ test('manifest.json and package.json version stay synchronized', () => {
   const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-  assert.equal(manifest.version, '1.4.5');
-  assert.equal(pkg.version, '1.4.5');
+  assert.equal(manifest.version, '1.4.6');
+  assert.equal(pkg.version, '1.4.6');
   assert.equal(manifest.version, pkg.version);
 });
 

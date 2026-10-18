@@ -1,0 +1,277 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Header / Title -->
+    <sys:String x:Key="Str_AppTitle">N_m3u8DL-RE GUI</sys:String>
+    <sys:String x:Key="Str_GuiLanguage">GUI Language:</sys:String>
+    <sys:String x:Key="Str_CliLanguage">CLI Console Language:</sys:String>
+    <sys:String x:Key="Str_CliLanguageTooltip">Language for N_m3u8DL-RE's own console output. This does not change the GUI's language.</sys:String>
+    <sys:String x:Key="Str_AlwaysOnTop">Always on Top</sys:String>
+
+    <!-- Top Dock &amp; URL -->
+    <sys:String x:Key="Str_Url">Input URL</sys:String>
+    <sys:String x:Key="Str_SaveName">Save Name</sys:String>
+    <sys:String x:Key="Str_SaveDir">Save Dir</sys:String>
+    <sys:String x:Key="Str_Browse">Browse</sys:String>
+    <sys:String x:Key="Str_PasteCurl">📋 Paste from browser</sys:String>
+    <sys:String x:Key="Str_Download">Download (GO)</sys:String>
+    <sys:String x:Key="Str_Stop">Stop</sys:String>
+    <sys:String x:Key="Str_Working">Working…</sys:String>
+
+    <!-- Tab Items -->
+    <sys:String x:Key="Str_TabGeneral">📦 Download</sys:String>
+    <sys:String x:Key="Str_TabNetwork">🌐 Network</sys:String>
+    <sys:String x:Key="Str_TabDecryption">🔒 Security</sys:String>
+    <sys:String x:Key="Str_TabFormat">🎬 Media</sys:String>
+    <sys:String x:Key="Str_TabLive">📡 Live</sys:String>
+    <sys:String x:Key="Str_TabAdvanced">⚙️ Advanced</sys:String>
+    <sys:String x:Key="Str_TabLog">Log</sys:String>
+
+    <!-- GroupBox Headers -->
+    <sys:String x:Key="Str_GroupBasicPaths">Basic Paths</sys:String>
+    <sys:String x:Key="Str_GroupDownloadFlags">Download Flags</sys:String>
+    <sys:String x:Key="Str_GroupRequestProxy">Request &amp; Proxy</sys:String>
+    <sys:String x:Key="Str_GroupPerformance">Performance &amp; Limits</sys:String>
+    <sys:String x:Key="Str_GroupCloudflareBypass">⚡ Cloudflare Bypass (curl__cffi)</sys:String>
+    <sys:String x:Key="Str_GroupKeysVectors">Keys &amp; Vectors</sys:String>
+    <sys:String x:Key="Str_GroupDecryptionEngine">Decryption Engine</sys:String>
+    <sys:String x:Key="Str_GroupStreamSelection">Stream Selection (Regex Filters)</sys:String>
+    <sys:String x:Key="Str_GroupTimeRangeMux">Time Range &amp; Muxing</sys:String>
+    <sys:String x:Key="Str_GroupLiveOptions">Live Recording Options</sys:String>
+    <sys:String x:Key="Str_GroupCustomPaths">Custom Paths &amp; Variables</sys:String>
+    <sys:String x:Key="Str_GroupEnvFlags">Environment &amp; System Flags</sys:String>
+    <sys:String x:Key="Str_GroupGuiUpdateEngine">🔄 GUI Auto-Update Engine</sys:String>
+
+    <!-- Context Menu Items -->
+    <sys:String x:Key="Str_MenuCut">Cut</sys:String>
+    <sys:String x:Key="Str_MenuCopy">Copy</sys:String>
+    <sys:String x:Key="Str_MenuPaste">Paste</sys:String>
+    <sys:String x:Key="Str_MenuGetDownloader">Get Downloader</sys:String>
+
+    <!-- General / Basic Fields &amp; Checkboxes -->
+    <sys:String x:Key="Str_ExePath">Executable</sys:String>
+    <sys:String x:Key="Str_TmpDir">Temp Dir</sys:String>
+    <sys:String x:Key="Str_DelTmp">Delete After Done</sys:String>
+    <sys:String x:Key="Str_DisableDate">No Date Info</sys:String>
+    <sys:String x:Key="Str_DisableProxy">No System Proxy</sys:String>
+    <sys:String x:Key="Str_ParserOnly">Skip Download</sys:String>
+    <sys:String x:Key="Str_Concurrent">Concurrent DL</sys:String>
+    <sys:String x:Key="Str_DisableMerge">Skip Merge</sys:String>
+    <sys:String x:Key="Str_BinaryMerge">Binary Merge</sys:String>
+    <sys:String x:Key="Str_AudioOnly">Audio Only</sys:String>
+    <sys:String x:Key="Str_DisableCheck">Skip Check</sys:String>
+    <sys:String x:Key="Str_SubOnly">Subtitle Only</sys:String>
+    <sys:String x:Key="Str_AutoSubFix">Auto Sub Fix</sys:String>
+    <sys:String x:Key="Str_AutoSelect">Auto Select</sys:String>
+    <sys:String x:Key="Str_SubFormat">Subtitle Format:</sys:String>
+
+    <!-- Network &amp; Limits -->
+    <sys:String x:Key="Str_Headers">Headers</sys:String>
+    <sys:String x:Key="Str_BaseUrl">Base URL</sys:String>
+    <sys:String x:Key="Str_Proxy">Proxy</sys:String>
+    <sys:String x:Key="Str_MaxThreads">Threads</sys:String>
+    <sys:String x:Key="Str_RetryCount">Retry</sys:String>
+    <sys:String x:Key="Str_Timeout">Timeout</sys:String>
+    <sys:String x:Key="Str_MaxSpeed">Speed Limit</sys:String>
+
+    <!-- Cloudflare Section -->
+    <sys:String x:Key="Str_BypassCloudflare">Enable Cloudflare Bypass</sys:String>
+    <sys:String x:Key="Str_CfScopeWarning">Cloudflare mode runs a Python script instead of N_m3u8DL-RE. It uses only the input URL, save folder, save name, and the fields in this section — options on the Download, Security, Media, Live and Advanced tabs are ignored.</sys:String>
+    <sys:String x:Key="Str_CfEngine">Engine</sys:String>
+    <sys:String x:Key="Str_CfEngineAuto">Auto (HLS direct / DASH proxy)</sys:String>
+    <sys:String x:Key="Str_CfEngineDirect">CF Direct (HLS only)</sys:String>
+    <sys:String x:Key="Str_CfEngineProxy">CF Proxy + RE (DASH / MSS / DRM)</sys:String>
+    <sys:String x:Key="Str_CfFingerprint">Fingerprint</sys:String>
+    <sys:String x:Key="Str_CfReferer">Referer</sys:String>
+    <sys:String x:Key="Str_CfCookie">CF Cookie</sys:String>
+    <sys:String x:Key="Str_CfKeepSegs">Keep segment files after merge</sys:String>
+
+    <!-- Security &amp; Encryption -->
+    <sys:String x:Key="Str_Key">Key</sys:String>
+    <sys:String x:Key="Str_CustomHlsKey">HLS Key</sys:String>
+    <sys:String x:Key="Str_CustomHlsIv">IV</sys:String>
+    <sys:String x:Key="Str_KeyFile">Key File</sys:String>
+    <sys:String x:Key="Str_DecryptionEngine">Engine</sys:String>
+    <sys:String x:Key="Str_CustomHLSMethod">HLS Method</sys:String>
+    <sys:String x:Key="Str_DecryptionBinPath">Bin Path</sys:String>
+    <sys:String x:Key="Str_Mp4RealTimeDec">MP4 Real-Time Decryption</sys:String>
+
+    <!-- Media &amp; Stream Selection -->
+    <sys:String x:Key="Str_SelectVideo">Select Video</sys:String>
+    <sys:String x:Key="Str_SelectAudio">Select Audio</sys:String>
+    <sys:String x:Key="Str_SelectSub">Select Sub</sys:String>
+    <sys:String x:Key="Str_DropVideo">Drop Video</sys:String>
+    <sys:String x:Key="Str_DropAudio">Drop Audio</sys:String>
+    <sys:String x:Key="Str_DropSub">Drop Sub</sys:String>
+    <sys:String x:Key="Str_Range">Range</sys:String>
+    <sys:String x:Key="Str_MuxJson">Mux Import</sys:String>
+    <sys:String x:Key="Str_MuxAfterDone">Enable Mux</sys:String>
+    <sys:String x:Key="Str_MuxKeepFiles">Keep Files</sys:String>
+    <sys:String x:Key="Str_MuxSkipSub">Skip Subtitles</sys:String>
+    <sys:String x:Key="Str_MuxFormat">Format</sys:String>
+    <sys:String x:Key="Str_Muxer">Muxer</sys:String>
+    <sys:String x:Key="Str_MuxBinPath">Bin Path</sys:String>
+
+    <!-- Live Recording -->
+    <sys:String x:Key="Str_LivePerformAsVod">Perform as VOD</sys:String>
+    <sys:String x:Key="Str_LiveRealTimeMerge">Realtime Merge</sys:String>
+    <sys:String x:Key="Str_LiveKeepSegments">Keep Segments</sys:String>
+    <sys:String x:Key="Str_LivePipeMux">Pipe Mux</sys:String>
+    <sys:String x:Key="Str_LiveFixVttByAudio">Fix VTT by Audio</sys:String>
+    <sys:String x:Key="Str_LiveRecordLimit">Rec Limit</sys:String>
+    <sys:String x:Key="Str_LiveWaitTime">Wait (s)</sys:String>
+    <sys:String x:Key="Str_LiveTakeCount">Take</sys:String>
+
+    <!-- Advanced Settings -->
+    <sys:String x:Key="Str_SavePattern">Save Pattern</sys:String>
+    <sys:String x:Key="Str_LogFilePath">Log File</sys:String>
+    <sys:String x:Key="Str_FFmpegPath">FFmpeg Path</sys:String>
+    <sys:String x:Key="Str_AdKeyword">Ad Keyword</sys:String>
+    <sys:String x:Key="Str_UrlArgs">URL Args</sys:String>
+    <sys:String x:Key="Str_TaskStartAt">Start At</sys:String>
+    <sys:String x:Key="Str_LogLevel">Log Level</sys:String>
+    <sys:String x:Key="Str_AppendUrlParams">Append URL Params</sys:String>
+    <sys:String x:Key="Str_NoLog">No Log</sys:String>
+    <sys:String x:Key="Str_WriteMetaJson">Write Meta JSON</sys:String>
+    <sys:String x:Key="Str_UseFFmpegConcat">FFmpeg Concat</sys:String>
+    <sys:String x:Key="Str_AllowHlsMultiExtMap">Multi EXT-MAP</sys:String>
+    <sys:String x:Key="Str_DisableUpdateCheck">No Update Check</sys:String>
+    <sys:String x:Key="Str_ForceAnsiConsole">Force ANSI Console</sys:String>
+    <sys:String x:Key="Str_AutoCheckGuiUpdate">Auto Check GUI Updates on Startup</sys:String>
+    <sys:String x:Key="Str_CheckUpdateNow">Check Now</sys:String>
+    <sys:String x:Key="Str_DefaultOption">(Default)</sys:String>
+
+    <sys:String x:Key="Str_ResumeBannerTitle">⏸  Unfinished download</sys:String>
+    <sys:String x:Key="Str_ResumeDetailFound">Partial download found on disk.</sys:String>
+    <sys:String x:Key="Str_ResumeBannerBtn">Resume</sys:String>
+    <sys:String x:Key="Str_DiscardBannerBtn">Discard</sys:String>
+    <sys:String x:Key="Str_ClearLog">Clear Log</sys:String>
+    <sys:String x:Key="Str_CopyLog">Copy Log</sys:String>
+    <sys:String x:Key="Str_OpenDir">Open Folder</sys:String>
+    <sys:String x:Key="Str_StatusReady">Ready</sys:String>
+    <sys:String x:Key="Str_Command">Command:</sys:String>
+    <sys:String x:Key="Str_CopyCommand">📋 Copy</sys:String>
+
+    <!-- Dynamic Messages &amp; Dialogs -->
+    <sys:String x:Key="Str_DiscardDialogTitle">Discard Interrupted Download</sys:String>
+    <sys:String x:Key="Str_SaveOnExitFailedTitle">Could Not Save Settings</sys:String>
+    <sys:String x:Key="Str_SaveOnExitFailedMsg">Your settings could not be saved. The previous saved settings are unchanged, but any changes made in this session will be lost.</sys:String>
+    <sys:String x:Key="Str_DiscardDialogMsg">Delete {0} of partial download for {1}? This cannot be undone.</sys:String>
+    <sys:String x:Key="Str_DiscardFailedTitle">Discard Failed</sys:String>
+    <sys:String x:Key="Str_DiscardFailedMsg">Could not delete partial files. A file may still be in use by another process.</sys:String>
+    <sys:String x:Key="Str_Error">Error</sys:String>
+    <sys:String x:Key="Str_InvalidHexKey">Invalid Hex Key format. Please check your key.</sys:String>
+    <sys:String x:Key="Str_InvalidKeyFileTitle">Invalid Key File</sys:String>
+    <sys:String x:Key="Str_InvalidKeyFileMsg">That file is not a valid key file. A raw HLS key must be exactly 16 bytes.</sys:String>
+    <sys:String x:Key="Str_DownloaderNotFoundTitle">Downloader Not Found</sys:String>
+    <sys:String x:Key="Str_DownloaderNotFoundMsg">N_m3u8DL-RE.exe was not found.&#x0a;&#x0a;Set its path on the Download tab, or right-click the Executable field and choose Get Downloader.</sys:String>
+    <sys:String x:Key="Str_MissingInputTitle">Missing Input</sys:String>
+    <sys:String x:Key="Str_MissingInputMsg">Enter a URL or file path first.</sys:String>
+    <sys:String x:Key="Str_InvalidProxyTitle">Invalid Proxy</sys:String>
+    <sys:String x:Key="Str_InvalidProxyMsg">Proxy must start with http:// or socks5://.</sys:String>
+    <sys:String x:Key="Str_PyCurlCffiMissing">No Python interpreter with curl_cffi found.&#x0a;&#x0a;Install the dependency once (run in your terminal):&#x0a;    pip install curl_cffi&#x0a;or: python -m pip install curl_cffi&#x0a;&#x0a;Then click Start Download again.</sys:String>
+    <sys:String x:Key="Str_CfScriptMissing">m3u8_cf_bypass.py not found.&#x0a;Please place it in the same directory as the GUI executable.</sys:String>
+    <sys:String x:Key="Str_CfDialogTitle">Cloudflare Bypass</sys:String>
+    <sys:String x:Key="Str_BatchBuildFailedTitle">Batch build failed</sys:String>
+    <sys:String x:Key="Str_StatusResumeFreshLink">Paste a fresh link for this video. The original link has expired — that is normal, and everything already downloaded will be kept.</sys:String>
+    <sys:String x:Key="Str_StatusResumeDiscarded">Partial download discarded.</sys:String>
+    <sys:String x:Key="Str_StatusHarNoStream">No stream was found in that capture. Clear the network log, press play, let it run a few seconds, then save the HAR again.</sys:String>
+    <sys:String x:Key="Str_StatusBatchDone">Batch finished. Saved to {0}</sys:String>
+    <sys:String x:Key="Str_StatusBatchFailed">Batch failed — open the Log for details.</sys:String>
+    <sys:String x:Key="Str_StatusDownloading">Downloading…</sys:String>
+    <sys:String x:Key="Str_StatusSavedTo">Saved to {0}</sys:String>
+    <sys:String x:Key="Str_StatusDownloadFailed">Download failed — open the Log for details.</sys:String>
+    <sys:String x:Key="Str_StatusStopped">Download stopped by user.</sys:String>
+    <sys:String x:Key="Str_StatusCancelled">Cancelled.</sys:String>
+
+    <!-- Tooltip Strings -->
+    <sys:String x:Key="Str_AlwaysOnTopTooltip">Keep window on top</sys:String>
+    <sys:String x:Key="Str_UpdateBadgeTooltip">Click to view and download latest release on GitHub</sys:String>
+    <sys:String x:Key="Str_ResumeJobTooltip">Restore download settings and prepare to attach a fresh link</sys:String>
+    <sys:String x:Key="Str_DiscardJobTooltip">Delete partial files from disk and discard resume data</sys:String>
+    <sys:String x:Key="Str_UrlTooltip">M3U8/MPD/ISM URL or local file path. Double-click to paste from clipboard</sys:String>
+    <sys:String x:Key="Str_PasteCurlTooltip">In your browser press F12 → Network → right-click the stream request → Copy → Copy as cURL, then click here.</sys:String>
+    <sys:String x:Key="Str_DownloadTooltip">Start download (Alt+G, Alt+S, Enter)</sys:String>
+    <sys:String x:Key="Str_StopTooltip">Cancel current download (Alt+T, Escape)</sys:String>
+    <sys:String x:Key="Str_SaveDirTooltip">Output directory for downloads</sys:String>
+    <sys:String x:Key="Str_SaveNameTooltip">Output filename. Double-click to auto-detect from URL</sys:String>
+    <sys:String x:Key="Str_ExePathTooltip">Path to N_m3u8DL-RE executable</sys:String>
+    <sys:String x:Key="Str_TmpDirTooltip">Temporary directory for segment files</sys:String>
+    <sys:String x:Key="Str_DelTmpTooltip">Delete temporary files after merge</sys:String>
+    <sys:String x:Key="Str_DisableDateTooltip">Don't write date info during muxing</sys:String>
+    <sys:String x:Key="Str_DisableProxyTooltip">Disable system proxy</sys:String>
+    <sys:String x:Key="Str_ParserOnlyTooltip">Parse only, don't download</sys:String>
+    <sys:String x:Key="Str_ConcurrentTooltip">Download audio/video/subtitle concurrently</sys:String>
+    <sys:String x:Key="Str_DisableMergeTooltip">Don't merge segments after download</sys:String>
+    <sys:String x:Key="Str_BinaryMergeTooltip">Use binary concatenation instead of ffmpeg</sys:String>
+    <sys:String x:Key="Str_AudioOnlyTooltip">Download only audio tracks</sys:String>
+    <sys:String x:Key="Str_DisableCheckTooltip">Don't verify segment count</sys:String>
+    <sys:String x:Key="Str_SubOnlyTooltip">Download only subtitles</sys:String>
+    <sys:String x:Key="Str_AutoSubFixTooltip">Automatically fix subtitle timing</sys:String>
+    <sys:String x:Key="Str_AutoSelectTooltip">Automatically select best quality</sys:String>
+    <sys:String x:Key="Str_HeadersTooltip">HTTP headers separated by newlines or | (e.g., Cookie:xxx&#x0a;User-Agent:yyy)</sys:String>
+    <sys:String x:Key="Str_BaseUrlTooltip">Override base URL for relative paths</sys:String>
+    <sys:String x:Key="Str_ProxyTooltip">HTTP/SOCKS5 proxy (e.g., http://127.0.0.1:8080)</sys:String>
+    <sys:String x:Key="Str_MaxThreadsTooltip">Maximum download threads</sys:String>
+    <sys:String x:Key="Str_RetryCountTooltip">Retry count on failure</sys:String>
+    <sys:String x:Key="Str_TimeoutTooltip">HTTP timeout in seconds</sys:String>
+    <sys:String x:Key="Str_MaxSpeedTooltip">Speed limit (e.g., 15M or 500K)</sys:String>
+    <sys:String x:Key="Str_KeyTooltip">Decryption key (HEX/Base64) or path to key file. Supports KID:KEY format</sys:String>
+    <sys:String x:Key="Str_CustomHlsKeyTooltip">Custom HLS key (HEX/Base64)</sys:String>
+    <sys:String x:Key="Str_CustomHlsIvTooltip">Custom HLS initialization vector (HEX/Base64)</sys:String>
+    <sys:String x:Key="Str_KeyFileTooltip">Path to key text file for decryption</sys:String>
+    <sys:String x:Key="Str_DecryptionBinPathTooltip">Path to decryption binary (mp4decrypt/shaka-packager)</sys:String>
+    <sys:String x:Key="Str_OpenDirTooltip">Open the folder the download was saved to</sys:String>
+    <sys:String x:Key="Str_ToggleLogTooltip">Show or hide the download log</sys:String>
+    <sys:String x:Key="Str_CommandPreviewTooltip">Generated command-line arguments</sys:String>
+    <sys:String x:Key="Str_CopyCommandTooltip">Copy generated command to clipboard</sys:String>
+
+    <!-- Runtime status messages -->
+    <sys:String x:Key="Str_StatusClipboardReadFailed">Could not read the clipboard: {0}</sys:String>
+    <sys:String x:Key="Str_StatusBatchImported">Imported batch list — click GO to download.</sys:String>
+    <sys:String x:Key="Str_StatusClipboardNoCapture">Clipboard does not contain a cURL command or multi-stream batch list. In your browser extension: click 'Copy as cURL' or 'Copy as list'.</sys:String>
+    <sys:String x:Key="Str_StatusCfDetected">Cloudflare detected — bypass mode enabled.</sys:String>
+    <sys:String x:Key="Str_StatusImported">Imported {0} — 1 URL, {1} header(s){2}.</sys:String>
+    <sys:String x:Key="Str_StatusImportedQuality"> (Quality: {0})</sys:String>
+    <sys:String x:Key="Str_StatusCaptureUnreadable">Received a capture from the browser that could not be read.</sys:String>
+    <sys:String x:Key="Str_StatusCaptureStarting">Received from browser — starting download…</sys:String>
+    <sys:String x:Key="Str_StatusRunningBatch">Running batch…</sys:String>
+    <sys:String x:Key="Str_StatusBatchError">Batch error: {0}</sys:String>
+    <sys:String x:Key="Str_StatusDownloadError">Download error: {0}</sys:String>
+    <sys:String x:Key="Str_StatusAbyssFetching">Fetching Abyss/Hydrax video metadata…</sys:String>
+    <sys:String x:Key="Str_StatusAbyssSource">Downloading Abyss stream: {0}…</sys:String>
+    <sys:String x:Key="Str_StatusAbyssProgress">Downloading Abyss: {0}</sys:String>
+    <sys:String x:Key="Str_StatusCfRunning">Running Cloudflare bypass…</sys:String>
+    <sys:String x:Key="Str_StatusCfPartial">Partial download saved to {0} (some segments failed).</sys:String>
+    <sys:String x:Key="Str_StatusCfEncrypted">Encrypted stream detected (#EXT-X-KEY). Use N_m3u8DL-RE directly with --key.</sys:String>
+    <sys:String x:Key="Str_StatusCfAccessDenied">Access denied (401/403). Check Referer and Cookie credentials.</sys:String>
+    <sys:String x:Key="Str_StatusCfNeedsProxyEngine">This stream needs the proxy engine. Set the Cloudflare engine to Auto or Proxy.</sys:String>
+    <sys:String x:Key="Str_StatusCfFailed">Cloudflare bypass failed — open the Log for details.</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyStarting">Starting Cloudflare proxy…</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyStartFailedEx">Failed to start Cloudflare proxy: {0}</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyStartFailed">Failed to start Cloudflare proxy.</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyNotReady">Cloudflare proxy did not become ready in time — open the Log for details.</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyReady">Cloudflare proxy ready — starting N_m3u8DL-RE…</sys:String>
+    <sys:String x:Key="Str_StatusReFailed">N_m3u8DL-RE failed — open the Log for details.</sys:String>
+    <sys:String x:Key="Str_UpdateChecking">Checking...</sys:String>
+    <sys:String x:Key="Str_UpdateNoVersion">Could not determine this app's version.</sys:String>
+    <sys:String x:Key="Str_UpdateAvailable">{0} available!</sys:String>
+    <sys:String x:Key="Str_UpdateLatest">✓ Latest version</sys:String>
+    <sys:String x:Key="Str_UpdateCheckFailed">Could not check for updates — check your connection.</sys:String>
+    <sys:String x:Key="Str_ResumeTitleUnnamed">Unfinished download</sys:String>
+    <sys:String x:Key="Str_ResumeTitleNamed">Unfinished download — "{0}"</sys:String>
+    <sys:String x:Key="Str_ResumeDetailLine">{0} already saved · stopped {1}{2}</sys:String>
+    <sys:String x:Key="Str_ResumeFromHost"> · from {0}</sys:String>
+    <sys:String x:Key="Str_TimeJustNow">just now</sys:String>
+    <sys:String x:Key="Str_TimeMinuteAgo">{0} minute ago</sys:String>
+    <sys:String x:Key="Str_TimeMinutesAgo">{0} minutes ago</sys:String>
+    <sys:String x:Key="Str_TimeHourAgo">{0} hour ago</sys:String>
+    <sys:String x:Key="Str_TimeHoursAgo">{0} hours ago</sys:String>
+    <sys:String x:Key="Str_TimeDayAgo">{0} day ago</sys:String>
+    <sys:String x:Key="Str_TimeDaysAgo">{0} days ago</sys:String>
+    <sys:String x:Key="Str_AbyssQualityTitle">Choose a quality</sys:String>
+    <sys:String x:Key="Str_AbyssQualityPrompt">This video is offered in more than one quality. Pick the one to download — the largest is listed first.</sys:String>
+    <sys:String x:Key="Str_AbyssQualityList">Qualities offered for this video</sys:String>
+    <sys:String x:Key="Str_AbyssQualityUse">Download this quality</sys:String>
+    <sys:String x:Key="Str_AbyssQualityCancel">Cancel</sys:String>
+</ResourceDictionary>

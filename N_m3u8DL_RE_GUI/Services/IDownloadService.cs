@@ -33,6 +33,16 @@ public interface IDownloadService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Start an arbitrary process and return its exact exit code (-1 on failure or cancellation).
+    /// </summary>
+    Task<int> StartProcessWithExitCodeAsync(
+        string fileName,
+        string arguments,
+        Action<string>? logCallback = null,
+        IProgress<int>? progressCallback = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Stop current download process.
     /// </summary>
     void StopDownload();

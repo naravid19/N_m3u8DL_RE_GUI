@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using N_m3u8DL_RE_GUI.Core;
 
 namespace N_m3u8DL_RE_GUI.Services;
 
@@ -70,7 +71,7 @@ public sealed class JsonConfigService : IConfigService
 
             // Auto-migrate: save as JSON for next time
             SaveToJson(jsonPath, state);
-            Debug.WriteLine($"Migrated legacy config to JSON: {jsonPath}");
+            Trace.WriteLine($"Migrated legacy config to JSON: {jsonPath}");
 
             return state;
         }
@@ -82,15 +83,15 @@ public sealed class JsonConfigService : IConfigService
     /// Saves config state as a JSON file alongside the legacy path.
     /// Also writes sanitized legacy config.txt for backward compatibility.
     /// </summary>
-    public void Save(string path, AppConfigState state)
+    public bool Save(string path, AppConfigState state)
     {
         if (string.IsNullOrWhiteSpace(path))
-            return;
+            return false;
 
         var directory = Path.GetDirectoryName(path) ?? string.Empty;
         var jsonPath = Path.Combine(directory, JsonConfigFileName);
 
-        SaveToJson(jsonPath, state);
+        bool jsonSaved = SaveToJson(jsonPath, state);
 
         // Save sanitized legacy format (excluding secrets) for backward compatibility
         var sanitizedState = new AppConfigState();
@@ -102,7 +103,9 @@ public sealed class JsonConfigService : IConfigService
             }
         }
         var legacyService = new ConfigService();
-        legacyService.Save(path, sanitizedState);
+        bool legacySaved = legacyService.Save(path, sanitizedState);
+
+        return jsonSaved && legacySaved;
     }
 
     private static AppConfigState LoadFromJson(string jsonPath)
@@ -129,17 +132,17 @@ public sealed class JsonConfigService : IConfigService
         }
         catch (JsonException ex)
         {
-            Debug.WriteLine($"JSON config parse error: {ex.Message}");
+            Trace.WriteLine($"JSON config parse error: {ex.Message}");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"JSON config load error: {ex.Message}");
+            Trace.WriteLine($"JSON config load error: {ex.Message}");
         }
 
         return state;
     }
 
-    private static void SaveToJson(string jsonPath, AppConfigState state)
+    private static bool SaveToJson(string jsonPath, AppConfigState state)
     {
         try
         {
@@ -155,15 +158,16 @@ public sealed class JsonConfigService : IConfigService
             }
 
             var json = JsonSerializer.Serialize(dict, JsonOptions);
-            File.WriteAllText(jsonPath, json);
-        }
-        catch (JsonException ex)
-        {
-            Debug.WriteLine($"JSON config serialize error: {ex.Message}");
+            AtomicFile.WriteAllText(jsonPath, json);
+            return true;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"JSON config save error: {ex.Message}");
+            // Trace, not Debug: Debug.WriteLine is compiled out of Release, so
+            // a disk-full or permission failure left no trace whatsoever while
+            // the user closed the app believing their settings were saved.
+            Trace.WriteLine($"JSON config save failed: {ex}");
+            return false;
         }
     }
 
@@ -183,7 +187,7 @@ public sealed class JsonConfigService : IConfigService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"DPAPI protect failed: {ex.Message}");
+            Trace.WriteLine($"DPAPI protect failed: {ex.Message}");
             return value;
         }
     }
@@ -211,7 +215,7 @@ public sealed class JsonConfigService : IConfigService
             // string.Empty here silently deleted the user's secret on the next save.
             // ponytail: the raw blob is visible in the textbox; a "could not decrypt"
             // placeholder needs UI state this service does not own.
-            Debug.WriteLine($"DPAPI unprotect failed, preserving ciphertext: {ex.Message}");
+            Trace.WriteLine($"DPAPI unprotect failed, preserving ciphertext: {ex.Message}");
             return value;
         }
     }

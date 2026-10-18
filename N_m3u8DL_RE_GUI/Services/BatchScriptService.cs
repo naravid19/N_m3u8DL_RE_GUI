@@ -82,11 +82,17 @@ public class BatchScriptService : IBatchScriptService
             if (string.IsNullOrWhiteSpace(title))
                 title = item;
 
+            var argsPerItem = buildArgsForInput(item).Replace("%", "%%");
+            var commandLine = $"\"{exePath}\" {argsPerItem}";
+            if (WouldCmdRunAnExtraCommand(commandLine))
+            {
+                AppendSkippedEntry(builder);
+                continue;
+            }
+
             onTitleResolved?.Invoke(title);
             builder.AppendLine($"TITLE \"[{++index}/{items.Count}] - {EscapeBatchTitle(title)}\"");
-
-            var argsPerItem = buildArgsForInput(item).Replace("%", "%%");
-            builder.AppendLine($"\"{exePath}\" {argsPerItem}");
+            builder.AppendLine(commandLine);
         }
 
         return builder.ToString();
@@ -116,10 +122,10 @@ public class BatchScriptService : IBatchScriptService
         builder.AppendLine("::Created by N_m3u8DL_RE_GUI");
 
         var titles = new string[validItems.Count];
-        var options = new ParallelOptions 
-        { 
-            MaxDegreeOfParallelism = 4, 
-            CancellationToken = cancellationToken 
+        var options = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = 4,
+            CancellationToken = cancellationToken
         };
 
         await Parallel.ForEachAsync(Enumerable.Range(0, validItems.Count), options, async (i, ct) =>
@@ -156,14 +162,68 @@ public class BatchScriptService : IBatchScriptService
                 ? (parsed.HasCustomTitle ? parsed.Title : parsed.Url)
                 : titles[i];
 
+            var argsPerItem = buildArgsForInput(parsed.Url).Replace("%", "%%");
+            var commandLine = $"\"{exePath}\" {argsPerItem}";
+            if (WouldCmdRunAnExtraCommand(commandLine))
+            {
+                AppendSkippedEntry(builder);
+                continue;
+            }
+
             onTitleResolved?.Invoke(title);
             builder.AppendLine($"TITLE \"[{++index}/{validItems.Count}] - {EscapeBatchTitle(title)}\"");
-
-            var argsPerItem = buildArgsForInput(parsed.Url).Replace("%", "%%");
-            builder.AppendLine($"\"{exePath}\" {argsPerItem}");
+            builder.AppendLine(commandLine);
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// True when cmd.exe would read this line as more than one command.
+    /// <para>
+    /// cmd.exe has no backslash escape: every <c>"</c> simply toggles whether it is
+    /// inside a quoted region. <c>ArgsBuilder</c> escapes an embedded quote as
+    /// <c>\"</c> because that is what CreateProcess/argv wants — but cmd reads the
+    /// same sequence as <em>closing</em> the quotes, which leaves any following
+    /// <c>&amp;</c> <c>|</c> <c>&lt;</c> <c>&gt;</c> acting as a command separator
+    /// rather than as data. A crafted URL in a shared list would then run as its own
+    /// command the moment the generated batch file is executed, which the caller does
+    /// immediately and without a preview.
+    /// </para>
+    /// <para>
+    /// Note this runs <em>after</em> <c>%</c> has been doubled, so the <c>%%</c> pairs
+    /// it sees carry no separator characters of their own.
+    /// </para>
+    /// </summary>
+    private static bool WouldCmdRunAnExtraCommand(string commandLine)
+    {
+        var insideQuotes = false;
+        foreach (var c in commandLine)
+        {
+            if (c == '"')
+            {
+                insideQuotes = !insideQuotes;
+                continue;
+            }
+
+            // Harmless while quoted -- an ampersand in a query string is ordinary and
+            // must keep working, so the test is position-aware rather than a blanklist.
+            if (!insideQuotes && (c is '&' or '|' or '<' or '>' or '^' or '(' or ')'))
+                return true;
+        }
+
+        // A line that ends still inside a quote leaves everything after it undefined.
+        return insideQuotes;
+    }
+
+    /// <summary>
+    /// Records a dropped entry. The offending text is deliberately not echoed back —
+    /// writing it into the batch file is the very thing being prevented.
+    /// </summary>
+    private static void AppendSkippedEntry(StringBuilder builder)
+    {
+        builder.AppendLine(":: Skipped one entry: its arguments cannot be written safely to a batch file.");
+        builder.AppendLine("echo [SKIPPED] An entry was omitted because it contained characters cmd.exe treats as a command separator.");
     }
 
     private static string EscapeBatchTitle(string title)

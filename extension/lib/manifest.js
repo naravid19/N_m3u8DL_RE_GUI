@@ -133,7 +133,45 @@ export function parseHlsMaster(text, baseUrl) {
   }
 
   // Sort descending by height, then by bandwidth
-  return variants.sort((a, b) => (b.height || 0) - (a.height || 0) || (b.bandwidth || 0) - (a.bandwidth || 0));
+  variants.sort((a, b) => (b.height || 0) - (a.height || 0) || (b.bandwidth || 0) - (a.bandwidth || 0));
+
+  // Alternate audio and subtitle renditions (#EXT-X-MEDIA) come after the video variants.
+  const MEDIA_KINDS = { AUDIO: 'audio', SUBTITLES: 'subtitle' };
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('#EXT-X-MEDIA:')) continue;
+    const attrs = parseAttributeList(trimmed.slice('#EXT-X-MEDIA:'.length));
+    const mediaKind = MEDIA_KINDS[attrs.TYPE];
+    if (!mediaKind) continue;
+
+    variants.push({
+      kind: mediaKind,
+      width: null,
+      height: null,
+      bandwidth: null,
+      codecs: null,
+      lang: attrs.LANGUAGE || null,
+      name: attrs.NAME || null,
+      url: null,
+      label: attrs.NAME || attrs.LANGUAGE || mediaKind
+    });
+  }
+
+  return variants;
+}
+
+/**
+ * The --select-audio / --select-subtitle expression for one audio or subtitle
+ * rendition, or null when it has neither a language nor a name to match on.
+ * Quotes are dropped from the values because the engine's filter syntax has no
+ * escape for them.
+ */
+export function trackSelector(v) {
+  if (!v || (v.kind !== 'audio' && v.kind !== 'subtitle')) return null;
+  const clean = (value) => String(value).replace(/"/g, '');
+  if (v.lang) return `lang="${clean(v.lang)}":for=best`;
+  if (v.name) return `name="${clean(v.name)}":for=best`;
+  return null;
 }
 
 /**
@@ -153,7 +191,9 @@ export function parseDashManifest(text, baseUrl) {
     const mimeMatch = /mimeType=["']([^"']+)["']/i.exec(chunk);
     const mime = (mimeMatch ? mimeMatch[1] : '').toLowerCase();
     const isAudio = mime.includes('audio') || /contentType=["']audio["']/i.test(chunk);
-    const kind = isAudio ? 'audio' : 'video';
+    const isText = /contentType=["']text["']/i.test(chunk) || /^(text\/|application\/(ttml|x-subrip))/.test(mime);
+    const kind = isAudio ? 'audio' : isText ? 'subtitle' : 'video';
+    const langMatch = /\blang=["']([^"']+)["']/i.exec(chunk.split(/<Representation/i)[0]);
 
     // Parse AdaptationSet level dimension fallback (width / maxWidth, height / maxHeight)
     const adaptWidthMatch = /\b(?:width|maxWidth)=["'](\d+)["']/i.exec(chunk);
@@ -184,6 +224,7 @@ export function parseDashManifest(text, baseUrl) {
         height: Number.isFinite(height) ? height : null,
         bandwidth: Number.isFinite(bandwidth) ? bandwidth : null,
         codecs,
+        lang: langMatch ? langMatch[1] : null,
         url: null,
         label: ''
       };
@@ -193,9 +234,10 @@ export function parseDashManifest(text, baseUrl) {
     }
   }
 
-  // Sort video first, then highest height, then bandwidth
+  // Sort video, audio, subtitle; then highest height, then bandwidth
+  const rank = { video: 0, audio: 1, subtitle: 2 };
   return variants.sort((a, b) => {
-    if (a.kind !== b.kind) return a.kind === 'video' ? -1 : 1;
+    if (a.kind !== b.kind) return rank[a.kind] - rank[b.kind];
     return (b.height || 0) - (a.height || 0) || (b.bandwidth || 0) - (a.bandwidth || 0);
   });
 }

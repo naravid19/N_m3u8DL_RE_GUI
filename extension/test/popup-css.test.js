@@ -104,9 +104,9 @@ test('the popup never instructs a flow it does not lead with', () => {
   const format = readFileSync(join(import.meta.dirname, '..', 'lib', 'format.js'), 'utf8');
   assert.doesNotMatch(format, /try Copy as cURL/);
 
-  const hint = html.match(/class="helper-hint">([\s\S]*?)<\/div>/)?.[1] ?? '';
-  assert.ok(hint.length > 0, 'the footer hint should still exist');
-  assert.match(hint, /Download/, 'the hint must acknowledge the primary action it is a fallback for');
+  const hint = html.match(/class="gui-banner-text">([\s\S]*?)<\/p>/)?.[1] ?? '';
+  assert.ok(hint.length > 0, 'the footer notice should still exist');
+  assert.match(hint, /Download/, 'the notice must acknowledge the primary action it is a fallback for');
 });
 
 test('[hidden] rule overrides display declarations with !important', () => {

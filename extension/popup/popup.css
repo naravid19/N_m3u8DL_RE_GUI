@@ -31,15 +31,15 @@
 
   --radius-sm: 4px;
   --radius-md: 6px;
+  --radius-lg: 8px;
 
   /* The primary content of this popup is URLs and a shell command. A
      proportional face never aligns the digits that distinguish one variant
      filename from another. */
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
 
-  /* Colors were the one scale this file never named: 95 literals, with the
-     brand blue written out 11 times. The values below are exactly those
-     literals, grouped by the job they do — renaming, not recolouring. */
+  /* Colors match the desktop app's dark theme (Theme.Dark.xaml), grouped by
+     the job they do. */
 
   /* Surfaces, darkest to lightest. */
   --bg-app: #0D0D0F;
@@ -107,6 +107,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 /* Accessibility: Visible focus outline (WCAG AA) */
@@ -122,42 +123,78 @@ body {
   vertical-align: -0.125em;
 }
 
+/* ---- Header -------------------------------------------------------- */
+
 .header {
   flex: 0 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-3) var(--space-4);
-  background-color: var(--bg-chrome);
-  border-bottom: 1px solid var(--bg-raised);
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--bg-app);
+  border-bottom: 1px solid var(--border);
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-md);
   color: var(--text-primary);
 }
 
 .logo-img {
-  border-radius: var(--radius-sm);
+  border-radius: 5px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 
-.badge {
-  background-color: var(--accent);
-  color: var(--text-on-accent);
-  font-size: var(--text-xs);
-  font-weight: 700;
+/* Link status to the desktop app: the one fact that decides which action
+   leads, so it lives in the header instead of appearing as a late banner. */
+.link-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
-  border-radius: 10px;
+  margin-right: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-chrome);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.link-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-faint);
+}
+
+.link-pill.is-linked::before {
+  background-color: var(--success);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.link-pill.is-missing {
+  color: var(--warning);
+  border-color: var(--warning-surface);
+}
+
+.link-pill.is-missing::before {
+  background-color: var(--warning);
 }
 
 .icon-btn {
@@ -166,34 +203,51 @@ body {
   font-size: var(--text-md);
   cursor: pointer;
   padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  color: var(--text-muted);
 }
 
 .icon-btn:hover {
   background-color: var(--bg-raised);
-  border-color: var(--border);
+  color: var(--text-primary);
 }
+
+/* ---- Scope tabs ---------------------------------------------------- */
 
 .tabs-nav {
   flex: 0 0 auto;
   display: flex;
+  gap: var(--space-1);
+  margin: var(--space-2) var(--space-4);
+  padding: var(--space-1);
   background-color: var(--bg-chrome);
-  border-bottom: 1px solid var(--bg-inset);
-  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .tab-btn {
+  flex: 1;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-md);
   color: var(--text-muted);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tab-count {
+  margin-left: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.tab-btn.active .tab-count {
+  color: var(--accent-text);
 }
 
 .tab-btn:hover {
@@ -201,39 +255,73 @@ body {
 }
 
 .tab-btn.active {
-  color: var(--accent-text);
-  border-bottom-color: var(--accent);
+  color: var(--text-primary);
+  background-color: var(--bg-raised);
 }
+
+/* ---- Banner (under the header) ------------------------------------- */
+
+/* Sits under the header, as drawn: the missing app decides which action leads,
+   so it is read before the list rather than after it. */
+.gui-banner {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+  background-color: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.gui-banner-text strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.gui-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.gui-banner-actions .btn:first-child {
+  flex: 1;
+}
+
+/* ---- Main ---------------------------------------------------------- */
 
 #main-content {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 
-/* Bulk actions bar */
 .bulk-bar {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--bg-card-primary);
-  border: 1px solid var(--accent-dim);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-2);
+  background-color: var(--bg-chrome);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-2) var(--space-4);
   font-size: var(--text-sm);
 }
 
 .bulk-left {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  font-weight: 600;
-  color: var(--accent-bright);
+  gap: var(--space-3);
+  font-weight: 500;
+  color: var(--text-primary);
+  accent-color: var(--accent);
 }
 
 .bulk-actions {
@@ -244,22 +332,20 @@ body {
 .bulk-warning {
   width: 100%;
   margin-top: var(--space-2);
-  padding: var(--space-2);
   font-size: var(--text-xs);
-  line-height: 1.4;
-  color: var(--warning);
-  background: color-mix(in srgb, var(--warning-surface) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--warning-surface) 30%, transparent);
-  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  color: var(--warning-text);
 }
 
 .bulk-warning strong {
-  color: var(--warning-text);
+  color: var(--warning);
+  font-weight: 600;
 }
 
 .filter-bar {
   flex: 0 0 auto;
-  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
 
 .filter-input {
@@ -268,7 +354,7 @@ body {
   border: 1px solid var(--border);
   color: var(--text-primary);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   font-size: var(--text-sm);
   transition: border-color 0.15s ease;
 }
@@ -278,103 +364,155 @@ body {
 }
 
 .filter-input::placeholder {
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
+
+/* ---- Empty states -------------------------------------------------- */
 
 .empty-state {
   flex: 1 1 auto;
   padding: var(--space-5) var(--space-4);
-  text-align: center;
+  text-align: left;
 }
 
-.empty-icon {
-  font-size: var(--text-lg);
-  margin-bottom: var(--space-2);
+/* Indeterminate scan line: the one motion that says "still listening". */
+.empty-scan {
+  width: 96px;
+  height: 2px;
+  margin-bottom: var(--space-4);
+  border-radius: 1px;
+  background-color: var(--border);
+  overflow: hidden;
+}
+
+.empty-scan i {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background-color: var(--accent);
+  animation: scan 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes scan {
+  from { transform: translateX(0); }
+  to { transform: translateX(150%); }
 }
 
 .empty-title {
   font-weight: 600;
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
+  letter-spacing: -0.01em;
   color: var(--text-primary);
   margin-bottom: var(--space-2);
+}
+
+.empty-lede {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-5);
+}
+
+.empty-other {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-chrome);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.empty-other strong {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .empty-hint {
   color: var(--text-muted);
   line-height: 1.5;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
 }
 
 .empty-steps {
   color: var(--text-muted);
   line-height: 1.5;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   text-align: left;
-  margin: 0 auto;
-  padding-left: var(--space-4);
-  display: inline-block;
+  list-style: none;
+  counter-reset: step;
+  border-top: 1px solid var(--border);
 }
 
 .empty-steps li {
-  margin-bottom: var(--space-1);
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: var(--space-5) 1fr;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.empty-switch-btn {
-  margin-top: var(--space-3);
+.empty-steps li::before {
+  content: counter(step);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  padding-top: 1px;
 }
 
+.empty-steps strong,
 .empty-hint strong {
   color: var(--text-primary);
+  font-weight: 500;
 }
 
 .no-matches-hint {
-  text-align: center;
+  text-align: left;
   padding: var(--space-5) var(--space-4);
 }
+
+/* ---- Stream list: flat rows divided by hairlines ------------------- */
 
 .stream-list {
   flex: 1 1 auto;
   overflow-y: auto;
   min-height: 0;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
 /* Page grouping in All Recent */
-.page-group {
-  margin-top: var(--space-1);
-  margin-bottom: var(--space-1);
-}
-
 .page-group-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  font-weight: 700;
-  color: var(--accent-text);
-  padding: var(--space-1) var(--space-2);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  background-color: var(--bg-chrome);
-  border-radius: var(--radius-sm);
-  margin-bottom: var(--space-2);
+  font-weight: 500;
+  color: var(--text-muted);
+  background-color: var(--bg-app);
+  border-bottom: 1px solid var(--border);
 }
 
 .stream-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
+  background-color: transparent;
+  border: 0 solid var(--border);
+  border-bottom-width: 1px;
+  padding: var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  position: relative;
+  transition: background-color 0.15s ease;
 }
 
 .stream-card.is-primary {
   border-color: var(--accent-dim);
-  background-color: var(--bg-card-primary);
 }
 
 .stream-card.is-selected {
@@ -383,15 +521,7 @@ body {
 }
 
 .stream-card:not(.is-primary):not(.is-selected):hover {
-  border-color: var(--accent-text);
-}
-
-.stream-card.is-primary:hover {
-  border-color: var(--accent);
-}
-
-.stream-card.is-selected:hover {
-  border-color: var(--accent-text);
+  background-color: var(--bg-chrome);
 }
 
 .stream-meta {
@@ -409,26 +539,23 @@ body {
 }
 
 .stream-checkbox {
-  cursor: pointer;
   accent-color: var(--accent);
-  width: 14px;
-  height: 14px;
 }
 
+/* Kind chip: a tinted outline in the kind's hue. The mockup used one neutral
+   chip for every kind; the per-kind hue is kept for now. */
 .stream-kind {
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-weight: 500;
   font-size: var(--text-xs);
-  padding: var(--space-1) var(--space-2);
+  padding: 1px var(--space-2);
   border-radius: var(--radius-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.02em;
   color: var(--badge-fg);
-  background: color-mix(in srgb, var(--badge-tint) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--badge-tint) 35%, transparent);
+  background-color: color-mix(in srgb, var(--badge-tint) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-tint) 30%, transparent);
 }
 
-/* Badge colors verified for 4.5:1 contrast against dark backgrounds.
-   Each kind sets its text color and the color its tint is mixed from. */
 .kind-hls {
   --badge-fg: var(--kind-hls);
   --badge-tint: var(--accent-text);
@@ -461,12 +588,8 @@ body {
 
 .badge-guess {
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: 500;
   color: var(--warning);
-  background: color-mix(in srgb, var(--warning-surface) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--warning-surface) 30%, transparent);
-  padding: 1px var(--space-1);
-  border-radius: 3px;
   text-transform: lowercase;
 }
 
@@ -476,6 +599,7 @@ body {
 }
 
 .stream-time {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
   margin-left: auto;
@@ -483,10 +607,6 @@ body {
 
 /* Two-line URL layout */
 .stream-url-box {
-  background-color: var(--bg-chrome);
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--bg-inset);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -495,8 +615,8 @@ body {
 .url-filename {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: var(--text-xs);
+  font-weight: 500;
+  font-size: var(--text-sm);
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
@@ -510,19 +630,20 @@ body {
 }
 
 .url-hostpath {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-muted);
   word-break: break-all;
   line-height: 1.3;
 }
 
-/* Qualities disclosure panel */
+/* ---- Qualities disclosure panel ------------------------------------ */
+
 .qualities-panel {
-  background-color: var(--bg-chrome);
-  border: 1px solid var(--bg-raised);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2);
-  margin-top: var(--space-1);
+  background-color: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-1);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -532,7 +653,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-height: 140px;
+  max-height: 148px;
   overflow-y: auto;
 }
 
@@ -541,35 +662,40 @@ body {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
-  border-radius: 3px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
   cursor: pointer;
-  font-size: var(--text-xs);
-  transition: background-color 0.1s ease;
+  transition: background-color 0.15s ease;
 }
 
 .quality-option:hover {
-  background-color: var(--bg-raised);
+  background-color: var(--bg-chrome);
 }
 
-.quality-option input[type="radio"] {
+.quality-option input {
   accent-color: var(--accent);
 }
 
 .qualities-status {
   font-size: var(--text-xs);
   color: var(--text-muted);
-  padding: var(--space-1);
+  padding: var(--space-1) var(--space-2);
 }
 
 .qualities-status.error {
   color: var(--danger);
 }
 
+.qualities-status.warn {
+  color: var(--warning);
+}
+
 .qualities-skeleton {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-1);
+  padding: var(--space-1) var(--space-2);
 }
 
 .skeleton-row {
@@ -587,11 +713,11 @@ body {
 }
 
 .skeleton-bar {
-  height: 12px;
+  height: 10px;
   border-radius: var(--radius-sm);
   background: linear-gradient(90deg, var(--bg-inset) 25%, var(--bg-raised) 50%, var(--bg-inset) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite ease-in-out;
+  animation: shimmer 1.6s ease-in-out infinite;
 }
 
 .skeleton-row:nth-child(1) .skeleton-bar { width: 70%; }
@@ -605,27 +731,23 @@ body {
 
 .btn-retry {
   background: transparent;
-  border: 1px solid var(--danger);
   color: var(--danger);
-  border-radius: 3px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
   padding: 1px var(--space-2);
   font-size: var(--text-xs);
-  cursor: pointer;
   margin-left: var(--space-2);
+  cursor: pointer;
 }
 
 .btn-retry:hover {
   background-color: color-mix(in srgb, var(--danger) 15%, transparent);
 }
 
-/* One decision per card, then the alternatives. Download is the shorter path
-   to the same goal, so it gets the full width and the accent; Copy as cURL
-   and URL only are the manual fallback and the expert escape hatch — the
-   latter's own tooltip says most sites reject it — so they share a lighter
-   row beneath rather than a third of the primary action area each. */
-/* No margin-top: .stream-card is a flex column with its own gap, so a margin
-   here stacked on top of it — 12px above the actions against 8px everywhere
-   else in the card, uneven and costing height the fixed popup cannot spare. */
+/* ---- Actions -------------------------------------------------------
+   Every card carries the same two rows, so no single stream is singled out
+   as "the one to download": the filled action is the same on each, and the
+   ranking shows only as a quiet border. */
 .actions {
   display: flex;
   flex-direction: column;
@@ -655,15 +777,15 @@ body {
 .btn {
   background-color: var(--accent);
   color: var(--text-on-accent);
-  border: none;
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-text);
+  border-radius: var(--radius-lg);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   transition: background-color 0.15s ease, transform 0.1s ease;
   justify-content: center;
   white-space: nowrap;
@@ -675,31 +797,53 @@ body {
 
 .btn:active {
   background-color: var(--accent-active);
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  cursor: progress;
+  opacity: 0.7;
 }
 
 .btn.is-copied {
+  border-color: var(--success) !important;
   background-color: var(--success) !important;
   color: var(--bg-app) !important;
 }
 
 .btn-secondary {
-  background-color: transparent;
+  background-color: var(--bg-chrome);
   color: var(--text-primary);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
 }
 
 .btn-secondary:hover {
   background-color: var(--bg-hover);
 }
 
+/* Quiet third tier: no fill, no border until hovered. */
+.btn-text {
+  background-color: transparent;
+  color: var(--text-muted);
+  border-color: transparent;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.btn-text:hover {
+  background-color: transparent;
+  color: var(--text-primary);
+}
+
 .btn-secondary.is-copied {
+  background-color: transparent !important;
   border-color: var(--success) !important;
   color: var(--success-text) !important;
 }
 
 .btn-qualities {
-  background-color: var(--bg-inset);
-  color: var(--kind-media);
+  background-color: var(--bg-chrome);
+  color: var(--text-secondary);
   border: 1px solid var(--border);
 }
 
@@ -709,21 +853,75 @@ body {
 }
 
 .btn-sm {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-3);
   font-size: var(--text-xs);
-  flex: initial;
 }
+
+/* ---- Footer -------------------------------------------------------- */
 
 .footer {
+  position: relative;
   flex: 0 0 auto;
-  padding: 0 var(--space-3) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+  background-color: var(--bg-app);
 }
 
-.helper-hint {
+.options-bar {
+  margin-bottom: var(--space-2);
+}
+
+.option-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* The one persistent setting. A switch reads as "on now", which a bare
+   checkbox in a footer does not. The native input stays the control, so
+   keyboard, label click and the stored value work unchanged. */
+.option-toggle input {
+  appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 16px;
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.option-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.option-toggle input:checked {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.option-toggle input:checked::after {
+  background-color: var(--text-on-accent);
+  transform: translateX(12px);
+}
+
+.option-hint {
+  margin: var(--space-1) 0 0 calc(var(--space-5) + var(--space-4));
   font-size: var(--text-xs);
   color: var(--text-muted);
-  text-align: center;
-  margin-top: var(--space-2);
 }
 
 .footer-info {
@@ -731,63 +929,71 @@ body {
   align-items: center;
   justify-content: space-between;
   font-size: var(--text-xs);
-  color: var(--text-faint);
-  margin-top: var(--space-1);
-  padding: 0 var(--space-1);
+  color: var(--text-muted);
 }
 
 .ext-version {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .ext-update-badge {
   font-size: var(--text-xs);
-  color: var(--info);
+  color: var(--accent-text);
   text-decoration: none;
-  background: color-mix(in srgb, var(--info) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
   padding: 1px var(--space-2);
   border-radius: var(--radius-sm);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .ext-update-badge:hover {
-  background: color-mix(in srgb, var(--info) 25%, transparent);
-  color: var(--info-text);
+  background-color: var(--bg-raised);
+  color: var(--accent-bright);
 }
 
+/* ---- Toast --------------------------------------------------------- */
+
+/* Floats above the footer, as drawn, so a message never resizes the layout. */
 .toast {
   display: none;
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: calc(100% + var(--space-2));
+  z-index: 2;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
-  background-color: var(--success);
-  color: var(--bg-app);
-  font-weight: 700;
-  font-size: var(--text-xs);
+  gap: var(--space-3);
+  background-color: var(--bg-raised);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  font-size: var(--text-sm);
   padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  text-align: center;
-  margin-bottom: var(--space-2);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px -8px var(--shadow);
   animation: fadeIn 0.2s ease-in;
 }
 
+.toast.is-notice {
+  color: var(--text-secondary);
+}
+
 .toast-action {
-  background: color-mix(in srgb, var(--shadow) 20%, transparent);
-  border: 1px solid color-mix(in srgb, var(--shadow) 40%, transparent);
-  color: var(--bg-app);
-  font-weight: 700;
-  font-size: var(--text-xs);
+  background: transparent;
+  border: none;
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: var(--text-sm);
   padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
   margin-left: auto;
   transition: background-color 0.15s ease;
 }
 
 .toast-action:hover {
-  background: color-mix(in srgb, var(--shadow) 35%, transparent);
+  background-color: var(--bg-hover);
 }
 
 @keyframes fadeIn {
@@ -803,5 +1009,13 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* The scan line is the only sign the popup is still listening. At 0.01ms it
+     jumps to its last frame and the bar stops. It is 2px high and 96px wide, so
+     keep the sweep. */
+  .empty-scan i {
+    animation-duration: 1.2s !important;
+    animation-iteration-count: infinite !important;
   }
 }

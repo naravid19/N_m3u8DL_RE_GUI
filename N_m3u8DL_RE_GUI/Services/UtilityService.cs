@@ -51,7 +51,7 @@ public class UtilityService : IUtilityService, IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to resolve title from URL '{url}': {ex.Message}");
+            Trace.WriteLine($"Failed to resolve title from URL '{url}': {ex.Message}");
             return string.Empty;
         }
     }
@@ -99,7 +99,7 @@ public class UtilityService : IUtilityService, IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to get HTML title from {url}: {ex.Message}");
+            Trace.WriteLine($"Failed to get HTML title from {url}: {ex.Message}");
         }
         return string.Empty;
     }
@@ -129,7 +129,7 @@ public class UtilityService : IUtilityService, IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Failed to get QQ title: {ex.Message}");
+            Trace.WriteLine($"Failed to get QQ title: {ex.Message}");
         }
         return string.Empty;
     }
@@ -146,7 +146,7 @@ public class UtilityService : IUtilityService, IDisposable
         }
         else
         {
-            sanitized = string.Create(path.Length, path, (span, p) => 
+            sanitized = string.Create(path.Length, path, (span, p) =>
             {
                 for (int i = 0; i < p.Length; i++)
                 {
@@ -193,7 +193,7 @@ public class UtilityService : IUtilityService, IDisposable
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Folder selection error: {ex.Message}");
+            Trace.WriteLine($"Folder selection error: {ex.Message}");
         }
 
         return null;

@@ -222,14 +222,40 @@ public class DownloadOptionsLegacyTests
     }
 
     [Fact]
-    public void DefaultInstance_ShouldStillEmitTheTwoDefaultsThatDivergeFromTheCli()
+    public void DefaultInstance_ShouldStillSpellOutTheTwoTrueDefaults()
     {
-        // DelAfterDone and AutoSubtitleFix default to true in the GUI model but are opt-in
-        // flags on the CLI, so they are always written out.
+        // The CLI defaults both to true (CommandInvoker: .WithDefault(true)). They are still
+        // written out when checked so an older RE build that lacks the default behaves the same.
         var args = ArgsBuilder.Build(new DownloadOptions { Input = "https://example.com/a.m3u8" });
 
         Assert.Contains("--del-after-done", args);
         Assert.Contains("--auto-subtitle-fix", args);
+        Assert.DoesNotContain("--del-after-done false", args);
+        Assert.DoesNotContain("--auto-subtitle-fix false", args);
+    }
+
+    [Fact]
+    public void UncheckedDelAfterDone_ShouldBeSentAsFalse_BecauseTheCliDefaultsToTrue()
+    {
+        var args = ArgsBuilder.Build(new DownloadOptions
+        {
+            Input = "https://example.com/a.m3u8",
+            DelAfterDone = false
+        });
+
+        Assert.Contains("--del-after-done false", args);
+    }
+
+    [Fact]
+    public void UncheckedAutoSubtitleFix_ShouldBeSentAsFalse_BecauseTheCliDefaultsToTrue()
+    {
+        var args = ArgsBuilder.Build(new DownloadOptions
+        {
+            Input = "https://example.com/a.m3u8",
+            AutoSubtitleFix = false
+        });
+
+        Assert.Contains("--auto-subtitle-fix false", args);
     }
 }
 

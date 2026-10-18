@@ -6,6 +6,11 @@ import { functionBody } from './helpers/source.js';
 // popup.js needs a live DOM, so this reads the source; see popup-cta.test.js.
 const popup = readFileSync(new URL('../popup/popup.js', import.meta.url), 'utf8');
 
+test('Download and Copy as cURL both carry the delete-after-done choice', () => {
+  // Both buttons build their payload in buildCurlFor, so one option reaches both paths.
+  assert.match(functionBody(popup, 'buildCurlFor'), /delAfterDone/);
+});
+
 test('the save name uses the title captured with the stream', () => {
   // content.js captures og:title / document.title with each stream as pageTitle, but
   // the popup read item.title, which nothing sets -- so a stream listed from an older

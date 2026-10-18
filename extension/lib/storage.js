@@ -385,6 +385,69 @@ export function sweepOrphanTabs(liveTabIds) {
   });
 }
 
+const GUI_HINT_SNOOZE_KEY = 'gui_hint_snoozed_until';
+const GUI_HINT_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Whether the user snoozed the "install the desktop app" banner. Uses
+ * chrome.storage.local so the choice survives browser restarts: someone who only
+ * ever copies cURL should not be nagged on every popup open. Holds a timestamp,
+ * never user data. A snooze, not a permanent dismissal: a user who forgot to
+ * install the app is reminded again after a week.
+ */
+export async function isGuiHintDismissed(now = Date.now()) {
+  try {
+    const data = await chrome.storage.local.get([GUI_HINT_SNOOZE_KEY]);
+    return Number(data[GUI_HINT_SNOOZE_KEY]) > now;
+  } catch {
+    return false;
+  }
+}
+
+/** Returns false when the choice could not be persisted, so the caller can keep it in memory. */
+export async function dismissGuiHint(now = Date.now()) {
+  try {
+    await chrome.storage.local.set({ [GUI_HINT_SNOOZE_KEY]: now + GUI_HINT_SNOOZE_MS });
+    return true;
+  } catch (err) {
+    console.debug('Failed to persist GUI hint dismissal', err);
+    return false;
+  }
+}
+
+/** The app answered, so a later disappearance deserves a fresh banner. */
+export async function clearGuiHintDismissal() {
+  try {
+    await chrome.storage.local.remove([GUI_HINT_SNOOZE_KEY]);
+  } catch (err) {
+    console.debug('Failed to clear GUI hint dismissal', err);
+  }
+}
+
+const DEL_AFTER_DONE_KEY = 'del_after_done';
+
+/**
+ * The popup's "Delete temp files after download" choice. Uses chrome.storage.local so
+ * it survives browser restarts. Defaults to true, the same as the engine's own default.
+ * Holds a boolean, never user data.
+ */
+export async function getDelAfterDone() {
+  try {
+    const data = await chrome.storage.local.get([DEL_AFTER_DONE_KEY]);
+    return data[DEL_AFTER_DONE_KEY] !== false;
+  } catch {
+    return true;
+  }
+}
+
+export async function setDelAfterDone(value) {
+  try {
+    await chrome.storage.local.set({ [DEL_AFTER_DONE_KEY]: value === true });
+  } catch (err) {
+    console.debug('Failed to persist delete-after-done choice', err);
+  }
+}
+
 const UPDATE_CHECK_CACHE_KEY = 'suite_update_cache';
 const UPDATE_SUCCESS_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const UPDATE_FAILURE_TTL_MS = 5 * 60 * 1000; // 5 minutes

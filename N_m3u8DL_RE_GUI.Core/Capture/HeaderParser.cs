@@ -9,14 +9,31 @@ namespace N_m3u8DL_RE_GUI.Core.Capture;
 /// </summary>
 public static class HeaderParser
 {
+    /// <summary>
+    /// Splits raw header text into individual lines.
+    /// If newlines are present, splits by newlines only (preserving '|' in cookie values per RFC 9110).
+    /// Otherwise, splits by '|' for legacy one-line configs.
+    /// </summary>
+    public static string[] SplitHeaderLines(string? rawText)
+    {
+        if (string.IsNullOrWhiteSpace(rawText))
+            return Array.Empty<string>();
+
+        if (rawText.Contains('\n') || rawText.Contains('\r'))
+        {
+            return rawText.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        return rawText.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+    }
+
     public static Dictionary<string, string> Parse(string? rawText)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (string.IsNullOrWhiteSpace(rawText))
             return result;
 
-        // Split by newlines or pipe delimiter
-        var lines = rawText.Split(new[] { "\r\n", "\r", "\n", "|" }, StringSplitOptions.RemoveEmptyEntries);
+        var lines = SplitHeaderLines(rawText);
 
         foreach (var rawLine in lines)
         {

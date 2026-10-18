@@ -17,6 +17,8 @@ public static class HeaderPolicy
         "te", "trailer", "transfer-encoding", "expect", "keep-alive",
         // Navigation hints with no bearing on stream access.
         "priority", "dnt", "upgrade-insecure-requests", "cache-control", "pragma",
+        // Ranged requests (browser fetches chunks, downloader fetches full files).
+        "range",
     };
 
     public static bool ShouldForward(string? name)

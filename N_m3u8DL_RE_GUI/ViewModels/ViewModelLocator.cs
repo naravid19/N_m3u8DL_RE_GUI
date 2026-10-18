@@ -6,7 +6,7 @@ using System;
 namespace N_m3u8DL_RE_GUI.ViewModels;
 
 /// <summary>
-/// ViewModel locator for dependency injection and service management.
+/// Owns the app's dependency-injection container; MainWindow resolves its services here.
 /// </summary>
 public class ViewModelLocator
 {
@@ -25,26 +25,14 @@ public class ViewModelLocator
         services.AddSingleton<IDragDropService, DragDropService>();
         services.AddSingleton<IConfigService, JsonConfigService>();
         services.AddSingleton<IBatchScriptService, BatchScriptService>();
-        
-        // Register ViewModels
-        services.AddTransient<MainViewModel>();
-        
-        _serviceProvider = services.BuildServiceProvider();
-    }
+        // The static Default is what every current call site (MainWindow,
+        // App.OnStartup) already uses. Registering a fresh LanguageService
+        // here instead would give a future DI-injected consumer its own
+        // instance -- always "en-US", its LanguageChanged never firing --
+        // silently out of sync with what the user actually selected.
+        services.AddSingleton<ILanguageService>(_ => LanguageService.Default);
 
-    /// <summary>
-    /// Get MainViewModel instance.
-    /// </summary>
-    public static MainViewModel MainViewModel
-    {
-        get
-        {
-            if (_serviceProvider == null)
-            {
-                Initialize();
-            }
-            return _serviceProvider!.GetRequiredService<MainViewModel>();
-        }
+        _serviceProvider = services.BuildServiceProvider();
     }
 
     /// <summary>

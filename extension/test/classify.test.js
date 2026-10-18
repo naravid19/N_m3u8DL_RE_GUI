@@ -261,13 +261,13 @@ test('detects manifests inside complex query parameters with extra tokens', () =
   );
 });
 
-test('detects surrit.com master playlists and quality variants', () => {
+test('detects cdn.example.com master playlists and quality variants', () => {
   assert.deepEqual(
-    classify('https://surrit.com/f4a44b42-8c05-4e77-a172-792d7c81606f/playlist.m3u8', 'application/vnd.apple.mpegurl', 200, 'xmlhttprequest'),
+    classify('https://cdn.example.com/00000000-0000-4000-8000-000000000000/playlist.m3u8', 'application/vnd.apple.mpegurl', 200, 'xmlhttprequest'),
     { kind: 'HLS', confidence: 'high' }
   );
   assert.deepEqual(
-    classify('https://surrit.com/f4a44b42-8c05-4e77-a172-792d7c81606f/1080p/video.m3u8', 'application/vnd.apple.mpegurl', 200, 'xmlhttprequest'),
+    classify('https://cdn.example.com/00000000-0000-4000-8000-000000000000/1080p/video.m3u8', 'application/vnd.apple.mpegurl', 200, 'xmlhttprequest'),
     { kind: 'HLS', confidence: 'high' }
   );
 });

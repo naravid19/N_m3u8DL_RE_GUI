@@ -63,7 +63,8 @@ test('tolerates a missing stream object', () => {
 test('appends a select-video directive when a quality was chosen', () => {
   const out = toCurl(base, { selectVideo: 'res="1080*"' });
 
-  assert.ok(out.endsWith('\n# nre-select-video: res="1080*"'));
+  assert.ok(out.includes('\n# nre-select-video: res="1080*"'));
+  assert.ok(out.includes('\n# nre-select-audio: best'), 'a video pick must not drop the audio');
 });
 
 test('emits no directive line when no quality was chosen', () => {
@@ -87,6 +88,17 @@ test('appends both select-video and save-name directives when both are provided'
 
   assert.ok(out.includes('\n# nre-select-video: res="1080*"'));
   assert.ok(out.includes('\n# nre-save-name: Episode 1'));
+});
+
+test('emits a del-after-done directive for an explicit true or false', () => {
+  assert.ok(toCurl(base, { delAfterDone: true }).endsWith('\n# nre-del-after-done: 1'));
+  assert.ok(toCurl(base, { delAfterDone: false }).endsWith('\n# nre-del-after-done: 0'));
+});
+
+test('emits no del-after-done directive when the option is absent or not a boolean', () => {
+  assert.ok(!toCurl(base).includes('del-after-done'));
+  assert.ok(!toCurl(base, { delAfterDone: undefined }).includes('del-after-done'));
+  assert.ok(!toCurl(base, { delAfterDone: 'no' }).includes('del-after-done'));
 });
 
 test('emits wire format v3 directives for page-url, impersonate, and cf', () => {
@@ -276,4 +288,22 @@ test('toBatchList and the UI check agree', () => {
 
   assert.equal(findRefererMismatch(streams).mismatched, true);
   assert.ok(toBatchList(streams).includes('# nre-warn: Referer mismatch'));
+});
+
+test('a subtitle pick also pins video and audio to best, so the engine keeps them', () => {
+  const out = toCurl({ url: 'https://cdn.example.com/a.m3u8', kind: 'HLS' }, { selectSubtitle: 'lang="th":for=best' });
+  assert.ok(out.includes('\n# nre-select-video: best'));
+  assert.ok(out.includes('\n# nre-select-audio: best'));
+  assert.ok(out.includes('\n# nre-select-subtitle: lang="th":for=best'));
+});
+
+test('an explicit audio pick is kept and video is pinned to best', () => {
+  const out = toCurl({ url: 'https://cdn.example.com/a.m3u8', kind: 'HLS' }, { selectAudio: 'lang="th":for=best' });
+  assert.ok(out.includes('\n# nre-select-audio: lang="th":for=best'));
+  assert.ok(out.includes('\n# nre-select-video: best'));
+});
+
+test('no pick emits no select directives at all', () => {
+  const out = toCurl({ url: 'https://cdn.example.com/a.m3u8', kind: 'HLS' }, {});
+  assert.ok(!out.includes('nre-select-'));
 });

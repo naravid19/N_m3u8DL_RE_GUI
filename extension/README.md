@@ -1,6 +1,8 @@
-# N-RE Stream Bridge — Browser Extension (v1.4.5)
+# N-RE Stream Bridge — Browser Extension (v1.4.6)
 
-A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes network activity while you play a video, automatically detects stream manifests (HLS `.m3u8`, DASH `.mpd`, Smooth Streaming `.ism`/`.isml`, Abyss/Hydrax), audio streams (`.m4a`, `.opus`, `.flac`, `.wav`, `.oga`, `.weba`, `.wma`, `.aac`, `.mp3`), and progressive media (`.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`, `.avi`, `.wmv`, `.asf`, `.divx`, `.f4v`, `.mpeg`, `.mpg`), and lets you copy the exact cURL command with required headers (`Referer`, `User-Agent`, `Cookie`, `Origin`) into **N_m3u8DL-RE GUI** with 1 click.
+[![Firefox Add-on](https://img.shields.io/badge/Firefox_Add--on-AMO-FF7139?style=for-the-badge&logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/n-re-stream-bridge/)
+
+A lightweight Chrome / Edge / Brave / Firefox extension (Manifest V3) that observes network activity while you play a video, automatically detects stream manifests (HLS `.m3u8`, DASH `.mpd`, Smooth Streaming `.ism`/`.isml`, Abyss/Hydrax), audio streams (`.m4a`, `.opus`, `.flac`, `.wav`, `.oga`, `.weba`, `.wma`, `.aac`, `.mp3`), and progressive media (`.mp4`, `.m4v`, `.webm`, `.mkv`, `.mov`, `.flv`, `.ogv`, `.3gp`, `.avi`, `.wmv`, `.asf`, `.divx`, `.f4v`, `.mpeg`, `.mpg`), and lets you copy the exact cURL command with required headers (`Referer`, `User-Agent`, `Cookie`, `Origin`) into **N_m3u8DL-RE GUI** with 1 click.
 
 ---
 
@@ -11,6 +13,7 @@ A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes net
 * **Auto Page Title & Windows Sanitization:** Scrapes page titles from `og:title`, `twitter:title`, and `document.title`, strips OS-forbidden filename characters, and attaches a clean title hint to detected streams for automatic GUI naming.
 * **Quality Probing on Demand:** Click **`▸ Qualities`** on any manifest (HLS/DASH/MSS) to inspect available video renditions (e.g. `1080p · 5.0 Mbps`, `720p · 2.5 Mbps`). The extension fetches the manifest only when requested, streaming chunks with a strict 2MB ceiling, replaying captured credentials so CDN authentication passes safely.
 * **Direct Quality Handoff via `# nre-*:` Directives:** Selecting a quality attaches a shell comment `# nre-select-video: res="1080*"` to the cURL payload. The GUI automatically applies the resolution selector to the download configuration without breaking bash cURL compatibility.
+* **Delete Temp Files Toggle:** The popup's **Delete temp files after download** checkbox (on by default, remembered) is sent with both **Download** and **Copy as cURL** as `# nre-del-after-done: 1` or `0`. The GUI sets its *Delete Temporary Files After Done* box to match; a payload without the directive leaves the GUI's own setting alone.
 * **Content-Disposition Header Classification:** Fallback filename detection from `Content-Disposition: attachment; filename="..."` headers so streams with extensionless or opaque query URLs are classified properly.
 * **Multi-Select & Batch Export:** Select multiple stream URLs using checkboxes or Select All, then click **`📋 Copy as list`**. Pasting into **N_m3u8DL-RE GUI** instantly generates a numbered batch run.
 * **Page Grouping & 420px Adaptive UI:** "All Recent" streams are neatly grouped by origin domain with visible card hierarchy, live relative timestamps, and WCAG AA contrast compliance.
@@ -37,18 +40,28 @@ A lightweight Chrome / Edge / Chromium extension (Manifest V3) that observes net
 ## 🚀 Installation (Takes 30 seconds)
 
 > [!NOTE]
-> **Requires Chrome 111 or newer** (Chrome, Edge, or Brave on an equivalent build). The manifest declares this, so an older browser refuses the install instead of loading an extension whose popup cannot start.
+> **Browser Requirements:** Requires Chrome 111 or newer (or equivalent Chromium build in Edge/Brave) or Firefox 128 or newer.
 
 > [!NOTE]
-> **Incognito is isolated.** If you enable the extension in incognito, anything it captures there stays there — incognito runs its own instance with its own memory, so a stream sniffed in a private window never appears in the normal window's list.
+> **Incognito / Private Windows are isolated.** If you enable the extension in incognito/private mode, anything it captures there stays there — private browsing runs its own instance with its own memory, so a stream sniffed in a private window never appears in the normal window's list.
 
+### Chrome / Edge / Brave
 1. Open your browser's extensions page:
    - **Google Chrome / Brave:** Navigate to `chrome://extensions`
    - **Microsoft Edge:** Navigate to `edge://extensions`
 2. Enable **Developer mode** (toggle switch in the top-right corner).
 3. Click **Load unpacked** (top-left).
-4. Select the `extension/` folder from this repository / release.
+4. Select the `extension-chrome/` folder from the release (or `extension/` in a source checkout).
 5. (Optional) Click the puzzle piece icon in the browser toolbar and pin **N-RE Stream Bridge**.
+
+### Mozilla Firefox
+1. **Install from Mozilla Add-ons (Recommended):**
+   Install directly from **[Mozilla Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/n-re-stream-bridge/)** for permanent installation and automatic updates.
+2. **Manual / Development Install:**
+   - Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, and choose `extension-firefox/manifest.json` from the release (or run `npm run build:firefox` inside `extension/` and choose `extension/dist-firefox/manifest.json`).
+   - Do not load `extension-chrome/` (or `extension/`) in Firefox: its manifest uses the Chrome `service_worker`.
+3. Run **N_m3u8DL-RE GUI (v2.1.6+)** at least once so it automatically registers the native messaging host under Windows registry (`HKCU\Software\Mozilla\NativeMessagingHosts\com.nm3u8dlre.gui`).
+4. (Optional) In `about:addons` → **N-RE Stream Bridge**, toggle **Run in Private Windows** if you wish to capture streams in private tabs.
 
 ---
 
@@ -104,3 +117,10 @@ node --test "extension/test/*.test.js"
 
 > [!NOTE]
 > On Windows, use the quoted glob `"extension/test/*.test.js"` (or `cd extension && node --test`) rather than a bare directory argument so Node resolves test files accurately.
+
+---
+
+## 📜 Changelog
+
+See [CHANGELOG.md](file:///C:/Users/narav/Desktop/CE%20code/Project/N_m3u8DL_RE_GUI/extension/CHANGELOG.md) for full release history and version notes.
+

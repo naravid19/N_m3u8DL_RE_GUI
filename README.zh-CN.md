@@ -7,6 +7,7 @@
 <!-- 项目徽章 -->
 
 [![Version][version-shield]][version-url]
+[![Firefox 扩展][firefox-shield]][firefox-url]
 [![.NET][dotnet-shield]][dotnet-url]
 [![WPF][wpf-shield]][wpf-url]
 [![C#][csharp-shield]][csharp-url]
@@ -48,7 +49,8 @@
 ### 主要优势：
 
 - 🚀 **无需记忆命令行** - 常用选项都可以通过简单的界面控件完成。
-- ⏯️ **断点续传** - 自动发现已停止或崩溃、磁盘上仍留有分片的下载。由于带签名的链接很快就会过期，你可以直接换上一条新的流链接，继续下载而不丢失已下载的分片。
+- ⚡ **多任务并发下载** - 支持多任务同时下载，可自由配置并发数（1–8 个任务），具备顶部全局聚合进度、双维度状态显示、点击任务双向联动表单，以及各任务独立的继续、停止、打开目录与移除控制。
+- ⏯️ **断点续传与重试** - 任务列表直接提供每项任务的**继续**（Resume）按钮，并在启动时自动发现遗留分片。由于带签名的 CDN 链接很快过期，你可以直接在表单中更新流链接或标题再点击继续，不丢失已下载分片。
 - 🎬 **原生支持 Abyss 与 Hydrax** - 无需外部工具，直接对 `abysscdn.com`、`playhydrax.com`、`zplayer.io` 和 `short.ink` 进行 AES-CTR 分片解密与合并；视频提供多种画质时会弹出选择窗口。
 - 🌏 **说你的语言** - 整个界面（包括状态提示）可在 English、简体中文、繁體中文之间即时切换。
 - 📦 **批量处理** - 一键从文本文件或文件夹中批量下载多个流。
@@ -69,19 +71,20 @@
 
 ### 1. 下载
 
-从 [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) 页面下载最新版本（`N_m3u8DL_RE_GUI_v2.1.6.zip`）。
+从 [GitHub Releases](https://github.com/naravid19/N_m3u8DL_RE_GUI/releases) 页面下载最新版本（`N_m3u8DL_RE_GUI_v2.1.7.zip`）。
 
 ### 2. 解压
 
 将 `.zip` 文件解压到电脑上的任意位置。文件夹内包含 4 个核心文件，以及可选的配套浏览器扩展：
 
 ```text
-N_m3u8DL_RE_GUI_v2.1.6/
+N_m3u8DL_RE_GUI_v2.1.7/
 ├── N_m3u8DL_RE_GUI.exe    <-- 主程序（双击运行！）
 ├── N_m3u8DL-RE.exe        <-- 核心下载引擎
 ├── ffmpeg.exe             <-- 音视频合并引擎
 ├── m3u8_cf_bypass.py      <-- Cloudflare TLS 绕过脚本
-└── extension/             <-- 可选的浏览器配套扩展（见下文）
+├── extension-chrome/      <-- 可选的 Chrome / Edge / Brave 配套扩展（见下文）
+└── extension-firefox/     <-- 可选的 Firefox 配套扩展（见下文）
 ```
 
 ### 3. 运行
@@ -118,15 +121,25 @@ N_m3u8DL_RE_GUI_v2.1.6/
 | 批量文件 | 拖入包含多个 URL 的 `.txt` 文件（每行一个）。 |
 | 文件夹 | 拖入包含流文件的文件夹，批量处理其中所有文件。 |
 
-### N-RE Stream Bridge 浏览器扩展（v1.4.5）
+### N-RE Stream Bridge 浏览器扩展（v1.4.6）
 
-使用 `extension/` 中的配套浏览器扩展 **N-RE Stream Bridge**，即可在 Chrome、Edge 和 Brave 中一键抓取流、选择画质并建立多 URL 批量队列：
-1. 打开 `chrome://extensions` 并启用**开发者模式**。
-2. 点击**加载已解压的扩展程序**，选择 `extension/` 文件夹。
-3. 在浏览器中播放任意视频或音频 → 点击扩展图标。
-4. **单个流：** 点击 **`▸ Qualities`** 选择分辨率（1080p、720p 等）→ **`⬇ Download`**（或 **`📋 Copy as cURL`**）。
-5. **批量流：** 勾选多个流 → 点击 **`📋 Copy as list`**。
-6. 在 GUI 中点击 **`📋 Paste from browser`**（或按 Ctrl+V）→ 所有流的 URL、请求头和画质选择器都会立即填好！
+使用 `extension-chrome/` 或 `extension-firefox/` 中的配套浏览器扩展 **N-RE Stream Bridge**，即可在 Chrome、Edge、Brave 和 Firefox 中一键抓取流、选择画质并建立多 URL 批量队列：
+
+#### 安装方法
+- **Firefox（≥ 128）—— 推荐：**
+  1. 直接从 **[Mozilla Add-ons (AMO)][firefox-url]** 安装，支持永久常驻与自动更新。
+  2. 至少运行一次 **N_m3u8DL-RE GUI**，以在 Windows 注册表中注册 Native Messaging Host（`HKCU\Software\Mozilla\NativeMessagingHosts\com.nm3u8dlre.gui`）。
+  3. （可选）在 `about:addons` → **N-RE Stream Bridge** 中勾选**在隐私窗口中运行**，以允许在隐私标签页中捕获流。
+  *(或本地开发调试：打开 `about:debugging#/runtime/this-firefox`，点击**临时载入附加组件**，选择 `extension-firefox/manifest.json`)*
+- **Chrome / Edge / Brave（Chromium ≥ 111）：**
+  1. 打开 `chrome://extensions`（或 `edge://extensions`）并启用**开发者模式**。
+  2. 点击**加载已解压的扩展程序**，选择发布包中的 `extension-chrome/` 文件夹。
+
+#### 使用说明
+1. 在浏览器中播放任意视频或音频 → 点击扩展图标。
+2. **单个流：** 点击 **`▸ Qualities`** 选择分辨率（1080p、720p 等）→ **`⬇ Download`**（或 **`📋 Copy as cURL`**）。
+3. **批量流：** 勾选多个流 → 点击 **`📋 Copy as list`**。
+4. 在 GUI 中点击 **`📋 Paste from browser`**（或按 Ctrl+V）→ 所有流的 URL、请求头和画质选择器都会立即填好！
 
 > [!TIP]
 > **一键下载：** 只要 GUI 至少运行过一次，弹窗里就会在 `📋 Copy as cURL` 旁边出现 **`⬇ Download`** 按钮。它会把流（URL、请求头、合并后的 Cookie 和所选画质）直接交给 GUI 并开始下载，无需复制粘贴，也无需切换窗口。如果下载正在进行中点击它，这个流会自动排在当前下载之后。
@@ -166,7 +179,8 @@ N_m3u8DL_RE_GUI_v2.1.6/
 - **原生 Abyss / Hydrax 下载器** - 内置零依赖的 C# 加密引擎，可对 `abysscdn.com`、`playhydrax.com`、`zplayer.io` 和 `short.ink` 的分片进行解密并重新组装。会校验磁盘上的分片大小，并从精确的字节偏移处恢复已停止或中断的下载，而不是重新开始；取消状态如实报告，实时进度准确。视频提供多种画质时会打开画质选择窗口（体积最大的排在最前）。
 - **强化的 Cloudflare WAF 绕过** - 多线程分片下载器（`curl_cffi`）、浏览器指纹模拟、面向 DASH/MSS/DRM 流的清单改写与代理模式（`--serve`）、如实的退出码处理，以及基于每个下载任务固定目录的自动分片续传（用同一个 URL 和保存名称重新运行会跳过磁盘上已有的分片）。
 - **三区现代化 UX/UI 架构** - 布局清晰：顶部为 URL 主栏，侧边为 6 个标签页（`📦 Download`、`🌐 Network`、`🔒 Security`、`🎬 Media`、`📡 Live`、`⚙️ Advanced`），底部为固定的命令预览栏。
-- **GUI 自动更新引擎** - 不受速率限制的 HTTP 更新检查。发布新版本后，顶部会出现绿色胶囊徽章（`🎉 vX.X.X Available!`）。
+- **GUI 与引擎自动更新检测** - 不受速率限制的 HTTP 更新检查，支持应用程序发行版与 N_m3u8DL-RE 核心引擎版本探针（`EngineUpdateCheckService`，具备安全进程清理保障）。发布新版本后，顶部会出现绿色胶囊徽章（`🎉 vX.X.X Available!`）。“设置”选项卡提供启动时自动检查与按需手动检查控制，同时覆盖 GUI 及内置 N_m3u8DL-RE CLI 引擎，具备本地版本探针、三态状态显示及一键打开上游发布页面。
+- **环境医生（Environment Doctor）诊断** - 内置诊断窗口，按需运行 `N_m3u8DL-RE doctor --json` 检查操作系统、CPU 架构、.NET 运行时以及伴随工具（`ffmpeg`、`mkvmerge`、`mp4decrypt`、`shaka-packager`）的运行状态与版本信息，配备颜色区分的状态徽章并支持一键复制完整 JSON 报告。
 - **多语言界面** - 支持 English、简体中文和繁體中文，可在顶部即时切换，无需重启。标签、对话框、状态提示、续传横幅和更新状态都已翻译；技术日志保持英文。首次启动时语言会跟随 Windows 的显示语言。
 - **完整支持 RE** - 兼容 N_m3u8DL-RE 的所有主要命令行参数。
 - **批量下载** - 从文本文件批量处理多个 URL，或直接拖入整个流文件夹。
@@ -178,12 +192,14 @@ N_m3u8DL_RE_GUI_v2.1.6/
 - **线程安全的取消** - 响应迅速的进程取消，令牌生命周期管理清晰，能安全地终止子进程树。
 - **窗口内实时反馈与进度** - 实时进度条、带颜色提示的状态消息（绿色成功、琥珀色警告/部分完成、红色错误）、可折叠的诊断日志，以及完成后的“打开文件夹”按钮。
 - **无障碍与键盘友好** - 高对比度的焦点指示、快捷键（`Alt+G` 开始，`Alt+S` / `Escape` 停止），以及完整的 UI 自动化属性。
-- **自动化测试套件（1,336 个测试）** - 由 1,336 个单元、集成、一致性和无障碍测试保障稳定性，覆盖 .NET（892 个测试，另有 1 个联网实测被有意跳过）、Node.js（361 个测试）和 Python（83 个测试）三套测试。
+- **自动化测试套件（1,718 个测试）** - 由 1,718 个单元、集成、一致性和无障碍测试保障稳定性，覆盖 .NET（1,233 个测试，另有 1 个联网实测被有意跳过）、Node.js（397 个测试）和 Python（88 个测试）三套测试。
 
 ### 下载选项
-- **并发下载** - 同时下载多个流。
+- **并发下载与任务调度** - 同时下载多个流，支持可配置的并发数（默认 2，最高 8）、顶部多任务聚合进度条、双维度状态显示、点击任务双向查看与编辑表单、单任务继续/停止/移除控制以及冲突检测。
 - **音频/字幕选择** - 轻松只下载音频或只下载字幕。
 - **流选择（正则）** - 用标准正则选择或丢弃视频/音频/字幕流。
+- **点播分片丢弃 (`--vod-drop-parts`)** - 在点播模式下丢弃指定的分片编号或范围（例如 `0,2-4`）。
+- **网络接口绑定 (`--interface`)** - 将网络流量绑定到指定的网卡接口名称或 IP 地址（例如 `eth0` 或 `192.168.1.10`）。
 - **时间范围** - 只下载流中的某一段（例如 `00:05:00-00:10:00`）。
 - **限速** - 设置最大下载速度以避免被限流。
 - **自定义代理** - 支持 HTTP 和 SOCKS5 代理。
@@ -195,6 +211,8 @@ N_m3u8DL_RE_GUI_v2.1.6/
 
 ### 直播录制
 - **按 VOD 处理** - 把直播流当作 VOD 处理，可完整下载并暂停。
+- **直播空闲超时 (`--live-idle-timeout`)** - 超过指定秒数未收到新分片时自动停止直播录制。
+- **直播回看 (`--live-catchup`)** - 下载直播回看内容，支持时长（`HH:MM:SS`）或 ISO 8601 起始时间戳（例如 `01:00:00` 或 `2026-10-10T21:00:00+08:00`），会自动覆盖获取数量。
 - **实时合并** - 无需等待结束，实时合并分片。
 - **管道合并** - 直接管道传给合并器，节省磁盘 I/O。
 - **录制时长限制** - 设置最长录制时长。
@@ -205,6 +223,7 @@ N_m3u8DL_RE_GUI_v2.1.6/
 - **密钥文本文件** - 直接从文件中加载海量解密密钥。
 
 ### 高级控制
+- **Netscape 格式 Cookie 文件 (`--cookies`)** - 通过文件选择器直接加载 Netscape 格式的 Cookie 文本文件。
 - **自定义请求头** - 添加 HTTP 请求头（Cookie、User-Agent、Origin 等）。
 - **线程控制** - 自定义线程数、重试次数和超时参数。
 - **自动字幕修复** - 自动修复字幕同步问题。与 *下载后删除临时文件* 一样，它在 N_m3u8DL-RE 中默认开启，取消勾选现在会真正把它关闭。
@@ -213,9 +232,16 @@ N_m3u8DL_RE_GUI_v2.1.6/
 
 ### 构建发布包
 
-要生成发布文件夹和 zip，请在仓库根目录运行 `publish.bat`（从其他脚本调用时加上 `/nopause`）。它会从 `Directory.Build.props` 读取版本号，把应用发布为自包含的单文件，加入 `N_m3u8DL-RE.exe`、`ffmpeg.exe`、`m3u8_cf_bypass.py` 和 `extension/` 文件夹（不含其测试），检查结果，然后生成 `Publish\N_m3u8DL_RE_GUI_v<版本号>\` 以及对应的 `N_m3u8DL_RE_GUI_v<版本号>.zip`。`N_m3u8DL-RE.exe`、`ffmpeg.exe` 和 `m3u8_cf_bypass.py` 必须放在仓库根目录；缺少任何一个，脚本会在开始构建之前就停止。所有内容先在 `Publish\.staging` 中组装，全部检查通过后才移入正式位置，因此失败的运行绝不会留下构建到一半的发布包。
+要生成发布包，请在仓库根目录运行 `publish.bat`（从其他脚本调用时加上 `/nopause`）。它会从 `Directory.Build.props` 和 `extension/manifest.json` 读取版本号，把应用发布为自包含的单文件，加入配套二进制文件与浏览器扩展文件夹，检查结果无误后，将所有成品打包到独立的 `Publish\v<版本号>\` 目录中：
+- `N_m3u8DL_RE_GUI_v<版本号>\`（解压后的完整程序目录，方便本地测试运行）
+- `N_m3u8DL_RE_GUI_v<版本号>.zip`（主要发布压缩包）
+- `nre-stream-bridge-v<扩展版本号>-firefox.zip`（用于提交至 Mozilla AMO 或 GitHub Release 的 Firefox 扩展包）
+- `nre-stream-bridge-v<扩展版本号>-chrome.zip`（用于 Chrome Web Store 的 Chromium 扩展包）
+- `SHA256SUMS.txt`（所有 zip 文件的 SHA-256 校验和）
 
-完整的发布压缩包必须包含：`N_m3u8DL_RE_GUI.exe`、`N_m3u8DL-RE.exe`、`ffmpeg.exe`、`m3u8_cf_bypass.py` 和 `extension/` 文件夹。版本号就是 `Directory.Build.props` 中的 `AppVersion`，也是唯一需要手写版本号的地方；`publish.bat` 会检查构建出的 exe 报告的版本与之相同，因此文件夹名、zip 名和二进制文件不会出现版本不一致。
+`N_m3u8DL-RE.exe`、`ffmpeg.exe` 和 `m3u8_cf_bypass.py` 必须放在仓库根目录；缺少任何一个，脚本会在开始构建之前就停止。所有内容先在 `Publish\.staging` 中组装，全部检查通过后才移入正式位置，因此失败的运行绝不会留下构建到一半的发布包。
+
+完整的发布压缩包必须包含：`N_m3u8DL_RE_GUI.exe`、`N_m3u8DL-RE.exe`、`ffmpeg.exe`、`m3u8_cf_bypass.py` 以及 `extension-chrome/` 和 `extension-firefox/` 文件夹。版本号就是 `Directory.Build.props` 中的 `AppVersion`，也是唯一需要手写版本号的地方；`publish.bat` 会检查构建出的 exe 报告的版本与之相同，因此文件夹名、zip 名和二进制文件不会出现版本不一致。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
@@ -253,8 +279,10 @@ N_m3u8DL_RE_GUI_v2.1.6/
 基于 MIT 许可证发布。详见 `LICENSE`。
 
 <!-- MARKDOWN 链接与图片 -->
-[version-shield]: https://img.shields.io/badge/version-2.1.6-blue?style=for-the-badge
+[version-shield]: https://img.shields.io/badge/version-2.1.7-blue?style=for-the-badge
 [version-url]: CHANGELOG.md
+[firefox-shield]: https://img.shields.io/badge/Firefox_Add--on-AMO-FF7139?style=for-the-badge&logo=firefox-browser&logoColor=white
+[firefox-url]: https://addons.mozilla.org/en-US/firefox/addon/n-re-stream-bridge/
 [dotnet-shield]: https://img.shields.io/badge/.NET-9.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white
 [dotnet-url]: https://dotnet.microsoft.com/
 [wpf-shield]: https://img.shields.io/badge/WPF-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white

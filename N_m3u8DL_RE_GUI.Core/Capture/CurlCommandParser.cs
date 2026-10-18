@@ -141,7 +141,7 @@ public static class CurlCommandParser
 
     /// <summary>Classifies by URL path only. Query strings routinely carry tokens
     /// ending in ".mp4" and would produce false positives.</summary>
-    internal static CapturedStreamKind ClassifyUrl(string url)
+    public static CapturedStreamKind ClassifyUrl(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
             return CapturedStreamKind.Unknown;

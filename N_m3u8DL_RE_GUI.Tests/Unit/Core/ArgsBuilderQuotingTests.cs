@@ -1,7 +1,7 @@
 #nullable enable
-using System.Runtime.InteropServices;
 using System.Text;
 using N_m3u8DL_RE_GUI.Core;
+using N_m3u8DL_RE_GUI.Tests.Fixtures;
 using Xunit;
 
 namespace N_m3u8DL_RE_GUI.Tests.Unit.Core;
@@ -47,7 +47,7 @@ public class ArgsBuilderQuotingTests
     {
         var rendered = new StringBuilder().AppendQuoted(value).ToString();
 
-        var parsed = ParseCommandLine("prog" + rendered);
+        var parsed = Win32CommandLine.Parse("prog" + rendered);
 
         Assert.Equal(new[] { "prog", value }, parsed);
     }
@@ -60,7 +60,7 @@ public class ArgsBuilderQuotingTests
     {
         var rendered = new StringBuilder().AppendIfNotEmpty("--save-dir", value).ToString();
 
-        var parsed = ParseCommandLine("prog" + rendered);
+        var parsed = Win32CommandLine.Parse("prog" + rendered);
 
         Assert.Equal(new[] { "prog", "--save-dir", value }, parsed);
     }
@@ -118,7 +118,7 @@ public class ArgsBuilderQuotingTests
             FFmpegBinaryPath = @"C:\Program Files\ffmpeg\bin\ffmpeg.exe"
         };
 
-        var parsed = ParseCommandLine("prog " + ArgsBuilder.Build(options));
+        var parsed = Win32CommandLine.Parse("prog " + ArgsBuilder.Build(options));
 
         Assert.Contains(@"C:\In Box\playlist.m3u8", parsed);
         Assert.Contains(@"C:\Save Dir", parsed);
@@ -136,54 +136,70 @@ public class ArgsBuilderQuotingTests
             Headers = "Referer: https://example.com/|User-Agent: Mozilla/5.0 \"Custom\""
         };
 
-        var parsed = ParseCommandLine("prog " + ArgsBuilder.Build(options));
+        var parsed = Win32CommandLine.Parse("prog " + ArgsBuilder.Build(options));
 
         Assert.Contains("Referer: https://example.com/", parsed);
         Assert.Contains("User-Agent: Mozilla/5.0 \"Custom\"", parsed);
     }
 
     // -------------------------------------------------------------------------
-    // Characterisation tests: these lock in argument construction that does NOT
-    // go through the escaper. They document current behaviour so a future fix is
-    // a deliberate, visible change rather than an accidental one.
+    // Values quoted inside a larger option (--mux-after-done's bin_path, the
+    // --custom-range start-end pair) must round-trip just like standalone ones.
     // -------------------------------------------------------------------------
 
-    [Fact]
-    public void Build_MuxBinPathWithSpaces_ShouldStillParseAsOneArgument()
+    [Theory]
+    [InlineData(@"C:\Program Files\mkvtoolnix\mkvmerge.exe")]
+    [InlineData(@"C:\od""d\mkvmerge.exe")]
+    [InlineData(@"C:\mkvtoolnix\")]
+    [InlineData(@"D:\tools\mkvmerge.exe")]
+    [InlineData(@"mkvmerge.exe")]
+    public void Build_MuxBinPath_ShouldReachReIntactThroughBothParsers(string binPath)
     {
-        // --mux-after-done builds "format=...:bin_path=\"...\"" by raw interpolation
-        // rather than through the escaper. A mid-token quote still round-trips because
-        // CommandLineToArgvW toggles quoting without splitting the token, so paths with
-        // spaces are safe.
+        // Two parsers stand between the textbox and the muxer, and the path has to
+        // survive both: CommandLineToArgvW (which must keep the mux option one token)
+        // and RE's own ComplexParamParser (which splits that token on ':', so the
+        // drive letter needs escaping or the path arrives as bare "C").
         var options = new DownloadOptions
         {
             Input = "https://example.com/a.m3u8",
             MuxAfterDone = true,
             MuxFormat = "mkv",
             Muxer = "mkvmerge",
-            MuxBinPath = @"C:\Program Files\mkvtoolnix\mkvmerge.exe"
+            MuxBinPath = binPath,
+            MuxKeepFiles = true,
+            MuxSkipSubtitle = true,
+            LivePerformAsVod = true
         };
 
-        var parsed = ParseCommandLine("prog " + ArgsBuilder.Build(options));
+        var parsed = Win32CommandLine.Parse("prog " + ArgsBuilder.Build(options));
 
-        Assert.Contains(@"format=mkv:muxer=mkvmerge:bin_path=C:\Program Files\mkvtoolnix\mkvmerge.exe", parsed);
+        var muxArg = parsed[Array.IndexOf(parsed, "--mux-after-done") + 1];
+        Assert.Equal(binPath, ReComplexParam.GetValue(muxArg, "bin_path"));
+        Assert.Equal("mkv", ReComplexParam.GetValue(muxArg, "format"));
+        Assert.Equal("mkvmerge", ReComplexParam.GetValue(muxArg, "muxer"));
+        Assert.Equal("true", ReComplexParam.GetValue(muxArg, "keep"));
+        Assert.Equal("true", ReComplexParam.GetValue(muxArg, "skip_sub"));
+        // The flag after the mux option must still be its own argument.
+        Assert.Contains("--live-perform-as-vod", parsed);
     }
 
     [Fact]
-    public void Build_MuxBinPathContainingAQuote_ShouldSurviveAsOneArgument()
+    public void Build_MuxBinPath_ShouldBeEscapedTheWayReDocumentsIt()
     {
+        // RE's --morehelp mux-after-done prints bin_path="C\:\Program Files\...",
+        // so the emitted text should read that way too (minus the quotes the Windows
+        // parser eats) — a reader comparing the preview bar against RE's own docs
+        // should see the same thing.
         var options = new DownloadOptions
         {
             Input = "https://example.com/a.m3u8",
             MuxAfterDone = true,
             MuxFormat = "mkv",
             Muxer = "mkvmerge",
-            MuxBinPath = @"C:\od""d\mkvmerge.exe"
+            MuxBinPath = @"C:\Program Files\MKVToolNix\mkvmerge.exe"
         };
 
-        var parsed = ParseCommandLine("prog " + ArgsBuilder.Build(options));
-
-        Assert.Contains(@"format=mkv:muxer=mkvmerge:bin_path=C:\od""d\mkvmerge.exe", parsed);
+        Assert.Contains(@"bin_path=""C\:\Program Files\MKVToolNix\mkvmerge.exe""", ArgsBuilder.Build(options));
     }
 
     [Fact]
@@ -210,74 +226,24 @@ public class ArgsBuilderQuotingTests
         throw new FileNotFoundException("Could not locate ArgsBuilder.cs from " + AppContext.BaseDirectory);
     }
 
-    [Fact]
-    public void Build_CustomRange_ShouldParseAsOneArgumentForWellFormedTimestamps()
+    [Theory]
+    [InlineData("00:01:00", "00:02:00")]
+    [InlineData("00:01:00\"", "00:02:00")]
+    [InlineData("00:01:00", @"00:02:00\")]
+    public void Build_CustomRange_ShouldSurviveAsOneArgument(string start, string end)
     {
-        // --custom-range uses $" --custom-range \"{start}-{end}\"" directly rather than
-        // the escaper. Timestamps contain no quotes or backslashes, so this is safe.
         var options = new DownloadOptions
         {
             Input = "https://example.com/a.m3u8",
-            RangeStart = "00:01:00",
-            RangeEnd = "00:02:00"
+            RangeStart = start,
+            RangeEnd = end,
+            SkipMerge = true
         };
 
-        var args = ArgsBuilder.Build(options);
-        var parsed = ParseCommandLine("prog " + args);
+        var parsed = Win32CommandLine.Parse("prog " + ArgsBuilder.Build(options));
 
-        Assert.Contains("--custom-range \"00:01:00-00:02:00\"", args);
         Assert.Contains("--custom-range", parsed);
-        Assert.Contains("00:01:00-00:02:00", parsed);
-    }
-
-    [Fact]
-    public void Build_CustomRangeContainingAQuote_ShouldSurviveAsOneArgument()
-    {
-        var options = new DownloadOptions
-        {
-            Input = "https://example.com/a.m3u8",
-            RangeStart = "00:01:00\"",
-            RangeEnd = "00:02:00"
-        };
-
-        var parsed = ParseCommandLine("prog " + ArgsBuilder.Build(options));
-
-        Assert.Contains("00:01:00\"-00:02:00", parsed);
-    }
-
-    // -------------------------------------------------------------------------
-    // Win32 command-line parser
-    // -------------------------------------------------------------------------
-
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern nint CommandLineToArgvW(string lpCmdLine, out int pNumArgs);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern nint LocalFree(nint hMem);
-
-    /// <summary>
-    /// Parses a command line with the exact same routine the CRT/Windows uses when a
-    /// process reads its own arguments.
-    /// </summary>
-    private static string[] ParseCommandLine(string commandLine)
-    {
-        var argv = CommandLineToArgvW(commandLine, out var argc);
-        if (argv == nint.Zero)
-            throw new InvalidOperationException($"CommandLineToArgvW failed for: {commandLine}");
-
-        try
-        {
-            var result = new string[argc];
-            for (var i = 0; i < argc; i++)
-            {
-                var ptr = Marshal.ReadIntPtr(argv, i * nint.Size);
-                result[i] = Marshal.PtrToStringUni(ptr) ?? string.Empty;
-            }
-            return result;
-        }
-        finally
-        {
-            LocalFree(argv);
-        }
+        Assert.Contains($"{start}-{end}", parsed);
+        Assert.Contains("--skip-merge", parsed);
     }
 }

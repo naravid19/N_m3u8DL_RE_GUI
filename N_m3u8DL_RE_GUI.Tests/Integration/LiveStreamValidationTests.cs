@@ -73,7 +73,7 @@ public class LiveStreamValidationTests
         {
             using var request = new HttpRequestMessage(HttpMethod.Head, TestConstants.NormalM3u8Url);
             using var response = await client.SendAsync(request);
-            
+
             // If reachable, status code should be 200/302/403 (any valid HTTP response)
             Assert.True((int)response.StatusCode >= 200 && (int)response.StatusCode < 600);
         }

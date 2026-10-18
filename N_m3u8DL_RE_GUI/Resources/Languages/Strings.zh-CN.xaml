@@ -1,0 +1,276 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Header / Title -->
+    <sys:String x:Key="Str_AppTitle">N_m3u8DL-RE GUI</sys:String>
+    <sys:String x:Key="Str_GuiLanguage">界面语言：</sys:String>
+    <sys:String x:Key="Str_CliLanguage">下载引擎输出语言：</sys:String>
+    <sys:String x:Key="Str_CliLanguageTooltip">N_m3u8DL-RE 控制台输出的语言。此项不会改变 GUI 界面的语言。</sys:String>
+    <sys:String x:Key="Str_AlwaysOnTop">置顶显示</sys:String>
+
+    <!-- Top Dock &amp; URL -->
+    <sys:String x:Key="Str_Url">输入 URL</sys:String>
+    <sys:String x:Key="Str_SaveName">保存文件名</sys:String>
+    <sys:String x:Key="Str_SaveDir">保存目录</sys:String>
+    <sys:String x:Key="Str_Browse">浏览</sys:String>
+    <sys:String x:Key="Str_PasteCurl">📋 从浏览器粘贴</sys:String>
+    <sys:String x:Key="Str_Download">开始下载 (GO)</sys:String>
+    <sys:String x:Key="Str_Stop">停止</sys:String>
+    <sys:String x:Key="Str_Working">处理中…</sys:String>
+
+    <!-- Tab Items -->
+    <sys:String x:Key="Str_TabGeneral">📦 下载基础</sys:String>
+    <sys:String x:Key="Str_TabNetwork">🌐 网络设置</sys:String>
+    <sys:String x:Key="Str_TabDecryption">🔒 安全解密</sys:String>
+    <sys:String x:Key="Str_TabFormat">🎬 媒体与流</sys:String>
+    <sys:String x:Key="Str_TabLive">📡 直播录制</sys:String>
+    <sys:String x:Key="Str_TabAdvanced">⚙️ 高级设置</sys:String>
+    <sys:String x:Key="Str_TabLog">日志</sys:String>
+
+    <!-- GroupBox Headers -->
+    <sys:String x:Key="Str_GroupBasicPaths">基础路径</sys:String>
+    <sys:String x:Key="Str_GroupDownloadFlags">下载标志</sys:String>
+    <sys:String x:Key="Str_GroupRequestProxy">请求与代理</sys:String>
+    <sys:String x:Key="Str_GroupPerformance">性能与限制</sys:String>
+    <sys:String x:Key="Str_GroupCloudflareBypass">⚡ Cloudflare 绕过 (curl__cffi)</sys:String>
+    <sys:String x:Key="Str_GroupKeysVectors">密钥与向量</sys:String>
+    <sys:String x:Key="Str_GroupDecryptionEngine">解密引擎</sys:String>
+    <sys:String x:Key="Str_GroupStreamSelection">流选择 (正则过滤)</sys:String>
+    <sys:String x:Key="Str_GroupTimeRangeMux">时间范围与混流</sys:String>
+    <sys:String x:Key="Str_GroupLiveOptions">直播录制选项</sys:String>
+    <sys:String x:Key="Str_GroupCustomPaths">自定义路径与变量</sys:String>
+    <sys:String x:Key="Str_GroupEnvFlags">环境与系统标志</sys:String>
+    <sys:String x:Key="Str_GroupGuiUpdateEngine">🔄 GUI 自动更新引擎</sys:String>
+
+    <!-- Context Menu Items -->
+    <sys:String x:Key="Str_MenuCut">剪切</sys:String>
+    <sys:String x:Key="Str_MenuCopy">复制</sys:String>
+    <sys:String x:Key="Str_MenuPaste">粘贴</sys:String>
+    <sys:String x:Key="Str_MenuGetDownloader">获取下载器</sys:String>
+
+    <!-- General / Basic Fields &amp; Checkboxes -->
+    <sys:String x:Key="Str_ExePath">程序路径</sys:String>
+    <sys:String x:Key="Str_TmpDir">临时目录</sys:String>
+    <sys:String x:Key="Str_DelTmp">完成后删除临时文件</sys:String>
+    <sys:String x:Key="Str_DisableDate">不写入日期</sys:String>
+    <sys:String x:Key="Str_DisableProxy">不使用系统代理</sys:String>
+    <sys:String x:Key="Str_ParserOnly">仅解析不下载</sys:String>
+    <sys:String x:Key="Str_Concurrent">并发下载分片</sys:String>
+    <sys:String x:Key="Str_DisableMerge">不合并</sys:String>
+    <sys:String x:Key="Str_BinaryMerge">二进制合并</sys:String>
+    <sys:String x:Key="Str_AudioOnly">仅下载音频</sys:String>
+    <sys:String x:Key="Str_DisableCheck">跳过完整性检查</sys:String>
+    <sys:String x:Key="Str_SubOnly">仅下载字幕</sys:String>
+    <sys:String x:Key="Str_AutoSubFix">自动修复字幕</sys:String>
+    <sys:String x:Key="Str_AutoSelect">自动选择最佳</sys:String>
+    <sys:String x:Key="Str_SubFormat">字幕格式：</sys:String>
+
+    <!-- Network &amp; Limits -->
+    <sys:String x:Key="Str_Headers">请求头</sys:String>
+    <sys:String x:Key="Str_BaseUrl">基础 URL</sys:String>
+    <sys:String x:Key="Str_Proxy">网络代理</sys:String>
+    <sys:String x:Key="Str_MaxThreads">最大并发</sys:String>
+    <sys:String x:Key="Str_RetryCount">重试次数</sys:String>
+    <sys:String x:Key="Str_Timeout">超时时间</sys:String>
+    <sys:String x:Key="Str_MaxSpeed">限速</sys:String>
+
+    <!-- Cloudflare Section -->
+    <sys:String x:Key="Str_BypassCloudflare">启用 Cloudflare 绕过</sys:String>
+    <sys:String x:Key="Str_CfScopeWarning">Cloudflare 模式使用 Python 脚本而非 N_m3u8DL-RE。仅使用输入 URL、保存目录、保存文件名以及本区域的设置项 —— 下载、安全、媒体、直播和高级选项卡中的设置将被忽略。</sys:String>
+    <sys:String x:Key="Str_CfEngine">引擎</sys:String>
+    <sys:String x:Key="Str_CfEngineAuto">自动 (HLS 直连 / DASH 代理)</sys:String>
+    <sys:String x:Key="Str_CfEngineDirect">CF 直连 (仅 HLS)</sys:String>
+    <sys:String x:Key="Str_CfEngineProxy">CF 代理 + RE (DASH / MSS / DRM)</sys:String>
+    <sys:String x:Key="Str_CfFingerprint">指纹</sys:String>
+    <sys:String x:Key="Str_CfReferer">来源 (Referer)</sys:String>
+    <sys:String x:Key="Str_CfCookie">CF Cookie</sys:String>
+    <sys:String x:Key="Str_CfKeepSegs">合并后保留分片文件</sys:String>
+
+    <!-- Security &amp; Encryption -->
+    <sys:String x:Key="Str_Key">密钥</sys:String>
+    <sys:String x:Key="Str_CustomHlsKey">HLS Key</sys:String>
+    <sys:String x:Key="Str_CustomHlsIv">IV</sys:String>
+    <sys:String x:Key="Str_KeyFile">密钥文件</sys:String>
+    <sys:String x:Key="Str_DecryptionEngine">解密引擎</sys:String>
+    <sys:String x:Key="Str_CustomHLSMethod">HLS 加密方式</sys:String>
+    <sys:String x:Key="Str_DecryptionBinPath">工具路径</sys:String>
+    <sys:String x:Key="Str_Mp4RealTimeDec">MP4 实时解密</sys:String>
+
+    <!-- Media &amp; Stream Selection -->
+    <sys:String x:Key="Str_SelectVideo">选择视频</sys:String>
+    <sys:String x:Key="Str_SelectAudio">选择音频</sys:String>
+    <sys:String x:Key="Str_SelectSub">选择字幕</sys:String>
+    <sys:String x:Key="Str_DropVideo">舍弃视频</sys:String>
+    <sys:String x:Key="Str_DropAudio">舍弃音频</sys:String>
+    <sys:String x:Key="Str_DropSub">舍弃字幕</sys:String>
+    <sys:String x:Key="Str_Range">时间范围</sys:String>
+    <sys:String x:Key="Str_MuxJson">Mux 导入</sys:String>
+    <sys:String x:Key="Str_MuxAfterDone">完成后混流</sys:String>
+    <sys:String x:Key="Str_MuxKeepFiles">保留原始分片</sys:String>
+    <sys:String x:Key="Str_MuxSkipSub">跳过字幕</sys:String>
+    <sys:String x:Key="Str_MuxFormat">混流格式</sys:String>
+    <sys:String x:Key="Str_Muxer">混流器</sys:String>
+    <sys:String x:Key="Str_MuxBinPath">工具路径</sys:String>
+
+    <!-- Live Recording -->
+    <sys:String x:Key="Str_LivePerformAsVod">点播方式下载</sys:String>
+    <sys:String x:Key="Str_LiveRealTimeMerge">实时合并</sys:String>
+    <sys:String x:Key="Str_LiveKeepSegments">保留分片</sys:String>
+    <sys:String x:Key="Str_LivePipeMux">管道混流</sys:String>
+    <sys:String x:Key="Str_LiveFixVttByAudio">通过音频修正 VTT</sys:String>
+    <sys:String x:Key="Str_LiveRecordLimit">录制限时</sys:String>
+    <sys:String x:Key="Str_LiveWaitTime">等待时间 (秒)</sys:String>
+    <sys:String x:Key="Str_LiveTakeCount">获取数量</sys:String>
+
+    <!-- Advanced Settings -->
+    <sys:String x:Key="Str_SavePattern">命名模板</sys:String>
+    <sys:String x:Key="Str_LogFilePath">日志文件</sys:String>
+    <sys:String x:Key="Str_ResumeBannerTitle">⏸  发现未完成的下载</sys:String>
+    <sys:String x:Key="Str_ResumeDetailFound">在磁盘上发现未完成的下载分片。</sys:String>
+    <sys:String x:Key="Str_ResumeBannerBtn">继续下载</sys:String>
+    <sys:String x:Key="Str_DiscardBannerBtn">放弃并删除</sys:String>
+    <sys:String x:Key="Str_ClearLog">清空日志</sys:String>
+    <sys:String x:Key="Str_CopyLog">复制日志</sys:String>
+    <sys:String x:Key="Str_OpenDir">打开目录</sys:String>
+    <sys:String x:Key="Str_StatusReady">就绪</sys:String>
+    <sys:String x:Key="Str_Command">命令预览：</sys:String>
+    <sys:String x:Key="Str_CopyCommand">📋 复制命令</sys:String>
+    <sys:String x:Key="Str_FFmpegPath">FFmpeg 路径</sys:String>
+    <sys:String x:Key="Str_AdKeyword">广告过滤词</sys:String>
+    <sys:String x:Key="Str_UrlArgs">URL 参数</sys:String>
+    <sys:String x:Key="Str_TaskStartAt">定时启动</sys:String>
+    <sys:String x:Key="Str_LogLevel">日志级别</sys:String>
+    <sys:String x:Key="Str_AppendUrlParams">附加 URL 参数</sys:String>
+    <sys:String x:Key="Str_NoLog">不输出日志</sys:String>
+    <sys:String x:Key="Str_WriteMetaJson">写入 meta.json</sys:String>
+    <sys:String x:Key="Str_UseFFmpegConcat">FFmpeg Concat</sys:String>
+    <sys:String x:Key="Str_AllowHlsMultiExtMap">多 EXT-MAP</sys:String>
+    <sys:String x:Key="Str_DisableUpdateCheck">关闭引擎更新检查</sys:String>
+    <sys:String x:Key="Str_ForceAnsiConsole">强制 ANSI 控制台</sys:String>
+    <sys:String x:Key="Str_AutoCheckGuiUpdate">启动时自动检查 GUI 更新</sys:String>
+    <sys:String x:Key="Str_CheckUpdateNow">立即检查</sys:String>
+    <sys:String x:Key="Str_DefaultOption">(默认)</sys:String>
+
+    <!-- Dynamic Messages &amp; Dialogs -->
+    <sys:String x:Key="Str_DiscardDialogTitle">放弃中断的下载</sys:String>
+    <sys:String x:Key="Str_SaveOnExitFailedTitle">无法保存设置</sys:String>
+    <sys:String x:Key="Str_SaveOnExitFailedMsg">无法保存您的设置。先前保存的设置未被更改，但本次会话中的改动将会丢失。</sys:String>
+    <sys:String x:Key="Str_DiscardDialogMsg">确定要删除 {1} 已下载的 {0} 临时文件吗？此操作无法撤消。</sys:String>
+    <sys:String x:Key="Str_DiscardFailedTitle">删除失败</sys:String>
+    <sys:String x:Key="Str_DiscardFailedMsg">无法删除部分临时文件，可能有其他进程正在占用。</sys:String>
+    <sys:String x:Key="Str_Error">错误</sys:String>
+    <sys:String x:Key="Str_InvalidHexKey">Hex Key 格式无效，请检查您的密钥。</sys:String>
+    <sys:String x:Key="Str_InvalidKeyFileTitle">无效的密钥文件</sys:String>
+    <sys:String x:Key="Str_InvalidKeyFileMsg">该文件不是有效的密钥文件。原始 HLS 密钥必须恰好为 16 字节。</sys:String>
+    <sys:String x:Key="Str_DownloaderNotFoundTitle">未找到下载核心</sys:String>
+    <sys:String x:Key="Str_DownloaderNotFoundMsg">未找到 N_m3u8DL-RE.exe。&#x0a;&#x0a;请在“下载”选项卡中设置路径，或右键单击“程序路径”框并选择“获取下载器”。</sys:String>
+    <sys:String x:Key="Str_MissingInputTitle">缺少输入</sys:String>
+    <sys:String x:Key="Str_MissingInputMsg">请先输入视频链接或文件路径。</sys:String>
+    <sys:String x:Key="Str_InvalidProxyTitle">无效的代理</sys:String>
+    <sys:String x:Key="Str_InvalidProxyMsg">代理必须以 http:// 或 socks5:// 开头。</sys:String>
+    <sys:String x:Key="Str_PyCurlCffiMissing">未找到包含 curl_cffi 的 Python 环境。&#x0a;&#x0a;请在终端运行安装依赖：&#x0a;    pip install curl_cffi&#x0a;或：python -m pip install curl_cffi&#x0a;&#x0a;然后重新点击开始下载。</sys:String>
+    <sys:String x:Key="Str_CfScriptMissing">未找到 m3u8_cf_bypass.py。&#x0a;请将其放置在 GUI 程序所在目录下。</sys:String>
+    <sys:String x:Key="Str_CfDialogTitle">Cloudflare 绕过</sys:String>
+    <sys:String x:Key="Str_BatchBuildFailedTitle">批量构建失败</sys:String>
+    <sys:String x:Key="Str_StatusResumeFreshLink">请粘贴此视频的最新链接。原始链接已失效（这是正常现象），已下载的内容将被保留。</sys:String>
+    <sys:String x:Key="Str_StatusResumeDiscarded">未完成的下载已放弃。</sys:String>
+    <sys:String x:Key="Str_StatusHarNoStream">未在捕获中发现流地址。请清空网络日志后重新播放几秒，再保存 HAR 文件。</sys:String>
+    <sys:String x:Key="Str_StatusBatchDone">批量下载完成。已保存至 {0}</sys:String>
+    <sys:String x:Key="Str_StatusBatchFailed">批量下载失败 — 请查看日志详情。</sys:String>
+    <sys:String x:Key="Str_StatusDownloading">正在下载…</sys:String>
+    <sys:String x:Key="Str_StatusSavedTo">已保存至 {0}</sys:String>
+    <sys:String x:Key="Str_StatusDownloadFailed">下载失败 — 请查看日志详情。</sys:String>
+    <sys:String x:Key="Str_StatusStopped">用户已停止下载。</sys:String>
+    <sys:String x:Key="Str_StatusCancelled">已取消。</sys:String>
+
+    <!-- Tooltip Strings -->
+    <sys:String x:Key="Str_AlwaysOnTopTooltip">窗口保持置顶</sys:String>
+    <sys:String x:Key="Str_UpdateBadgeTooltip">点击前往 GitHub 查看并下载最新版本</sys:String>
+    <sys:String x:Key="Str_ResumeJobTooltip">恢复下载设置并准备粘贴新链接</sys:String>
+    <sys:String x:Key="Str_DiscardJobTooltip">从磁盘删除部分文件并放弃续传数据</sys:String>
+    <sys:String x:Key="Str_UrlTooltip">M3U8/MPD/ISM 链接或本地文件路径。双击可从剪贴板粘贴</sys:String>
+    <sys:String x:Key="Str_PasteCurlTooltip">在浏览器中按 F12 → 网络 → 右键选择流请求 → 复制 → 复制为 cURL，然后点击此处。</sys:String>
+    <sys:String x:Key="Str_DownloadTooltip">开始下载 (Alt+G, Alt+S, Enter)</sys:String>
+    <sys:String x:Key="Str_StopTooltip">取消当前下载 (Alt+T, Escape)</sys:String>
+    <sys:String x:Key="Str_SaveDirTooltip">下载输出目录</sys:String>
+    <sys:String x:Key="Str_SaveNameTooltip">输出文件名。双击可从 URL 自动检测</sys:String>
+    <sys:String x:Key="Str_ExePathTooltip">N_m3u8DL-RE 程序路径</sys:String>
+    <sys:String x:Key="Str_TmpDirTooltip">分片临时存储目录</sys:String>
+    <sys:String x:Key="Str_DelTmpTooltip">合并后删除临时文件</sys:String>
+    <sys:String x:Key="Str_DisableDateTooltip">混流时不写入日期信息</sys:String>
+    <sys:String x:Key="Str_DisableProxyTooltip">禁用系统代理</sys:String>
+    <sys:String x:Key="Str_ParserOnlyTooltip">仅解析不下载</sys:String>
+    <sys:String x:Key="Str_ConcurrentTooltip">同时下载音频/视频/字幕</sys:String>
+    <sys:String x:Key="Str_DisableMergeTooltip">下载后不合并分片</sys:String>
+    <sys:String x:Key="Str_BinaryMergeTooltip">使用二进制拼接替代 ffmpeg</sys:String>
+    <sys:String x:Key="Str_AudioOnlyTooltip">仅下载音频轨</sys:String>
+    <sys:String x:Key="Str_DisableCheckTooltip">不验证分片数量</sys:String>
+    <sys:String x:Key="Str_SubOnlyTooltip">仅下载字幕</sys:String>
+    <sys:String x:Key="Str_AutoSubFixTooltip">自动修复字幕时间轴</sys:String>
+    <sys:String x:Key="Str_AutoSelectTooltip">自动选择最佳画质</sys:String>
+    <sys:String x:Key="Str_HeadersTooltip">HTTP 请求头，以换行或 | 分隔（如 Cookie:xxx&#x0a;User-Agent:yyy）</sys:String>
+    <sys:String x:Key="Str_BaseUrlTooltip">覆盖相对路径的基础 URL</sys:String>
+    <sys:String x:Key="Str_ProxyTooltip">HTTP/SOCKS5 代理（如 http://127.0.0.1:8080）</sys:String>
+    <sys:String x:Key="Str_MaxThreadsTooltip">最大下载线程数</sys:String>
+    <sys:String x:Key="Str_RetryCountTooltip">失败重试次数</sys:String>
+    <sys:String x:Key="Str_TimeoutTooltip">HTTP 超时时间（秒）</sys:String>
+    <sys:String x:Key="Str_MaxSpeedTooltip">限速（如 15M 或 500K）</sys:String>
+    <sys:String x:Key="Str_KeyTooltip">解密密钥（HEX/Base64）或密钥文件路径。支持 KID:KEY 格式</sys:String>
+    <sys:String x:Key="Str_CustomHlsKeyTooltip">自定义 HLS 密钥（HEX/Base64）</sys:String>
+    <sys:String x:Key="Str_CustomHlsIvTooltip">自定义 HLS 初始化向量（HEX/Base64）</sys:String>
+    <sys:String x:Key="Str_KeyFileTooltip">解密密钥文本文件路径</sys:String>
+    <sys:String x:Key="Str_DecryptionBinPathTooltip">解密工具路径（mp4decrypt/shaka-packager）</sys:String>
+    <sys:String x:Key="Str_OpenDirTooltip">打开下载保存的文件夹</sys:String>
+    <sys:String x:Key="Str_ToggleLogTooltip">显示或隐藏下载日志</sys:String>
+    <sys:String x:Key="Str_CommandPreviewTooltip">生成的命令行参数</sys:String>
+    <sys:String x:Key="Str_CopyCommandTooltip">复制命令到剪贴板</sys:String>
+
+    <!-- Runtime status messages -->
+    <sys:String x:Key="Str_StatusClipboardReadFailed">无法读取剪贴板：{0}</sys:String>
+    <sys:String x:Key="Str_StatusBatchImported">已导入批量列表 — 点击 GO 开始下载。</sys:String>
+    <sys:String x:Key="Str_StatusClipboardNoCapture">剪贴板中没有 cURL 命令或多流批量列表。请在浏览器扩展中点击“Copy as cURL”或“Copy as list”。</sys:String>
+    <sys:String x:Key="Str_StatusCfDetected">检测到 Cloudflare — 已启用绕过模式。</sys:String>
+    <sys:String x:Key="Str_StatusImported">已导入 {0} — 1 个 URL，{1} 个请求头{2}。</sys:String>
+    <sys:String x:Key="Str_StatusImportedQuality">（画质：{0}）</sys:String>
+    <sys:String x:Key="Str_StatusCaptureUnreadable">收到来自浏览器的捕获，但无法读取。</sys:String>
+    <sys:String x:Key="Str_StatusCaptureStarting">已收到浏览器发送的内容 — 正在开始下载…</sys:String>
+    <sys:String x:Key="Str_StatusRunningBatch">正在执行批量任务…</sys:String>
+    <sys:String x:Key="Str_StatusBatchError">批量任务出错：{0}</sys:String>
+    <sys:String x:Key="Str_StatusDownloadError">下载出错：{0}</sys:String>
+    <sys:String x:Key="Str_StatusAbyssFetching">正在获取 Abyss/Hydrax 视频元数据…</sys:String>
+    <sys:String x:Key="Str_StatusAbyssSource">正在下载 Abyss 流：{0}…</sys:String>
+    <sys:String x:Key="Str_StatusAbyssProgress">正在下载 Abyss：{0}</sys:String>
+    <sys:String x:Key="Str_StatusCfRunning">正在运行 Cloudflare 绕过…</sys:String>
+    <sys:String x:Key="Str_StatusCfPartial">已部分下载并保存至 {0}（部分分片失败）。</sys:String>
+    <sys:String x:Key="Str_StatusCfEncrypted">检测到加密流（#EXT-X-KEY）。请直接使用 N_m3u8DL-RE 并配合 --key。</sys:String>
+    <sys:String x:Key="Str_StatusCfAccessDenied">访问被拒绝（401/403）。请检查 Referer 和 Cookie。</sys:String>
+    <sys:String x:Key="Str_StatusCfNeedsProxyEngine">此流需要代理引擎。请将 Cloudflare 引擎设为“自动”或“代理”。</sys:String>
+    <sys:String x:Key="Str_StatusCfFailed">Cloudflare 绕过失败 — 请查看日志详情。</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyStarting">正在启动 Cloudflare 代理…</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyStartFailedEx">启动 Cloudflare 代理失败：{0}</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyStartFailed">启动 Cloudflare 代理失败。</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyNotReady">Cloudflare 代理未能及时就绪 — 请查看日志详情。</sys:String>
+    <sys:String x:Key="Str_StatusCfProxyReady">Cloudflare 代理已就绪 — 正在启动 N_m3u8DL-RE…</sys:String>
+    <sys:String x:Key="Str_StatusReFailed">N_m3u8DL-RE 失败 — 请查看日志详情。</sys:String>
+    <sys:String x:Key="Str_UpdateChecking">正在检查…</sys:String>
+    <sys:String x:Key="Str_UpdateNoVersion">无法确定此应用的版本。</sys:String>
+    <sys:String x:Key="Str_UpdateAvailable">{0} 可用！</sys:String>
+    <sys:String x:Key="Str_UpdateLatest">✓ 已是最新版本</sys:String>
+    <sys:String x:Key="Str_UpdateCheckFailed">无法检查更新 — 请检查网络连接。</sys:String>
+    <sys:String x:Key="Str_ResumeTitleUnnamed">未完成的下载</sys:String>
+    <sys:String x:Key="Str_ResumeTitleNamed">未完成的下载 — “{0}”</sys:String>
+    <sys:String x:Key="Str_ResumeDetailLine">已保存 {0} · 停止于 {1}{2}</sys:String>
+    <sys:String x:Key="Str_ResumeFromHost"> · 来源 {0}</sys:String>
+    <sys:String x:Key="Str_TimeJustNow">刚刚</sys:String>
+    <sys:String x:Key="Str_TimeMinuteAgo">{0} 分钟前</sys:String>
+    <sys:String x:Key="Str_TimeMinutesAgo">{0} 分钟前</sys:String>
+    <sys:String x:Key="Str_TimeHourAgo">{0} 小时前</sys:String>
+    <sys:String x:Key="Str_TimeHoursAgo">{0} 小时前</sys:String>
+    <sys:String x:Key="Str_TimeDayAgo">{0} 天前</sys:String>
+    <sys:String x:Key="Str_TimeDaysAgo">{0} 天前</sys:String>
+    <sys:String x:Key="Str_AbyssQualityTitle">选择画质</sys:String>
+    <sys:String x:Key="Str_AbyssQualityPrompt">此视频提供多种画质。请选择要下载的一个 — 体积最大的排在最前。</sys:String>
+    <sys:String x:Key="Str_AbyssQualityList">此视频提供的画质</sys:String>
+    <sys:String x:Key="Str_AbyssQualityUse">下载此画质</sys:String>
+    <sys:String x:Key="Str_AbyssQualityCancel">取消</sys:String>
+</ResourceDictionary>

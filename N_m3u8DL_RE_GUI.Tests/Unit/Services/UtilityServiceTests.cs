@@ -25,6 +25,7 @@ public class UtilityServiceTests
     [InlineData("video<1>title*.mp4", "video_1_title_.mp4")]
     [InlineData(@"illegal/name\with|pipes?", "illegal_name_with_pipes_")]
     [InlineData("  valid_filename.m3u8  ", "valid_filename.m3u8")]
+    [InlineData(@"..\..\Windows\evil", ".._.._Windows_evil")]
     public void GetValidFileName_ShouldReplaceInvalidPathChars(string input, string expected)
     {
         using var service = new UtilityService();

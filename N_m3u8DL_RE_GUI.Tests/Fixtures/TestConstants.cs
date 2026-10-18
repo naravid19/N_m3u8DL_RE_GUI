@@ -9,7 +9,7 @@ public static class TestConstants
     // =========================================================================
     // Real Test URLs provided for Live/Integration Validation
     // =========================================================================
-    
+
     /// <summary>
     /// Cloudflare-protected / Surrit video stream URL.
     /// </summary>
@@ -28,7 +28,7 @@ public static class TestConstants
     // =========================================================================
     // Dummy Test Constants
     // =========================================================================
-    
+
     public const string SampleM3u8Url = "https://example.com/stream/video.m3u8";
     public const string SampleMpdUrl = "https://example.com/stream/manifest.mpd";
     public const string SampleSaveDir = @"C:\Downloads\TestOutput";

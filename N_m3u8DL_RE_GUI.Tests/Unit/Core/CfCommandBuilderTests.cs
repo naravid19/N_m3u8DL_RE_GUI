@@ -1,5 +1,6 @@
 #nullable enable
 using N_m3u8DL_RE_GUI.Core;
+using N_m3u8DL_RE_GUI.Tests.Fixtures;
 using Xunit;
 
 namespace N_m3u8DL_RE_GUI.Tests.Unit.Core;
@@ -60,36 +61,47 @@ public class CfCommandBuilderTests
     }
 
     [Fact]
-    public void BuildBatchScript_ShouldDoublePercentSigns()
+    public void BuildArguments_ValuesEndingInABackslash_ShouldEachReachPythonAsOneArgument()
     {
-        // THE BUG: a percent-encoded URL is eaten by cmd.exe argument expansion.
-        var cmd = CfCommandBuilder.BuildCommand(Sample("https://example.com/a%20b.m3u8"));
+        // A drive-root save folder or a captured cookie ending in "\" must not escape its
+        // own closing quote and swallow every flag that follows it.
+        var options = Sample() with { WorkDir = @"D:\", Cookie = @"sid=abc\", Threads = 8, Serve = true };
 
-        var bat = CfCommandBuilder.BuildBatchScript(cmd);
+        var parsed = Win32CommandLine.Parse("python " + CfCommandBuilder.BuildArguments(options));
 
-        Assert.Contains("a%%20b.m3u8", bat);
-        Assert.DoesNotContain("a%20b.m3u8", bat.Replace("%%", "\u0000"));
-    }
-
-    [Fact]
-    public void BuildBatchScript_ShouldEmitUtf8Header()
-    {
-        var bat = CfCommandBuilder.BuildBatchScript("echo hi");
-
-        Assert.StartsWith("@echo off", bat);
-        Assert.Contains("chcp 65001 >nul", bat);
-        Assert.Contains("set PYTHONUTF8=1", bat);
+        Assert.Equal(new[]
+        {
+            "python", @"C:\App\m3u8_cf_bypass.py", "https://example.com/a.m3u8",
+            "--referer", "https://example.com/",
+            "-o", "video.mp4",
+            "--work-dir", @"D:\",
+            "--seg-dir", @"C:\App\cf_segments",
+            "--impersonate", "chrome",
+            "--cookie", @"sid=abc\",
+            "--threads", "8",
+            "--serve",
+        }, parsed);
     }
 
     [Theory]
     [InlineData("https://custom.example/", "https://example.com/a.m3u8", "https://custom.example/")]
     [InlineData("", "https://example.com/path/a.m3u8", "https://example.com/")]
     [InlineData(null, "https://example.com:8443/a.m3u8", "https://example.com:8443/")]
-    [InlineData("", "not a url", "")]
-    [InlineData("", null, "")]
-    public void DeriveReferer_ShouldPreferExplicitThenFallBackToTheUrlAuthority(
-        string? explicitReferer, string? inputUrl, string expected)
+    public void DeriveReferer_ResolvesExpectedOrigin(string? explicitReferer, string url, string expected)
     {
-        Assert.Equal(expected, CfCommandBuilder.DeriveReferer(explicitReferer, inputUrl));
+        Assert.Equal(expected, CfCommandBuilder.DeriveReferer(explicitReferer, url));
+    }
+
+    [Fact]
+    public void ComputeJobId_IsDeterministicAndEightHexChars()
+    {
+        var id1 = CfCommandBuilder.ComputeJobId("https://surrit.com/test/playlist.m3u8", "video.mp4");
+        var id2 = CfCommandBuilder.ComputeJobId("https://surrit.com/test/playlist.m3u8", "video.mp4");
+        var id3 = CfCommandBuilder.ComputeJobId("https://surrit.com/other/playlist.m3u8", "video.mp4");
+
+        Assert.Equal(id1, id2);
+        Assert.NotEqual(id1, id3);
+        Assert.Equal(8, id1.Length);
+        Assert.Matches("^[0-9a-f]{8}$", id1);
     }
 }

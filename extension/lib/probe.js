@@ -8,7 +8,7 @@
 import { parseHlsMaster, parseDashManifest } from './manifest.js';
 import { parseMssManifest } from './mss.js';
 import { getCachedVariants, setCachedVariants } from './storage.js';
-import { selectParser, describeProbeFailure } from './probe-policy.js';
+import { selectParser, describeProbeFailure, detectDrm } from './probe-policy.js';
 
 const TIMEOUT_MS = 8000;
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB limit
@@ -230,7 +230,7 @@ export async function probeVariants(stream, tabId = null, options = {}) {
     variants = parseMssManifest(text, stream.url);
   }
 
-  const successResult = { variants, error: null };
+  const successResult = { variants, error: null, drm: detectDrm(text) };
   try {
     await setCachedVariants(stream.url, successResult);
   } catch {}

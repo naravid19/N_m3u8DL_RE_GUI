@@ -45,6 +45,13 @@ export function toCurl(stream, options = {}) {
     cmd += `\n# nre-cf: 1`;
   }
 
+  // The engine drops every stream type that has no --select-* of its own once any
+  // one is given (checked on engine 0.6.0: --select-video alone downloads no audio),
+  // so a pick for one type pins the others to their best.
+  if (options && (options.selectVideo || options.selectAudio || options.selectSubtitle)) {
+    options = { ...options, selectVideo: options.selectVideo || 'best', selectAudio: options.selectAudio || 'best' };
+  }
+
   if (options && options.selectVideo) {
     cmd += `\n# nre-select-video: ${oneLine(options.selectVideo)}`;
   }
@@ -59,6 +66,11 @@ export function toCurl(stream, options = {}) {
 
   if (options && options.saveName) {
     cmd += `\n# nre-save-name: ${oneLine(options.saveName)}`;
+  }
+
+  // Only a real boolean is sent; undefined leaves the GUI's own checkbox alone.
+  if (options && typeof options.delAfterDone === 'boolean') {
+    cmd += `\n# nre-del-after-done: ${options.delAfterDone ? 1 : 0}`;
   }
 
   if (options && options.warn) {

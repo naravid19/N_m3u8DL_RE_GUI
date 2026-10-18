@@ -7,5 +7,5 @@ namespace N_m3u8DL_RE_GUI.Services;
 public interface IConfigService
 {
     AppConfigState Load(string path);
-    void Save(string path, AppConfigState state);
+    bool Save(string path, AppConfigState state);
 }
