@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -12,7 +13,12 @@ BACKSLASH = chr(92)
 class TestOutputPath(unittest.TestCase):
     """-o names the merged file; it must not be able to put it outside --work-dir."""
 
-    OUT = os.path.abspath("work")
+    def setUp(self):
+        self._temp = tempfile.TemporaryDirectory()
+        self.OUT = self._temp.name
+
+    def tearDown(self):
+        self._temp.cleanup()
 
     def test_a_plain_name_gets_the_mp4_extension(self):
         self.assertEqual(output_path(self.OUT, "clip"), os.path.join(self.OUT, "clip.mp4"))
@@ -24,6 +30,31 @@ class TestOutputPath(unittest.TestCase):
     def test_parent_references_stay_inside_the_work_dir(self):
         for sep in ("/", BACKSLASH):
             self.assertEqual(output_path(self.OUT, f"..{sep}..{sep}clip.mp4"), os.path.join(self.OUT, "clip.mp4"))
+
+    def test_source_quality_is_appended(self):
+        self.assertEqual(
+            output_path(self.OUT, "clip", "https://example.com/1080p/video.m3u8"),
+            os.path.join(self.OUT, "clip [1080p].mp4"),
+        )
+
+    def test_existing_quality_marker_is_not_duplicated(self):
+        self.assertEqual(
+            output_path(self.OUT, "clip [1080p]", "https://example.com/1080p/video.m3u8"),
+            os.path.join(self.OUT, "clip [1080p].mp4"),
+        )
+
+    def test_different_source_quality_replaces_stale_marker(self):
+        self.assertEqual(
+            output_path(self.OUT, "clip [1080p]", "https://example.com/360p/video.m3u8"),
+            os.path.join(self.OUT, "clip [360p].mp4"),
+        )
+
+    def test_existing_output_gets_numbered_suffix(self):
+        source = "https://example.com/1080p/video.m3u8"
+        first = output_path(self.OUT, "clip", source)
+        with open(first, "wb") as output:
+            output.write(b"first")
+        self.assertEqual(output_path(self.OUT, "clip", source), os.path.join(self.OUT, "clip [1080p] (2).mp4"))
 
 
 if __name__ == "__main__":
