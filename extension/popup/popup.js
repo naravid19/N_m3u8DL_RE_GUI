@@ -29,6 +29,7 @@ let guiAvailablePromise = null;
 let guiHintClosedHere = false; // survives a failed storage write, for this popup only
 let missingToastShown = false; // one "app not found" toast per popup open
 let delAfterDone = true; // mirrors the "Delete temp files" toggle
+let bulkDownloadBusy = false;
 
 function checkGuiAvailable() {
   if (guiAvailablePromise) return guiAvailablePromise;
@@ -199,7 +200,7 @@ function updateBulkBar(visibleStreams = []) {
     if (mismatch.mismatched && bulkWarning) {
       bulkWarning.hidden = false;
       const countPart = `${mismatch.offCount} of ${selectedStreams.length} selected`;
-      bulkWarning.innerHTML = `<strong>${countPart} are from another site.</strong> Their headers will not apply, and those downloads will likely fail. Copy one site at a time.`;
+      bulkWarning.innerHTML = `<strong>${countPart} are from another site.</strong> Download selected preserves each stream's headers; Copy as list may apply only the primary site's headers.`;
     } else if (bulkWarning) {
       bulkWarning.hidden = true;
       bulkWarning.textContent = '';
@@ -969,6 +970,71 @@ async function init() {
       'Copy as list',
       `Copied ${selectedStreams.length} URLs as batch list! Paste in GUI.`
     );
+  });
+
+  const btnBulkDownload = document.getElementById('btn-bulk-download');
+  btnBulkDownload.addEventListener('click', async () => {
+    if (bulkDownloadBusy) return;
+
+    const data = await loadStreams();
+    const selectedStreams = data.streams.filter((s) => selectedUrls.has(s.url));
+    if (selectedStreams.length === 0) return;
+
+    const available = guiAvailable === true ? true : await checkGuiAvailable();
+    if (!available) {
+      showToast('Desktop app not found. Start N_m3u8DL-RE GUI and try again.', { tone: 'notice' });
+      return;
+    }
+
+    bulkDownloadBusy = true;
+    btnBulkDownload.disabled = true;
+    let sent = 0;
+    let failed = 0;
+    const sentUrls = [];
+
+    try {
+      for (let i = 0; i < selectedStreams.length; i++) {
+        const item = selectedStreams[i];
+        setButtonLabel(btnBulkDownload, 'download', `Sending ${i + 1}/${selectedStreams.length}…`);
+
+        let result;
+        try {
+          result = await sendToGui(await buildCurlFor(item));
+        } catch (err) {
+          result = { ok: false, reason: err && err.message ? err.message : 'send failed' };
+        }
+
+        if (result.ok) {
+          sent++;
+          sentUrls.push(item.url);
+          continue;
+        }
+
+        failed++;
+        if (result.reason === 'unavailable') {
+          guiAvailable = false;
+          await syncGuiBanner();
+          break;
+        }
+      }
+    } finally {
+      bulkDownloadBusy = false;
+      btnBulkDownload.disabled = false;
+      setButtonLabel(btnBulkDownload, 'download', 'Download selected');
+    }
+
+    for (const url of sentUrls) selectedUrls.delete(url);
+    if (sent > 0) renderStreams();
+
+    if (sent > 0 && failed === 0) {
+      showToast(`Sent ${sent} selected stream${sent === 1 ? '' : 's'} to GUI.`);
+    } else if (sent > 0) {
+      showToast(`Sent ${sent} stream${sent === 1 ? '' : 's'}; ${failed} failed.`);
+    } else if (guiAvailable === false) {
+      showToast('Desktop app not found. Start N_m3u8DL_RE_GUI.exe and try again.', { tone: 'notice' });
+    } else {
+      showToast('No selected streams were sent to GUI.', { tone: 'notice' });
+    }
   });
 
   // Filter input handler with debouncing
