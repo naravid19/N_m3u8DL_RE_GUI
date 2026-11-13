@@ -66,6 +66,12 @@ class Logger:
 
 def _enable_ansi():
     """Enable ANSI escape sequences on Windows CMD."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(errors="replace")
+        except Exception:
+            pass
     if os.name == "nt":
         os.system("")
 
@@ -272,6 +278,21 @@ def download_segments(make_session, segs, seg_dir, headers, workers=8, on_progre
         contiguous_count += 1
 
     return contiguous_count, results
+
+
+def concat_segments_binary(paths, output_path):
+    """Concatenate ordered MPEG-TS segments into one TS without remuxing."""
+    written = 0
+    with open(output_path, "wb") as output:
+        for path in paths:
+            with open(path, "rb") as source:
+                while True:
+                    chunk = source.read(4 * 1024 * 1024)
+                    if not chunk:
+                        break
+                    output.write(chunk)
+                    written += len(chunk)
+    return written
 
 
 MANIFEST_EXTENSIONS = (".m3u8", ".m3u", ".mpd", ".ism", ".isml")
@@ -765,16 +786,44 @@ def derive_referer(url):
     return url.rsplit("/", 1)[0] + "/" if "/" in url else url
 
 
-def output_path(out_dir, output):
+QUALITY_PATH_RE = re.compile(r"(?:^|/)(\d{3,4}p)(?:/|$)", re.IGNORECASE)
+QUALITY_SUFFIX_RE = re.compile(r"\s*\[(\d{3,4}p)\]\s*$", re.IGNORECASE)
+
+
+def quality_from_url(url):
+    """Extract a rendition quality such as 360p or 1080p from the source URL."""
+    match = QUALITY_PATH_RE.search(urlparse(url or "").path)
+    return match.group(1).lower() if match else None
+
+
+def output_path(out_dir, output, source_url=None):
     """
     Where the merged file goes: always inside out_dir. -o names a file, not a path;
     os.path.join would otherwise drop out_dir for an absolute -o, or climb out of it
-    through "..".
+    through "..". Append the source quality and choose a numbered suffix when the
+    target already exists so a lower rendition cannot overwrite a higher one.
     """
     name = os.path.basename(output.replace("\\", "/")) or "output"
     if not name.lower().endswith(".mp4"):
         name += ".mp4"
-    return os.path.join(out_dir, name)
+    stem, ext = os.path.splitext(name)
+
+    quality = quality_from_url(source_url)
+    if quality:
+        existing = QUALITY_SUFFIX_RE.search(stem)
+        if existing and existing.group(1).lower() == quality:
+            pass
+        else:
+            if existing:
+                stem = stem[:existing.start()].rstrip()
+            stem = f"{stem} [{quality}]"
+
+    candidate = os.path.join(out_dir, stem + ext)
+    index = 2
+    while os.path.exists(candidate):
+        candidate = os.path.join(out_dir, f"{stem} ({index}){ext}")
+        index += 1
+    return candidate
 
 
 def print_progress(current, total):
@@ -991,39 +1040,59 @@ def main():
         Logger.error("No segments found in m3u8 playlist. Check URL or use sub-playlist.")
         sys.exit(1)
 
-    out_path = output_path(out_dir, a.output)
+    out_path = output_path(out_dir, a.output, a.url)
     Logger.info(f"Save Name: {os.path.basename(out_path)}")
     Logger.info("Start downloading...")
 
     workers = a.threads if a.threads > 0 else min(16, (os.cpu_count() or 4) * 4)
     make_session = lambda: requests.Session(impersonate=a.impersonate)
 
+    download_started = time.perf_counter()
     contiguous_count, results = download_segments(
         make_session, segs, seg_dir, headers, workers=workers, on_progress=print_progress
     )
+    download_elapsed = time.perf_counter() - download_started
 
     if 0 in results and os.path.exists(results[0]):
         probe_media_info(results[0], ff)
 
-    Logger.info(f"Downloaded {contiguous_count}/{len(segs)} contiguous segment(s)")
+    Logger.info(
+        f"Downloaded {contiguous_count}/{len(segs)} contiguous segment(s) "
+        f"in {download_elapsed:.3f}s"
+    )
     if contiguous_count == 0:
         Logger.error("No segments were downloaded successfully.")
         sys.exit(1)
 
-    lst = os.path.join(seg_dir, "list.txt")
-    with open(lst, "w", encoding="utf-8") as f:
-        for i in range(contiguous_count):
-            t = results[i]
-            f.write("file '" + os.path.abspath(t).replace("\\", "/") + "'\n")
-
-
-    Logger.info(f"Merging segments with FFmpeg -> {out_path}")
+    combined_ts = os.path.join(seg_dir, "combined.ts")
+    Logger.info(f"Binary concatenating {contiguous_count} segments into -> {combined_ts}")
     try:
+        concat_started = time.perf_counter()
+        combined_bytes = concat_segments_binary(
+            [results[i] for i in range(contiguous_count)],
+            combined_ts,
+        )
+        concat_elapsed = time.perf_counter() - concat_started
+        Logger.info(
+            f"Binary concatenation complete: {combined_bytes} bytes "
+            f"in {concat_elapsed:.3f}s"
+        )
+
+        Logger.info(f"Remuxing single TS with FFmpeg -> {out_path}")
+        remux_started = time.perf_counter()
         subprocess.run(
-            [ff, "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", out_path],
+            [ff, "-y", "-i", combined_ts, "-map", "0", "-c", "copy", out_path],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+        )
+        remux_elapsed = time.perf_counter() - remux_started
+        Logger.info(
+            "Timing summary: "
+            f"download={download_elapsed:.3f}s "
+            f"binary_concat={concat_elapsed:.3f}s "
+            f"remux={remux_elapsed:.3f}s "
+            f"pipeline={download_elapsed + concat_elapsed + remux_elapsed:.3f}s"
         )
         if contiguous_count < len(segs):
             Logger.warn(f"Partial download: saved {contiguous_count}/{len(segs)} segments to {out_path}")
@@ -1048,7 +1117,11 @@ def main():
         sys.exit(0)
     except FileNotFoundError:
         Logger.error("FFmpeg not found. Segments kept; merge manually:")
-        print(f'    {ff} -f concat -safe 0 -i "{lst}" -c copy "{out_path}"')
+        print(f'    {ff} -i "{combined_ts}" -map 0 -c copy "{out_path}"')
+        sys.exit(1)
+    except OSError as e:
+        Logger.error(f"Binary concatenation failed: {e}")
+        Logger.warn(f"Segments kept in: {seg_dir}")
         sys.exit(1)
     except subprocess.CalledProcessError as e:
         Logger.error(f"FFmpeg merge failed: {e}")

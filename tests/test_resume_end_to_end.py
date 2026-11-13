@@ -164,6 +164,8 @@ class TestResumeEndToEnd(unittest.TestCase):
             ],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=30,
             env=env,
         )
@@ -181,7 +183,10 @@ class TestResumeEndToEnd(unittest.TestCase):
             os.path.isdir(self.seg_dir),
             "seg-dir was deleted after a partial run — resume state was destroyed",
         )
-        surviving = sorted(f for f in os.listdir(self.seg_dir) if f.endswith(".ts"))
+        surviving = sorted(
+            f for f in os.listdir(self.seg_dir)
+            if f.endswith(".ts") and f[:-3].isdigit()
+        )
         self.assertEqual(
             len(surviving), SEGMENT_COUNT - len(ALWAYS_FAILS_FIRST_PASS),
             f"expected the segments that succeeded on the first pass to survive on disk, got {surviving}",
